@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2024-10-26 18:18:36.240638",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2024-10-28 12:51:17.310317",
+ "modified_by": "Administrator",
+ "module": "PinnacleHRMS",
+ "name": "pay-slip-report",
+ "owner": "Administrator",
+ "page_name": "pay-slip-report",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Pay Slip Report"
+}

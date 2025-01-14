@@ -1,0 +1,56 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "creation": "2024-11-06 12:15:50.860191",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+     "date",
+     "in_time",
+     "out_time",
+     "reason"
+    ],
+    "fields": [
+     {
+      "fieldname": "date",
+      "fieldtype": "Date",
+      "in_list_view": 1,
+      "label": "Date",
+      "reqd": 1
+     },
+     {
+      "fieldname": "in_time",
+      "fieldtype": "Time",
+      "in_list_view": 1,
+      "label": "In Time",
+      "reqd": 1
+     },
+     {
+      "fieldname": "out_time",
+      "fieldtype": "Time",
+      "in_list_view": 1,
+      "label": "Out Time",
+      "reqd": 1
+     },
+     {
+      "fieldname": "reason",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "Reason",
+      "reqd": 1
+     }
+    ],
+    "index_web_pages_for_search": 1,
+    "istable": 1,
+    "links": [],
+    "modified": "2024-11-06 12:17:10.950746",
+    "modified_by": "Administrator",
+    "module": "PinnacleHRMS",
+    "name": "Shift Variation History",
+    "owner": "Administrator",
+    "permissions": [],
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "states": []
+   }
