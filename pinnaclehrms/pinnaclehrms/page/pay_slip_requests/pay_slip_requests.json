@@ -1,0 +1,26 @@
+{
+ "content": null,
+ "creation": "2025-01-24 16:40:02.053562",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-01-24 16:40:02.053562",
+ "modified_by": "Administrator",
+ "module": "PinnacleHRMS",
+ "name": "pay-slip-requests",
+ "owner": "Administrator",
+ "page_name": "pay-slip-requests",
+ "roles": [
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "HR Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Pay Slip Requests"
+}

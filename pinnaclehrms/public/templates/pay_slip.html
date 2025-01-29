@@ -1,0 +1,87 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salary Slip</title>
+</head>
+<body>
+    <div class="salary-slip">
+        <h2>{{ doc.company }}</h2>
+        <!--<p>65/65 Mod Mohal, Kanpur 208001</p>-->
+        <h3>Salary Slip for {{ doc.month }} {{ doc.year }}</h3>
+
+        <div class="employee-details">
+            <div class = "details1">
+            <p><strong>Name:</strong> {{ doc.employee_name }}</p>
+            <p><strong>Email ID:</strong> {{ doc.personal_email }}</p>
+            <p><strong>Designation:</strong> {{ doc.designation }}</p>
+            <p><strong>Department:</strong> {{ doc.department }}</p>
+            </div class = details2>
+            <div><p><strong>Date of Joining:</strong> {{ doc.date_of_joining }}</p>
+            <p><strong>Basic Salary | Per Day Rate:</strong> {{ doc.basic_salary }} | {{ doc.per_day_salary }}</p>
+            <p><strong>Standard Days of Work: </strong>{{ doc.standard_working_days }}</p>
+            <p><strong>Actual Working Days:</strong> {{ doc.actual_working_days }}</p>
+            </div>
+        </div>
+        <div class="salary-calculation">
+            <h4 style = " text-decoration: underline; 
+    text-underline-offset: auto; " >Salary Calculation:</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Particulars</th>
+                    <th>Days</th>
+                    <th>Rate</th>
+                    <th>Effective Percent</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if doc.salary_calculation %}
+                    {% for item in doc.salary_calculation %}
+                    <tr>
+                        <td>{{ item.particulars }}</td>
+                        <td>{{ item.days }}</td>
+                        <td>{{ item.rate }}</td>
+                        <td>{{ item.effective_percentage }}%</td>
+                        <td style="text-align: right;">{{ item.amount }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <tr>
+                  <th colspan="4" scope="row">Total [ ( A + B + C + D ) - E ]</th>
+                  <td style="text-align: right;" >{{ doc.total }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+        
+        {% if doc.other_earnings_incentives or doc.other_earning_project_deadline_allowance or doc.other_earnings_special_incentives or doc.sunday_working_amount or doc.other_earnings_overtime or doc.adjustments  %}
+        <div class="other-earnings">
+            <h4 style = " text-decoration: underline;text-underline-offset: auto; ">
+                Other Earnings:
+            </h4>
+            <table>
+                <tbody>
+                    {% for item in doc.other_earnings %}
+                    <tr>
+                        <td>{{ item.type }}</td>
+                        <td style="text-align: right;" >{{ item.amount }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                     <tr>
+                        <th scope="row" >Total Monthly Salary [ (F + G + H + I + J ) - K ]</th>
+                        <td style="text-align: right;" > {{ doc.net_payble_amount }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div> {% endif %}
+            <h6 style = " text-decoration: underline; text-underline-offset: auto; "><strong>Net Amount Payable : {{ doc.net_payble_amount }}</strong></h6>
+        </div>
+    </div>
+</body>
+</html>
