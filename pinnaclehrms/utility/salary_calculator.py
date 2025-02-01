@@ -509,7 +509,7 @@ def calculateMonthlySalary(employeeData,year, month):
                                                     `tabShift variation history` AS svh 
                                                     ON sv.name = svh.parent
                                                 LEFT JOIN 
-                                                    `tabShift for Employee` AS sfe 
+                                                    `tabShift for employee` AS sfe 
                                                     ON sv.name = sfe.parent
                                                 WHERE 
                                                     sv.year = %s

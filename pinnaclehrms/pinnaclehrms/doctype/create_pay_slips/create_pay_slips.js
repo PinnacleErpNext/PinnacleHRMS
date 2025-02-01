@@ -193,7 +193,7 @@ function add_email_btn(frm) {
 
 			if (selected_rows.length > 0) {
 				frappe.call({
-					method: "pinnacle.api.email_pay_slip",
+					method: "pinnaclehrms.api.email_pay_slips",
 					args: {
 						raw_data: selected_rows,
 					},
