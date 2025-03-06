@@ -16,7 +16,12 @@ def createPaySlips(data):
         
         # return frappe.throw(str(dict(employeeData)))
         
-        for emp_id, data in employeeData.items():
+        total_employees = len(employeeData)
+        progress = 0
+        
+        for index, (emp_id, data) in enumerate(employeeData.items(), start=1):
+            progress = int((index / total_employees) * 100)
+            frappe.publish_progress(progress, title="Creating Pay Slips",description=f'Creating Pay Slip for {emp_id}')
             if frappe.db.exists("Pay Slips", {'employee_id': data.get("employee"), 'month_num': month, 'year': year}):
                 continue
             else:
