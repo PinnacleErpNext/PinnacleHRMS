@@ -1,17 +1,23 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:SELF-ATT-{employee}-{#}",
  "creation": "2025-03-03 18:33:59.208151",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_1lct",
   "employee",
-  "status",
   "employee_name",
+  "column_break_hxcg",
+  "status",
+  "section_break_j5ew",
   "shift",
+  "ref_attendance",
+  "column_break_40br",
   "check_in",
   "check_out",
+  "section_break_mivx",
   "comment"
  ],
  "fields": [
@@ -58,16 +64,42 @@
    "default": "Pending",
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_standard_filter": 1,
    "label": "Status",
-   "options": "\nPending\nConflicted\nApproved\nRejected"
+   "options": "\nPending\nConflicted\nApproved\nRejected\nAttendance Marked",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_hxcg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_j5ew",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_40br",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_mivx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.status === \"Conflicted\" || doc.status === \"Attendance Marked\"",
+   "fieldname": "ref_attendance",
+   "fieldtype": "Link",
+   "label": "Ref. Attendance",
+   "options": "Attendance"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-06 12:52:55.949839",
+ "modified": "2025-03-07 11:04:55.491704",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Self Attendance",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -114,6 +146,10 @@
   {
    "color": "Green",
    "title": "Approved"
+  },
+  {
+   "color": "Blue",
+   "title": "Attendance Marked"
   }
  ]
 }
