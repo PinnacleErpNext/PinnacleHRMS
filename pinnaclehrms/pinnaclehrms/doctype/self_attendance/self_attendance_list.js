@@ -76,10 +76,31 @@ function mark_attendance(attendance) {
 
       callback: (res) => {
         update_status(attendance, res.message.status);
+        if (res.message.attendance) {
+          frappe.call({
+            method: "frappe.client.set_value",
+            args: {
+              doctype: "Self Attendance",
+              name: attendance.name,
+              fieldname: "ref_attendance",
+              value: res.message.attendance,
+            },
+            callback: function (r) {
+              if (!r.exc) {
+                console.log(
+                  `Self attendance marked: ${res.message.attendance}`
+                );
+              }
+              listview.refresh();
+            },
+          });
+        }
       },
       error: (res) => {
         console.log(res.message);
       },
     });
+  } else {
+    frames.msgprint("Attendance is not approved.");
   }
 }
