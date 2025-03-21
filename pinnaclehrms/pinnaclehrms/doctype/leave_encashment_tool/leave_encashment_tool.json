@@ -1,0 +1,69 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-18 13:34:03.977456",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "year",
+  "column_break_vrsg",
+  "month",
+  "section_break_cuso",
+  "employee_html",
+  "encashment_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "month",
+   "fieldtype": "Select",
+   "label": "Month",
+   "options": "\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"
+  },
+  {
+   "fieldname": "year",
+   "fieldtype": "Int",
+   "label": "Year"
+  },
+  {
+   "fieldname": "employee_html",
+   "fieldtype": "HTML",
+   "label": "Employee HTML"
+  },
+  {
+   "fieldname": "column_break_vrsg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_cuso",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "encashment_html",
+   "fieldtype": "HTML",
+   "label": "Encashment HTML"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-03-19 13:13:25.665482",
+ "modified_by": "Administrator",
+ "module": "Pinnaclehrms",
+ "name": "Leave Encashment Tool",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
