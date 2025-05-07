@@ -11,6 +11,7 @@
  ],
  "fields": [
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "device_name",
    "fieldtype": "Data",
    "label": "Device Name",
@@ -24,7 +25,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-07 13:35:34.161042",
+ "modified": "2025-05-07 15:35:58.857357",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Attendance Device",
@@ -44,6 +45,7 @@
    "write": 1
   }
  ],
+ "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

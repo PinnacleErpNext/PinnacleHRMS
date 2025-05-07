@@ -9,7 +9,7 @@ from pprint import pprint
 
 def createPaySlips(data):
 
-    year = data.get("year")
+    year = int(data.get("year"))
     month = data.get("month")
 
     empRecords = getEmpRecords(data)
@@ -288,7 +288,7 @@ def getEmpRecords(data):
                 e.status = "Active" AND YEAR(a.attendance_date) = %s AND MONTH(a.attendance_date) = %s
         """
 
-    year = data.get("year")
+    year = int(data.get("year"))
     month = int(data.get("month"))
 
     if not year or not month:

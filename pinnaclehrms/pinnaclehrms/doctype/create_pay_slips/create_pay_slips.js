@@ -28,7 +28,7 @@ frappe.ui.form.on("Create Pay Slips", {
 						{
 							label: "Year",
 							fieldname: "year",
-							fieldtype: "Data",
+							fieldtype: "Int",
 							default: frm.doc.year,
 							read_only: 1,
 							reqd: true,
