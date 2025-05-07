@@ -20,15 +20,17 @@
   },
   {
    "fieldname": "device",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Device",
+   "options": "Attendance Device",
    "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-06 13:02:21.165825",
+ "modified": "2025-05-07 13:41:08.212647",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Attendance Device ID Allotment",
