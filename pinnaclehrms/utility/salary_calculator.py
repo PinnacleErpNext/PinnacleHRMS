@@ -943,7 +943,7 @@ def calculateMonthlySalary(employeeData, year, month):
                             empAttendanceRecord.append(
                                 {
                                     "date": attendanceDate,
-                                    "deductionPercentage": deductionPercentage,
+                                    "deductionPercentage": 1,
                                     "salary": salary,
                                     "status": status,
                                 }
@@ -954,11 +954,29 @@ def calculateMonthlySalary(employeeData, year, month):
                         pass
                     else:
                         totalAbsents += 1
+                        status = "Absent"
+                        empAttendanceRecord.append(
+                            {
+                                "date": attendanceDate,
+                                "deductionPercentage": 1,
+                                "salary": salary,
+                                "status": status,
+                            }
+                        )
             else:
                 if any(holiday["holiday_date"] == today for holiday in holidays):
                     pass
                 else:
                     totalAbsents += 1
+                    status = "Absent"
+                    empAttendanceRecord.append(
+                        {
+                            "date": attendanceDate,
+                            "deductionPercentage": 1,
+                            "salary": salary,
+                            "status": status,
+                        }
+                    )
 
         totalSalary -= totalLateDeductions
         if actualWorkingDays > 0:
@@ -966,9 +984,10 @@ def calculateMonthlySalary(employeeData, year, month):
         else:
             holidayAmount = 0
             totalSalary += overtimeSalary + leaveEncashmentAmount
-        
-        data["attendance_records"] = empAttendanceRecord
 
+        data["attendance_records"] = empAttendanceRecord
+        if lates >= allowedLates:
+            lates -= allowedLates
         data["salary_information"] = {
             "basic_salary": basicSalary,
             "per_day_salary": perDaySalary,
@@ -985,7 +1004,7 @@ def calculateMonthlySalary(employeeData, year, month):
             "total_salary": round(totalSalary, 2),
             "total_late_deductions": totalLateDeductions,
             "absent": totalAbsents,
-            "lates": lates - allowedLates,
+            "lates": lates,
             "overtime": round((overtimeSalary), 2),
             "holidays": holidayAmount,
             "leave_encashment": round((leaveEncashmentAmount), 2),
