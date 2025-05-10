@@ -13,7 +13,7 @@
  "fields": [
   {
    "fieldname": "pay_slip",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Pay Slip",
    "options": "Pay Slips",
