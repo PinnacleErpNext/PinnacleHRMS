@@ -52,7 +52,7 @@ def createPaySlips(data):
                 (
                     salaryInfo.get("quarter_days", 0)
                     * salaryInfo.get("per_day_salary", 0)
-                    * 0.75
+                    * 0.25
                 ),
                 2,
             )
@@ -67,7 +67,7 @@ def createPaySlips(data):
             threeFourQuarterDaysWorkingAmount = round(
                 (
                     salaryInfo.get("three_four_quarter_days", 0)
-                    * 0.25
+                    * 0.75
                     * salaryInfo.get("per_day_salary", 0)
                 ),
                 2,
@@ -76,15 +76,13 @@ def createPaySlips(data):
                 (
                     salaryInfo.get("lates", 0)
                     * salaryInfo.get("per_day_salary", 0)
-                    * 0.1
+                    * 0.9
                 ),
                 2,
             )
-            otherEarningsAmount = (
-                round((salaryInfo.get("overtime", 0)), 2)
-                + salaryInfo.get("holidays")
-                + salaryInfo.get("leave_encashment")
-            )
+            otherEarningsAmount = round(
+                (salaryInfo.get("overtime", 0)), 2
+            ) + salaryInfo.get("leave_encashment")
 
             monthMapping = {
                 1: "January",
@@ -129,13 +127,11 @@ def createPaySlips(data):
                     "other_earnings_amount": otherEarningsAmount,
                     "total": round(
                         (
-                            (
-                                fullDayWorkingAmount
-                                + quarterDayWorkingAmount
-                                + halfDayWorkingAmount
-                                + threeFourQuarterDaysWorkingAmount
-                            )
-                            - latesAmount
+                            fullDayWorkingAmount
+                            + quarterDayWorkingAmount
+                            + halfDayWorkingAmount
+                            + threeFourQuarterDaysWorkingAmount
+                            + latesAmount
                         ),
                         2,
                     ),
@@ -160,7 +156,7 @@ def createPaySlips(data):
                         "particulars": "Lates",
                         "days": salaryInfo.get("lates"),
                         "rate": salaryInfo.get("per_day_salary"),
-                        "effective_percentage": "10",
+                        "effective_percentage": "90",
                         "amount": latesAmount,
                     },
                 )
@@ -193,7 +189,7 @@ def createPaySlips(data):
                         "particulars": "Quarter Day",
                         "days": salaryInfo.get("quarter_days"),
                         "rate": salaryInfo.get("per_day_salary"),
-                        "effective_percentage": "50",
+                        "effective_percentage": "25",
                         "amount": quarterDayWorkingAmount,
                     },
                 )
@@ -243,13 +239,13 @@ def createPaySlips(data):
                     "amount": salaryInfo.get("overtime"),
                 },
             )
-            paySlip.append(
-                "other_earnings",
-                {
-                    "type": "Holidays",
-                    "amount": salaryInfo.get("holidays"),
-                },
-            )
+            # paySlip.append(
+            #     "other_earnings",
+            #     {
+            #         "type": "Holidays",
+            #         "amount": salaryInfo.get("holidays"),
+            #     },
+            # )
 
             attendanceRecord = frappe.render_template(
                 "pinnaclehrms/public/templates/attendance_record.html",
@@ -680,7 +676,7 @@ def calculateMonthlySalary(employeeData, year, month):
         )
         if len(leaveEncashmentData) > 0:
             leaveEncashmentAmount = leaveEncashmentData[0][0]
-            
+
         perDaySalary = round(basicSalary / totalWorkingDays, 2)
         holidayAmount = perDaySalary * len(holidays)
 
@@ -944,6 +940,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     "status": status,
                                 }
                             )
+                    print(today,deductionPercentage, salary)
                 else:
                     if any(holiday["holiday_date"] == today for holiday in holidays):
                         pass
@@ -969,7 +966,7 @@ def calculateMonthlySalary(employeeData, year, month):
             "per_day_salary": perDaySalary,
             "standard_working_days": totalWorkingDays,
             "actual_working_days": actualWorkingDays,
-            "full_days": fullDays,
+            "full_days": fullDays + len(holidays) + allowedLates,
             "half_days": halfDays,
             "quarter_days": quarterDays,
             "three_four_quarter_days": threeFourQuarterDays,
@@ -980,7 +977,7 @@ def calculateMonthlySalary(employeeData, year, month):
             "total_salary": round(totalSalary, 2),
             "total_late_deductions": totalLateDeductions,
             "absent": totalAbsents,
-            "lates": lates,
+            "lates": lates - allowedLates,
             "overtime": round((overtimeSalary), 2),
             "holidays": holidayAmount,
             "leave_encashment": round((leaveEncashmentAmount), 2),
