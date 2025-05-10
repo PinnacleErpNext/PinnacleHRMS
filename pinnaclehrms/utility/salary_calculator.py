@@ -132,6 +132,7 @@ def createPaySlips(data):
                             + halfDayWorkingAmount
                             + threeFourQuarterDaysWorkingAmount
                             + latesAmount
+                            + salaryInfo.get("sundays_salary")
                         ),
                         2,
                     ),
@@ -208,6 +209,7 @@ def createPaySlips(data):
                         "particulars": "Sunday Workings",
                         "days": salaryInfo.get("sundays_working_days"),
                         "rate": salaryInfo.get("per_day_salary"),
+                        "effective_percentage": "100",
                         "amount": salaryInfo.get("sundays_salary"),
                     },
                 )
@@ -778,6 +780,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                 sundays += 1
                                 actualWorkingDays += 1
                                 status = "Sunday"
+                                sundaysSalary += salary
                                 empAttendanceRecord.append(
                                     {
                                         "date": attendanceDate,
@@ -803,6 +806,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                 sundays += 1
                                 actualWorkingDays += 1
                                 status = "Sunday"
+                                sundaysSalary += salary
                                 empAttendanceRecord.append(
                                     {
                                         "date": attendanceDate,
@@ -828,6 +832,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                 sundays += 1
                                 actualWorkingDays += 1
                                 status = "Sunday"
+                                sundaysSalary += salary
                                 empAttendanceRecord.append(
                                     {
                                         "date": attendanceDate,
@@ -853,6 +858,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                 sundays += 1
                                 actualWorkingDays += 1
                                 status = "Sunday"
+                                sundaysSalary += salary
                                 empAttendanceRecord.append(
                                     {
                                         "date": attendanceDate,
@@ -878,6 +884,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                 sundays += 1
                                 actualWorkingDays += 1
                                 status = "Sunday"
+                                sundaysSalary += salary
                                 empAttendanceRecord.append(
                                     {
                                         "date": attendanceDate,
@@ -903,6 +910,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                 sundays += 1
                                 actualWorkingDays += 1
                                 status = "Sunday"
+                                sundaysSalary += salary
                                 empAttendanceRecord.append(
                                     {
                                         "date": attendanceDate,
@@ -940,7 +948,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     "status": status,
                                 }
                             )
-                    print(today,deductionPercentage, salary)
+                    # print(today, deductionPercentage, salary)
                 else:
                     if any(holiday["holiday_date"] == today for holiday in holidays):
                         pass
@@ -958,7 +966,7 @@ def calculateMonthlySalary(employeeData, year, month):
         else:
             holidayAmount = 0
             totalSalary += overtimeSalary + leaveEncashmentAmount
-
+        
         data["attendance_records"] = empAttendanceRecord
 
         data["salary_information"] = {

@@ -93,7 +93,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   // Fetch records when button is clicked
   $form.find("#fetch_records").click(function () {
     const year = parseInt($form.find("#year").val(), 10);
-    const month = $form.find("#month").val();
+    const month = parseInt($form.find("#month").val());
 
     if (!year || year < 1900 || year > 2099) {
       frappe.throw("Please enter a valid 4-digit year.");
@@ -113,6 +113,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
       args: { year, month, curr_user: currUser },
       callback: function (res) {
         if (res.message) {
+          console.log(res.message)
           pay_slip_list(res.message);
           $form.find("#fetch_records").hide();
         } else {
@@ -180,18 +181,18 @@ function pay_slip_list(records) {
           <td>${record.basic_salary || 0}</td>
           <td>${record.standard_working_days || 0}</td>
           <td>${record.actual_working_days || 0}</td>
-          <td>${record.full_day || 0}</td>
-          <td>${record.sundays || 0}</td>
-          <td>${record.half_day || 0}</td>
-          <td>${record.three_four_day || 0}</td>
-          <td>${record.quarter_day || 0}</td>
-          <td>${record.lates || 0}</td>
+          <td>${record.salary_breakup.full_day || 0}</td>
+          <td>${record.salary_breakup.sundays || 0}</td>
+          <td>${record.salary_breakup.half_day || 0}</td>
+          <td>${record.salary_breakup.three_four_day || 0}</td>
+          <td>${record.salary_breakup.quarter_day || 0}</td>
+          <td>${record.salary_breakup.lates || 0}</td>
           <td>${record.absent || 0}</td>
           <td>${record.total || 0}</td>
           <td>${record.sunday_working_amount || 0}</td>
           <td>${record.other_earnings_amount || 0}</td>
           <td>${record.adjustments || 0}</td>
-          <td>${record.net_payble_amount || 0}</td>
+          <td>${record.net_payable_amount || 0}</td>
       </tr>`;
     tableBody.innerHTML += rowHTML;
   });

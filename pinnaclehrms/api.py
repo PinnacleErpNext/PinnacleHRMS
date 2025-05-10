@@ -130,54 +130,17 @@ def email_pay_slips(pay_slips=None, raw_data=None):
 # API to get pay slip report
 @frappe.whitelist(allow_guest=True)
 def get_pay_slip_report(year=None, month=None, curr_user=None):
-
-    pay_slips = []
-
-    query = """
-        SELECT 
-            ps.name AS pay_slip_name,
-            ps.year,
-            ps.month,
-            ps.employee_id,
-            ps.employee_name,
-            ps.company,
-            ps.designation,
-            ps.department,
-            ps.personal_email,
-            ps.standard_working_days,
-            ps.pan_number,
-            ps.date_of_joining,
-            ps.basic_salary,
-            ps.per_day_salary,
-            ps.actual_working_days,
-            ps.absent,
-            ps.total,
-            ps.net_payble_amount,
-            sc.particulars AS salary_particulars,
-            sc.days AS salary_days,
-            sc.rate AS salary_rate,
-            sc.effective_percentage AS salary_effective_percentage,
-            sc.amount AS salary_amount,
-            oe.type AS earnings_type,
-            oe.amount AS earnings_amount
-        FROM 
-            `tabPay Slips` ps
-        LEFT JOIN 
-            `tabSalary Calculation` sc ON sc.parent = ps.name
-        LEFT JOIN 
-            `tabOther Earnings` oe ON oe.parent = ps.name
-    """
-
     user_roles = frappe.get_roles(curr_user)
 
-    if "All" in user_roles or "HR User" in user_roles or "HR Manager" in user_roles:
-        filter_condition = "WHERE ps.year = %s AND ps.month_num = %s"
+    # Determine filter condition and SQL parameters based on user role
+    if set(user_roles).intersection({"All", "HR User", "HR Manager"}):
+        filter_condition = "WHERE tps.year = %s AND tps.month_num = %s"
         values = [year, month]
     else:
         data = frappe.db.sql(
             """
-            SELECT name FROM tabEmployee WHERE personal_email = %s OR company_email = %s;
-        """,
+            SELECT name FROM `tabEmployee` WHERE personal_email = %s OR company_email = %s
+            """,
             (curr_user, curr_user),
             as_dict=True,
         )
@@ -190,94 +153,91 @@ def get_pay_slip_report(year=None, month=None, curr_user=None):
         employee_id = data[0].get("name")
 
         filter_condition = (
-            "WHERE ps.year = %s AND ps.month_num = %s AND ps.employee_id = %s"
+            "WHERE tps.year = %s AND tps.month_num = %s AND tps.employee_id = %s"
         )
         values = [year, month, employee_id]
 
-    records = frappe.db.sql(query + " " + filter_condition, values)
+    # Main query
+    query = f"""
+        SELECT 
+            tps.name AS pay_slip_name, 
+            tps.year,
+            tps.month_num,
+            tps.employee_id,
+            tps.employee_name,
+            tps.company,
+            tps.designation,
+            tps.department,
+            tps.personal_email,
+            tps.standard_working_days,
+            tps.pan_number,
+            tps.date_of_joining,
+            tps.basic_salary,
+            tps.per_day_salary,
+            tps.actual_working_days,
+            tps.absent,
+            tps.total,
+            tps.net_payble_amount,
+            SUM(CASE WHEN tsc.particulars = 'Full Day' THEN tsc.amount ELSE 0 END) AS full_day_amount,
+            SUM(CASE WHEN tsc.particulars = 'Sunday Workings' THEN tsc.amount ELSE 0 END) AS sunday_workings_amount,
+            SUM(CASE WHEN tsc.particulars = 'Half Day' THEN tsc.amount ELSE 0 END) AS half_day_amount,
+            SUM(CASE WHEN tsc.particulars = 'Quarter Day' THEN tsc.amount ELSE 0 END) AS quarter_day_amount,
+            SUM(CASE WHEN tsc.particulars = '3/4 Quarter Day' THEN tsc.amount ELSE 0 END) AS three_fourth_day_amount,
+            SUM(CASE WHEN tsc.particulars = 'Lates' THEN tsc.amount ELSE 0 END) AS lates_amount
+        FROM 
+            `tabPay Slips` tps
+        LEFT JOIN 
+            `tabSalary Calculation` tsc 
+        ON 
+            tsc.parent = tps.name 
+            AND tsc.particulars IN ('Full Day', 'Sunday Workings', 'Half Day', 'Quarter Day', '3/4 Quarter Day', 'Lates')
+        {filter_condition}
+        GROUP BY 
+            tps.name
+    """
 
+    # Execute final query
+    records = frappe.db.sql(query, values, as_dict=True)
+    
     if not records:
         frappe.msgprint(
             msg="No records found for the specified year and month.", title="Warning!"
         )
         return []
 
-    pay_slip_map = {}
-
+    # Prepare final pay slip report list
+    pay_slips = []
     for record in records:
-        (
-            pay_slip_name,
-            year,
-            month,
-            employee_id,
-            employee_name,
-            company,
-            designation,
-            department,
-            personal_email,
-            standard_working_days,
-            pan_number,
-            date_of_joining,
-            basic_salary,
-            per_day_salary,
-            actual_working_days,
-            absent,
-            total,
-            net_payble_amount,
-            salary_particulars,
-            salary_days,
-            salary_rate,
-            salary_effective_percentage,
-            salary_amount,
-            earnings_type,
-            earnings_amount,
-        ) = record
-
-        # Check if pay slip already exists in the dictionary
-        if pay_slip_name not in pay_slip_map:
-            pay_slip_map[pay_slip_name] = {
-                "pay_slip_name": pay_slip_name,
-                "year": year,
-                "month": month,
-                "employee_id": employee_id,
-                "employee_name": employee_name,
-                "company": company,
-                "designation": designation,
-                "department": department,
-                "personal_email": personal_email,
-                "standard_working_days": standard_working_days,
-                "pan_number": pan_number,
-                "date_of_joining": date_of_joining,
-                "basic_salary": basic_salary,
-                "per_day_salary": per_day_salary,
-                "actual_working_days": actual_working_days,
-                "absent": absent,
-                "total": total,
-                "net_payble_amount": net_payble_amount,
-                "salary_calculation": [],
-                "other_earnings": [],
-            }
-
-        # Add salary calculation if it's unique
-        salary_data = {
-            "salary_particulars": salary_particulars,
-            "salary_days": salary_days,
-            "salary_rate": salary_rate,
-            "salary_effective_percentage": salary_effective_percentage,
-            "salary_amount": salary_amount,
+        print(record.net_payble_amount)
+        pay_slip_data = {
+            "pay_slip_name": record["pay_slip_name"],
+            "year": record["year"],
+            "month": record["month_num"],
+            "employee_id": record["employee_id"],
+            "employee_name": record["employee_name"],
+            "company": record["company"],
+            "designation": record["designation"],
+            "department": record["department"],
+            "personal_email": record["personal_email"],
+            "standard_working_days": record["standard_working_days"],
+            "pan_number": record["pan_number"],
+            "date_of_joining": record["date_of_joining"],
+            "basic_salary": record["basic_salary"],
+            "per_day_salary": record["per_day_salary"],
+            "actual_working_days": record["actual_working_days"],
+            "absent": record["absent"],
+            "total": record["total"],
+            "net_payable_amount": record["net_payble_amount"],
+            "salary_breakup": {
+                "full_day": record["full_day_amount"],
+                "sunday_workings": record["sunday_workings_amount"],
+                "half_day": record["half_day_amount"],
+                "quarter_day": record["quarter_day_amount"],
+                "three_fourth_day": record["three_fourth_day_amount"],
+                "lates": record["lates_amount"],
+            },
         }
-        if salary_data not in pay_slip_map[pay_slip_name]["salary_calculation"]:
-            pay_slip_map[pay_slip_name]["salary_calculation"].append(salary_data)
-
-        # Add other earnings if it's unique
-        earnings_data = {
-            "earnings_type": earnings_type,
-            "earnings_amount": earnings_amount,
-        }
-        if earnings_data not in pay_slip_map[pay_slip_name]["other_earnings"]:
-            pay_slip_map[pay_slip_name]["other_earnings"].append(earnings_data)
-
-    pay_slips = list(pay_slip_map.values())
+        pay_slips.append(pay_slip_data)
 
     return pay_slips
 
@@ -428,7 +388,7 @@ def regeneratePaySlip(data):
         month_name = month_mapping.get(month)
         salaryInfo = data.get("salary_information", {})
         attendanceRecord = frappe.render_template(
-           "pinnaclehrms/public/templates/attendance_record.html",
+            "pinnaclehrms/public/templates/attendance_record.html",
             {"attendance_record": data.get("attendance_records")},
         )
 
