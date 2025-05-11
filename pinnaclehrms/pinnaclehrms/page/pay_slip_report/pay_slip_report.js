@@ -161,8 +161,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   });
 
   $form.on("click", "#download_sft_report", function () {
-    // let month = parseInt($form.find("#month").val());
-    month = 5
+    let month = parseInt($form.find("#month").val());
     window.location.href = `/api/method/pinnaclehrms.api.download_sft_report?month=${month}`;
   });
 
