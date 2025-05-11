@@ -816,17 +816,32 @@ def calculateMonthlySalary(employeeData, year, month):
                                     }
                                 )
                             else:
-                                lates += 1
-                                actualWorkingDays += 1
-                                status = "Late"
-                                empAttendanceRecord.append(
-                                    {
-                                        "date": attendanceDate,
-                                        "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
-                                        "status": status,
-                                    }
-                                )
+                                if allowedLates == 0:
+                                    lates += 1
+                                    actualWorkingDays += 1
+                                    status = "Late"
+                                    empAttendanceRecord.append(
+                                        {
+                                            "date": attendanceDate,
+                                            "deductionPercentage": deductionPercentage,
+                                            "salary": salary,
+                                            "status": status,
+                                        }
+                                    )
+                                else:
+                                    allowedLates -= 1
+                                    actualWorkingDays += 1
+                                    fullDays += 1
+                                    status = "Full Day"
+                                    empAttendanceRecord.append(
+                                        {
+                                            "date": attendanceDate,
+                                            "deductionPercentage": deductionPercentage,
+                                            "salary": salary,
+                                            "status": status,
+                                        }
+                                    )
+
                         elif deductionPercentage == 0.25:
                             if attendanceDate.weekday() == 6:
                                 sundays += 1
@@ -986,14 +1001,13 @@ def calculateMonthlySalary(employeeData, year, month):
             totalSalary += overtimeSalary + leaveEncashmentAmount
 
         data["attendance_records"] = empAttendanceRecord
-        if lates >= allowedLates:
-            lates -= allowedLates
+
         data["salary_information"] = {
             "basic_salary": basicSalary,
             "per_day_salary": perDaySalary,
             "standard_working_days": totalWorkingDays,
             "actual_working_days": actualWorkingDays,
-            "full_days": fullDays + len(holidays) + allowedLates,
+            "full_days": fullDays + len(holidays),
             "half_days": halfDays,
             "quarter_days": quarterDays,
             "three_four_quarter_days": threeFourQuarterDays,
