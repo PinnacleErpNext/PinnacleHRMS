@@ -47,6 +47,8 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" id="email_pay_slips">Email Pay Slips</a></li>
                     <li><a class="dropdown-item" id="print_pay_slips">Print Pay Slips</a></li>
+                    <li><a class="dropdown-item" id="download_sft_report">Download SFT Report</a></li>
+                    <li><a class="dropdown-item" id="download_sft_upld_report">Download SFT Upload Report</a></li>
                 </ul>
             </div>
         </div>
@@ -113,9 +115,11 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
       args: { year, month, curr_user: currUser },
       callback: function (res) {
         if (res.message) {
-          console.log(res.message)
+          console.log(res.message);
           pay_slip_list(res.message);
           $form.find("#fetch_records").hide();
+          document.getElementById("action_button").style.display =
+            "inline-block";
         } else {
           document.getElementById("pay_slip_table_body").innerHTML = "";
           frappe.msgprint("No records found.");
@@ -141,7 +145,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
         pay_slips: selectedPaySlips,
       },
       callback: function (res) {
-        console.log(res.message.message)
+        console.log(res.message.message);
         if (res.message.message === "success") {
           frappe.msgprint("Pay slips emailed successfully!");
         } else {
@@ -154,6 +158,17 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   // Show fetch button when month changes
   $form.find("#month").on("change", function () {
     $form.find("#fetch_records").show();
+  });
+
+  $form.on("click", "#download_sft_report", function () {
+    // let month = parseInt($form.find("#month").val());
+    month = 5
+    window.location.href = `/api/method/pinnaclehrms.api.download_sft_report?month=${month}`;
+  });
+
+  $form.on("click", "#download_sft_upld_report", function () {
+    let month = parseInt($form.find("#month").val());
+    window.location.href = `/api/method/pinnaclehrms.api.download_sft_upld_report?month=${month}`;
   });
 };
 

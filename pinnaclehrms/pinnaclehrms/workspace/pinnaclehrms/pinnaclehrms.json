@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"1cUrv4tZAp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">PinnacleHRMS</span>\",\"col\":12}},{\"id\":\"QLjja6HTdm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"1. Add Employee\",\"col\":6}},{\"id\":\"lPEojI8no_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"2. Assign Salary\",\"col\":6}},{\"id\":\"cwdsZ1q4YR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Pay Slips\",\"col\":3}},{\"id\":\"os4pytHpPV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slip Records\",\"col\":3}},{\"id\":\"we4cr3yl4p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shift Variation\",\"col\":3}},{\"id\":\"IjCYcWcR0w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slips\",\"col\":3}},{\"id\":\"7iSujEIN_V\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SFT Report\",\"col\":6}},{\"id\":\"CVuCTGg4ui\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SFT Upload Report\",\"col\":6}}]",
+ "content": "[{\"id\":\"1cUrv4tZAp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">PinnacleHRMS</span>\",\"col\":12}},{\"id\":\"QLjja6HTdm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"1. Add Employee\",\"col\":6}},{\"id\":\"lPEojI8no_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"2. Assign Salary\",\"col\":6}},{\"id\":\"cwdsZ1q4YR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Pay Slips\",\"col\":3}},{\"id\":\"os4pytHpPV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slip Records\",\"col\":3}},{\"id\":\"we4cr3yl4p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shift Variation\",\"col\":3}},{\"id\":\"IjCYcWcR0w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slips\",\"col\":3}}]",
  "creation": "2025-01-24 17:29:48.785624",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "PinnacleHRMS",
  "links": [],
- "modified": "2025-05-11 13:45:03.567885",
+ "modified": "2025-05-11 15:21:05.152150",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "PinnacleHRMS",
@@ -25,13 +25,6 @@
  "roles": [],
  "sequence_id": 39.0,
  "shortcuts": [
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "SFT Report",
-   "link_to": "SFT Report",
-   "type": "Report"
-  },
   {
    "color": "Grey",
    "doc_view": "List",
@@ -47,13 +40,6 @@
    "link_to": "Employee",
    "stats_filter": "[]",
    "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "SFT Upload Report",
-   "link_to": "SFT Upload Report",
-   "type": "Report"
   },
   {
    "color": "Grey",

@@ -1,12 +1,14 @@
-import frappe
-import uuid
-import json
+import frappe, json, uuid
 from pinnaclehrms.utility.salary_calculator import (
     createPaySlips,
     getEmpRecords,
     calculateMonthlySalary,
 )
 from collections import defaultdict
+from frappe.utils.xlsxutils import make_xlsx
+from frappe.desk.query_report import build_xlsx_data
+from frappe.utils import nowdate, flt
+from frappe import _
 
 
 # API to get pay slips in create pay slips
@@ -198,7 +200,7 @@ def get_pay_slip_report(year=None, month=None, curr_user=None):
 
     # Execute final query
     records = frappe.db.sql(query, values, as_dict=True)
-    
+
     if not records:
         frappe.msgprint(
             msg="No records found for the specified year and month.", title="Warning!"
@@ -610,3 +612,141 @@ def regeneratePaySlip(data):
         # frappe.db.commit()
 
     return {"message": ("Success")}
+
+
+# API to download sft report
+@frappe.whitelist(allow_guest=False)
+def download_sft_report(month=None):
+    """
+    month: integer 1–12 as string or number
+    """
+    report_name = "Salary_Beneficiary_List"
+    conditions = []
+
+    # Validate and use the month parameter
+    if month:
+        try:
+            m = int(month)
+            if 1 <= m <= 12:
+                # Filter on the month() of your date field
+                conditions.append(f"tps.month_num = {m}")
+            else:
+                frappe.throw("Month must be between 1 and 12")
+        except ValueError:
+            frappe.throw("Invalid month format")
+
+    where_sql = " AND ".join(conditions) or "1=1"
+    query = f"""
+        SELECT
+            te.ifsc_code   AS IFSC,
+            te.bank_ac_no  AS `Beneficiary Account No`,
+            te.employee_name AS `Beneficiary Name`,
+            tps.net_payble_amount AS `Amount (₹)`
+        FROM `tabEmployee` AS te
+        JOIN `tabPay Slips` AS tps ON tps.employee_id = te.name
+        WHERE {where_sql}
+    """
+    data = frappe.db.sql(query, as_dict=True)
+
+    # Prepare headers + rows
+    columns = [
+        {"header": "IFSC", "key": "IFSC", "width": 20},
+        {
+            "header": "Beneficiary Account No",
+            "key": "Beneficiary Account No",
+            "width": 25,
+        },
+        {"header": "Beneficiary Name", "key": "Beneficiary Name", "width": 30},
+        {"header": "Amount (₹)", "key": "Amount (₹)", "width": 15},
+    ]
+    rows = [[r[col["key"]] for col in columns] for r in data]
+    xlsx_file = make_xlsx(
+        [[c["header"] for c in columns]] + rows,
+        report_name,
+        column_widths=[c["width"] for c in columns],
+    )
+
+    # Download response
+    frappe.response.filename = f"{report_name}.xlsx"
+    frappe.response.filecontent = xlsx_file.getvalue()
+    frappe.response.type = "binary"
+
+
+# API to download sft upload report
+@frappe.whitelist(allow_guest=False)
+def download_sft_upld_report(month=None):
+    """
+    month: integer 1–12 as string or number
+    Generates an SFT upload report for the given month.
+    """
+
+    # 1. Validate month
+    if not month:
+        frappe.throw("Please specify a month (1–12)")
+    try:
+        m = int(month)
+        if m < 1 or m > 12:
+            frappe.throw("Month must be between 1 and 12")
+    except ValueError:
+        frappe.throw("Invalid month format")
+
+    # 2. Build WHERE clause
+    where_sql = f"tps.month_num = {m}"
+
+    # 3. Run your custom SQL
+    query = f"""
+        SELECT
+            '192105002170'                        AS `Debit Ac No`,
+            te.employee_name                     AS `Beneficiary Name`,
+            te.bank_ac_no                        AS `Beneficiary Account No`,
+            te.ifsc_code                         AS `IFSC`,
+            tps.net_payble_amount                AS `Amount (₹)`,
+            'N'                                  AS `Pay Mode`,
+            CONCAT(
+                DATE_FORMAT(CURDATE(), '%d-'),
+                UPPER(DATE_FORMAT(CURDATE(), '%b')),
+                DATE_FORMAT(CURDATE(), '-%Y')
+            )                                    AS `Date`
+        FROM `tabEmployee` AS te
+        JOIN `tabPay Slips` AS tps ON tps.employee_id = te.name
+        WHERE {where_sql}
+    """
+    data = frappe.db.sql(query, as_dict=True)
+    if not data or len(data) == 0:
+        frappe.msgprint(
+            title=_("Notification"),
+            indicator="green",
+            message=_("No data found to update"),
+        )
+        return
+    # 4. Prepare headers and rows
+    columns = [
+        {"header": "Debit Ac No", "key": "Debit Ac No", "width": 20},
+        {"header": "Beneficiary Name", "key": "Beneficiary Name", "width": 30},
+        {
+            "header": "Beneficiary Account No",
+            "key": "Beneficiary Account No",
+            "width": 25,
+        },
+        {"header": "IFSC", "key": "IFSC", "width": 15},
+        {"header": "Amount (₹)", "key": "Amount (₹)", "width": 15},
+        {"header": "Pay Mode", "key": "Pay Mode", "width": 10},
+        {"header": "Date", "key": "Date", "width": 15},
+    ]
+    # Build row data in the order of columns
+    rows = [[row[col["key"]] for col in columns] for row in data]
+
+    # 5. Generate the XLSX
+    # Use .xls extension for compatibility if required, but content is XLSX
+    today = nowdate()  # YYYY-MM-DD
+    filename = f"sft_upload_report_{today}.xls"
+    xlsx_file = make_xlsx(
+        [[c["header"] for c in columns]] + rows,
+        "SFT Upload",
+        column_widths=[c["width"] for c in columns],
+    )
+
+    # 6. Send as download response
+    frappe.response.filename = filename
+    frappe.response.filecontent = xlsx_file.getvalue()
+    frappe.response.type = "binary"
