@@ -1,0 +1,34 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2025-05-09 15:26:38.471802",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letterhead": null,
+ "modified": "2025-05-09 15:46:46.539950",
+ "modified_by": "Administrator",
+ "module": "Pinnaclehrms",
+ "name": "SFT Upload Report",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT \n    '192105002170' AS 'Debit Ac No',\n    te.employee_name AS 'Beneficiary Name',\n    te.bank_ac_no AS 'Beneficiary Account No',\n    te.ifsc_code AS 'IFSC',\n    tps.net_payble_amount AS 'Amount (\u20b9)',\n    'N' AS 'Pay Mode',\n    CONCAT(DATE_FORMAT(CURDATE(), '%%d-'), UPPER(DATE_FORMAT(CURDATE(), '%%b')), DATE_FORMAT(CURDATE(), '-%%Y')) AS 'Date'\nFROM `tabEmployee` AS te\nJOIN `tabPay Slips` AS tps ON tps.employee_id = te.name;\n",
+ "ref_doctype": "Employee",
+ "report_name": "SFT Upload Report",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "Employee"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "HR Manager"
+  }
+ ],
+ "timeout": 0
+}
