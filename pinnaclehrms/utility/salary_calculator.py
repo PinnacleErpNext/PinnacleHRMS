@@ -80,6 +80,14 @@ def createPaySlips(data):
                 ),
                 2,
             )
+            othersDayAmount = round(
+                (
+                    salaryInfo.get("others", 0)
+                    * salaryInfo.get("per_day_salary", 0)
+                    * 0.8
+                ),
+                2,
+            )
             otherEarningsAmount = round(
                 (salaryInfo.get("overtime", 0)), 2
             ) + salaryInfo.get("leave_encashment")
@@ -133,6 +141,8 @@ def createPaySlips(data):
                             + threeFourQuarterDaysWorkingAmount
                             + latesAmount
                             + salaryInfo.get("sundays_salary")
+                            + earlyCheckoutWorkingAmount
+                            + othersDayAmount
                         ),
                         2,
                     ),
@@ -200,6 +210,9 @@ def createPaySlips(data):
                     {
                         "particulars": "Others Day",
                         "days": salaryInfo.get("others"),
+                        "rate": salaryInfo.get("per_day_salary"),
+                        "effective_percentage": "20",
+                        "amount": othersDayAmount,
                     },
                 )
             if salaryInfo.get("sundays_working_days"):
@@ -751,7 +764,6 @@ def calculateMonthlySalary(employeeData, year, month):
                     )
 
                     slabs = createTimeSlabs(idealCheckInTime, idealCheckOutTime)
-
                     if totalWorkingHours > 3:
                         deductionPercentage = calculateDeduction(
                             checkIn, checkOut, slabs
@@ -792,7 +804,7 @@ def calculateMonthlySalary(employeeData, year, month):
                             else:
                                 fullDays += 1
                                 actualWorkingDays += 1
-                                status = "Full Days"
+                                status = "Full Day"
                                 empAttendanceRecord.append(
                                     {
                                         "date": attendanceDate,
@@ -828,6 +840,21 @@ def calculateMonthlySalary(employeeData, year, month):
                                             "status": status,
                                         }
                                     )
+                                elif checkOut < idealCheckOutTime and (
+                                    checkIn < idealCheckInTime
+                                    or checkIn == idealCheckInTime
+                                ):
+                                    actualWorkingDays += 1
+                                    earlyCheckOutDays += 1
+                                    status = "Early Check Out"
+                                    empAttendanceRecord.append(
+                                        {
+                                            "date": attendanceDate,
+                                            "deductionPercentage": deductionPercentage,
+                                            "salary": salary,
+                                            "status": status,
+                                        }
+                                    )
                                 else:
                                     allowedLates -= 1
                                     actualWorkingDays += 1
@@ -841,7 +868,6 @@ def calculateMonthlySalary(employeeData, year, month):
                                             "status": status,
                                         }
                                     )
-
                         elif deductionPercentage == 0.25:
                             if attendanceDate.weekday() == 6:
                                 sundays += 1
