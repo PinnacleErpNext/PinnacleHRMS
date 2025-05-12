@@ -863,7 +863,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     empAttendanceRecord.append(
                                         {
                                             "date": attendanceDate,
-                                            "deductionPercentage": deductionPercentage,
+                                            "deductionPercentage": 1,
                                             "salary": salary,
                                             "status": status,
                                         }
