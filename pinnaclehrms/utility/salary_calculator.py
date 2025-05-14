@@ -1048,6 +1048,8 @@ def calculateMonthlySalary(employeeData, year, month):
                 if any(holiday["holiday_date"] == today for holiday in holidays):
                     pass
                 else:
+                    checkIn = time(0,0,0)
+                    checkOut = time(0,0,0)
                     totalAbsents += 1
                     status = "Absent"
                     empAttendanceRecord.append(
@@ -1056,8 +1058,8 @@ def calculateMonthlySalary(employeeData, year, month):
                             "deductionPercentage": 1,
                             "salary": salary,
                             "status": status,
-                            "check_in": checkIn.time(),
-                            "check_out": checkOut.time(),
+                            "check_in": checkIn,
+                            "check_out": checkOut,
                         }
                     )
 
