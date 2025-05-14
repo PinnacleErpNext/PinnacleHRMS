@@ -131,17 +131,24 @@ def email_pay_slips(pay_slips=None, raw_data=None):
 
 # API to get pay slip report
 @frappe.whitelist(allow_guest=True)
-def get_pay_slip_report(year=None, month=None, curr_user=None):
+def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
     user_roles = frappe.get_roles(curr_user)
+    filter_clause = ""
+    values = []
 
-    # Determine filter condition and SQL parameters based on user role
-    if set(user_roles).intersection({"All", "HR User", "HR Manager"}):
-        filter_condition = "WHERE tps.year = %s AND tps.month_num = %s"
-        values = [year, month]
+    if company:
+        filter_clause = (
+            "WHERE tps.year = %s AND tps.month_num = %s AND tps.company = %s"
+        )
+        values.extend([year, month, company])
+    elif set(user_roles).intersection({"All", "HR User", "HR Manager"}):
+        filter_clause = "WHERE tps.year = %s AND tps.month_num = %s"
+        values.extend([year, month])
     else:
         data = frappe.db.sql(
             """
-            SELECT name FROM `tabEmployee` WHERE personal_email = %s OR company_email = %s
+            SELECT name FROM `tabEmployee` 
+            WHERE personal_email = %s OR company_email = %s
             """,
             (curr_user, curr_user),
             as_dict=True,
@@ -153,13 +160,11 @@ def get_pay_slip_report(year=None, month=None, curr_user=None):
             )
 
         employee_id = data[0].get("name")
-
-        filter_condition = (
+        filter_clause = (
             "WHERE tps.year = %s AND tps.month_num = %s AND tps.employee_id = %s"
         )
-        values = [year, month, employee_id]
+        values.extend([year, month, employee_id])
 
-    # Main query
     query = f"""
         SELECT 
             tps.name AS pay_slip_name, 
@@ -193,12 +198,11 @@ def get_pay_slip_report(year=None, month=None, curr_user=None):
         ON 
             tsc.parent = tps.name 
             AND tsc.particulars IN ('Full Day', 'Sunday Workings', 'Half Day', 'Quarter Day', '3/4 Quarter Day', 'Lates')
-        {filter_condition}
+        {filter_clause}
         GROUP BY 
             tps.name
     """
 
-    # Execute final query
     records = frappe.db.sql(query, values, as_dict=True)
 
     if not records:
@@ -207,10 +211,8 @@ def get_pay_slip_report(year=None, month=None, curr_user=None):
         )
         return []
 
-    # Prepare final pay slip report list
     pay_slips = []
     for record in records:
-        print(record.net_payble_amount)
         pay_slip_data = {
             "pay_slip_name": record["pay_slip_name"],
             "year": record["year"],
@@ -463,9 +465,7 @@ def regeneratePaySlip(data):
                 "basic_salary": data.get("basic_salary"),
                 "per_day_salary": salaryInfo.get("per_day_salary"),
                 "standard_working_days": salaryInfo.get("standard_working_days"),
-                "others_days": salaryInfo.get(
-                    "others"
-                ),  # Corrected field to match "others_days"
+                "others_days": salaryInfo.get("others"),
                 "absent": salaryInfo.get("absent"),
                 "actual_working_days": salaryInfo.get("actual_working_days"),
                 "net_payble_amount": salaryInfo.get("total_salary"),
@@ -482,11 +482,7 @@ def regeneratePaySlip(data):
                 ),
             }
         )
-
         pay_slip.attendance_record = attendanceRecord
-
-        # Update child table for "salary_calculation"
-        pay_slip.salary_calculation = []
 
         if salaryInfo.get("full_days"):
             pay_slip.append(
@@ -623,6 +619,15 @@ def download_sft_report(month=None):
     report_name = "Salary_Beneficiary_List"
     conditions = []
 
+    allowed_roles = ["All", "HR User", "HR Manager"]
+    curr_user = frappe.session.user
+    user_roles = frappe.get_roles(curr_user)
+
+    if any(role in user_roles for role in allowed_roles):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = "/app/home"
+        return
+
     # Validate and use the month parameter
     if month:
         try:
@@ -679,7 +684,14 @@ def download_sft_upld_report(month=None):
     month: integer 1–12 as string or number
     Generates an SFT upload report for the given month.
     """
+    allowed_roles = ["All", "HR User", "HR Manager"]
+    curr_user = frappe.session.user
+    user_roles = frappe.get_roles(curr_user)
 
+    if any(role in user_roles for role in allowed_roles):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = "/app/home"
+        return
     # 1. Validate month
     if not month:
         frappe.throw("Please specify a month (1–12)")

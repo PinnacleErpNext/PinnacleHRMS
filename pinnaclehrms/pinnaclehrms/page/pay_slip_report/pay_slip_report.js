@@ -11,13 +11,13 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   const $form = $(
     `<div class="row">
         <!-- Year Field -->
-        <div class="col-md-3 form-group">
+        <div class="col-md-1 form-group">
             <label for="year">Year</label>
             <input type="number" id="year" class="form-control" placeholder="Enter year" min="1900" max="2099" value="${currentYear}">
         </div>
 
         <!-- Month Field -->
-        <div class="col-md-3 form-group">
+        <div class="col-md-2 form-group">
             <label for="month">Month</label>
             <select id="month" class="form-control">
                 <option value="">Select month</option>
@@ -30,6 +30,13 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
                       )}</option>`
                   )
                   .join("")}
+            </select>
+        </div>
+         <div class="col-md-3 form-group">
+            <label for="company">Company</label>
+            <select id="company_list" class="form-control">
+                <option value="">Select Company</option>
+                
             </select>
         </div>
 
@@ -92,10 +99,30 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     </div>`
   ).appendTo(page.body);
 
+  frappe.call({
+    method: "frappe.client.get_list",
+    args: {
+      doctype: "Company",
+      fields: ["name"],
+      limit_page_length: 999,
+    },
+    callback: function (res) {
+      if (res.message) {
+        const $companySelect = $form.find("#company_list");
+        res.message.forEach((company) => {
+          $companySelect.append(
+            `<option value="${company.name}">${company.name}</option>`
+          );
+        });
+      }
+    },
+  });
+
   // Fetch records when button is clicked
   $form.find("#fetch_records").click(function () {
     const year = parseInt($form.find("#year").val(), 10);
     const month = parseInt($form.find("#month").val());
+    const selectedCompany = $form.find("#company_list").val();
 
     if (!year || year < 1900 || year > 2099) {
       frappe.throw("Please enter a valid 4-digit year.");
@@ -112,7 +139,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     const currUser = frappe.session.user_email;
     frappe.call({
       method: "pinnaclehrms.api.get_pay_slip_report",
-      args: { year, month, curr_user: currUser },
+      args: { year, month, curr_user: currUser, company: selectedCompany },
       callback: function (res) {
         if (res.message) {
           console.log(res.message);
@@ -129,7 +156,11 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     });
   });
 
-  // Handle "Email Pay Slips" button click
+  // Show fetch button when month changes
+  $form.find("#month, #year, #company_list").on("change", function () {
+    $form.find("#fetch_records").show();
+  });
+
   $form.on("click", "#email_pay_slips", function () {
     // Ensure get_selected function is available
     const selectedPaySlips = get_selected();
@@ -153,11 +184,6 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
         }
       },
     });
-  });
-
-  // Show fetch button when month changes
-  $form.find("#month").on("change", function () {
-    $form.find("#fetch_records").show();
   });
 
   $form.on("click", "#download_sft_report", function () {

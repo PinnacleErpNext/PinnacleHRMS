@@ -18,5 +18,9 @@ def custom_before_save(self, method):
                 {"attendance_device_id": self.custom_attendance_device_id},
                 "employee",
             )
-
+        d_shift, company = frappe.db.get_value(
+            "Employee", empId, ["default_shift", "company"]
+        )
         self.employee = empId
+        self.shift = d_shift
+        self.company = company

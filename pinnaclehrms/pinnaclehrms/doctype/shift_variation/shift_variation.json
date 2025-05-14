@@ -1,15 +1,19 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{month}-{year}",
+ "autoname": "format:{shift_name}",
  "creation": "2024-11-06 12:06:50.075962",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "shift_name",
   "month",
   "month_num",
   "column_break_byxw",
   "year",
+  "shift_date",
+  "shift_start",
+  "shift_end",
   "shift_variation_section",
   "shift_variations",
   "shift_applied_to_employee"
@@ -18,17 +22,17 @@
   {
    "fieldname": "month",
    "fieldtype": "Select",
+   "hidden": 1,
    "in_list_view": 1,
    "label": "Month",
-   "options": "Select\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
-   "reqd": 1
+   "options": "Select\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"
   },
   {
    "fieldname": "year",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_list_view": 1,
-   "label": "Year",
-   "reqd": 1
+   "label": "Year"
   },
   {
    "fieldname": "shift_variation_section",
@@ -37,6 +41,7 @@
   {
    "fieldname": "shift_variations",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Shift Variations",
    "options": "Shift variation history"
   },
@@ -55,11 +60,34 @@
    "fieldtype": "Table",
    "label": "Shift Applied to Employee",
    "options": "Shift for employee"
+  },
+  {
+   "fieldname": "shift_name",
+   "fieldtype": "Data",
+   "label": "Shift Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shift_start",
+   "fieldtype": "Datetime",
+   "label": "Shift Start",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shift_end",
+   "fieldtype": "Datetime",
+   "label": "Shift End"
+  },
+  {
+   "fieldname": "shift_date",
+   "fieldtype": "Date",
+   "label": "Shift Date",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-09 19:01:14.091976",
+ "modified": "2025-05-12 12:42:50.495883",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Shift Variation",
