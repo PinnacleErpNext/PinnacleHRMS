@@ -133,117 +133,88 @@ def email_pay_slips(pay_slips=None, raw_data=None):
 @frappe.whitelist(allow_guest=True)
 def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
     user_roles = frappe.get_roles(curr_user)
-    filter_clause = ""
-    values = []
+
+    # Step 1: Build filters based on role and params
+    filters = {
+        "year": year,
+        "month_num": month,
+    }
 
     if company:
-        filter_clause = (
-            "WHERE tps.year = %s AND tps.month_num = %s AND tps.company = %s"
+        filters["company"] = company
+    elif not set(user_roles).intersection({"All", "HR User", "HR Manager"}):
+        # If user is not HR or Admin, restrict by employee
+        employee = frappe.get_all(
+            "Employee",
+            filters={"personal_email": curr_user},
+            fields=["name"],
+            limit=1,
         )
-        values.extend([year, month, company])
-    elif set(user_roles).intersection({"All", "HR User", "HR Manager"}):
-        filter_clause = "WHERE tps.year = %s AND tps.month_num = %s"
-        values.extend([year, month])
-    else:
-        data = frappe.db.sql(
-            """
-            SELECT name FROM `tabEmployee` 
-            WHERE personal_email = %s OR company_email = %s
-            """,
-            (curr_user, curr_user),
-            as_dict=True,
-        )
-
-        if not data:
-            raise frappe.ValidationError(
-                "No Employee Data found or you don't have access!"
+        if not employee:
+            employee = frappe.get_all(
+                "Employee",
+                filters={"company_email": curr_user},
+                fields=["name"],
+                limit=1,
             )
+        if not employee:
+            frappe.throw("No Employee Data found or you don't have access!")
+        filters["employee_id"] = employee[0].name
 
-        employee_id = data[0].get("name")
-        filter_clause = (
-            "WHERE tps.year = %s AND tps.month_num = %s AND tps.employee_id = %s"
-        )
-        values.extend([year, month, employee_id])
+    # Step 2: Get pay slip names matching filters
+    pay_slip_names = frappe.get_all("Pay Slips", filters=filters, pluck="name")
 
-    query = f"""
-        SELECT 
-            tps.name AS pay_slip_name, 
-            tps.year,
-            tps.month_num,
-            tps.employee_id,
-            tps.employee_name,
-            tps.company,
-            tps.designation,
-            tps.department,
-            tps.personal_email,
-            tps.standard_working_days,
-            tps.pan_number,
-            tps.date_of_joining,
-            tps.basic_salary,
-            tps.per_day_salary,
-            tps.actual_working_days,
-            tps.absent,
-            tps.total,
-            tps.net_payble_amount,
-            SUM(CASE WHEN tsc.particulars = 'Full Day' THEN tsc.amount ELSE 0 END) AS full_day_amount,
-            SUM(CASE WHEN tsc.particulars = 'Sunday Workings' THEN tsc.amount ELSE 0 END) AS sunday_workings_amount,
-            SUM(CASE WHEN tsc.particulars = 'Half Day' THEN tsc.amount ELSE 0 END) AS half_day_amount,
-            SUM(CASE WHEN tsc.particulars = 'Quarter Day' THEN tsc.amount ELSE 0 END) AS quarter_day_amount,
-            SUM(CASE WHEN tsc.particulars = '3/4 Quarter Day' THEN tsc.amount ELSE 0 END) AS three_fourth_day_amount,
-            SUM(CASE WHEN tsc.particulars = 'Lates' THEN tsc.amount ELSE 0 END) AS lates_amount
-        FROM 
-            `tabPay Slips` tps
-        LEFT JOIN 
-            `tabSalary Calculation` tsc 
-        ON 
-            tsc.parent = tps.name 
-            AND tsc.particulars IN ('Full Day', 'Sunday Workings', 'Half Day', 'Quarter Day', '3/4 Quarter Day', 'Lates')
-        {filter_clause}
-        GROUP BY 
-            tps.name
-    """
-
-    records = frappe.db.sql(query, values, as_dict=True)
-
-    if not records:
+    if not pay_slip_names:
         frappe.msgprint(
-            msg="No records found for the specified year and month.", title="Warning!"
+            "No records found for the specified year and month.", title="Warning!"
         )
         return []
 
-    pay_slips = []
-    for record in records:
-        pay_slip_data = {
-            "pay_slip_name": record["pay_slip_name"],
-            "year": record["year"],
-            "month": record["month_num"],
-            "employee_id": record["employee_id"],
-            "employee_name": record["employee_name"],
-            "company": record["company"],
-            "designation": record["designation"],
-            "department": record["department"],
-            "personal_email": record["personal_email"],
-            "standard_working_days": record["standard_working_days"],
-            "pan_number": record["pan_number"],
-            "date_of_joining": record["date_of_joining"],
-            "basic_salary": record["basic_salary"],
-            "per_day_salary": record["per_day_salary"],
-            "actual_working_days": record["actual_working_days"],
-            "absent": record["absent"],
-            "total": record["total"],
-            "net_payable_amount": record["net_payble_amount"],
-            "salary_breakup": {
-                "full_day": record["full_day_amount"],
-                "sunday_workings": record["sunday_workings_amount"],
-                "half_day": record["half_day_amount"],
-                "quarter_day": record["quarter_day_amount"],
-                "three_fourth_day": record["three_fourth_day_amount"],
-                "lates": record["lates_amount"],
-            },
-        }
-        pay_slips.append(pay_slip_data)
+    pay_slips_data = []
 
-    return pay_slips
+    # Step 3: Loop over each pay slip and fetch full document to get child tables
+    for name in pay_slip_names:
+        pay_slip = frappe.get_doc("Pay Slips", name)
+
+        # Collect salary_calculation data
+        salary_info = {
+            sal.particulars: {"day": sal.days, "amount": sal.amount}
+            for sal in pay_slip.salary_calculation
+        }
+
+        # Collect other_earnings data
+        other_earnings_info = {
+            earning.type: {"amount": earning.amount}
+            for earning in pay_slip.other_earnings
+        }
+
+        # Prepare combined dict for this pay slip
+        pay_slip_dict = {
+            "pay_slip_name": pay_slip.name,
+            "year": pay_slip.year,
+            "month": pay_slip.month_num,
+            "employee_id": pay_slip.employee_id,
+            "employee_name": pay_slip.employee_name,
+            "company": pay_slip.company,
+            "designation": pay_slip.designation,
+            "department": pay_slip.department,
+            "personal_email": pay_slip.personal_email,
+            "standard_working_days": pay_slip.standard_working_days,
+            "pan_number": pay_slip.pan_number,
+            "date_of_joining": pay_slip.date_of_joining,
+            "basic_salary": pay_slip.basic_salary,
+            "per_day_salary": pay_slip.per_day_salary,
+            "actual_working_days": pay_slip.actual_working_days,
+            "absent": pay_slip.absent,
+            "total": pay_slip.total,
+            "net_payable_amount": pay_slip.net_payble_amount,
+            "salary_info": salary_info,
+            "other_earnings": other_earnings_info,
+        }
+
+        pay_slips_data.append(pay_slip_dict)
+
+    return pay_slips_data
 
 
 # API to get pay slip for pay slip request
@@ -403,7 +374,7 @@ def regeneratePaySlip(data):
             (
                 salaryInfo.get("quarter_days", 0)
                 * salaryInfo.get("per_day_salary", 0)
-                * 0.75
+                * 0.25
             ),
             2,
         )
@@ -418,13 +389,13 @@ def regeneratePaySlip(data):
         three_four_quarter_days_working_amount = round(
             (
                 salaryInfo.get("three_four_quarter_days", 0)
-                * 0.25
+                * 0.75
                 * salaryInfo.get("per_day_salary", 0)
             ),
             2,
         )
         lates_amount = round(
-            (salaryInfo.get("lates", 0) * salaryInfo.get("per_day_salary", 0) * 0.1), 2
+            (salaryInfo.get("lates", 0) * salaryInfo.get("per_day_salary", 0) * 0.9), 2
         )
         other_earnings_amount = round(
             (salaryInfo.get("overtime", 0)), 2
@@ -476,7 +447,7 @@ def regeneratePaySlip(data):
                         + quarter_day_working_amount
                         + half_day_working_amount
                         + three_four_quarter_days_working_amount
-                        - lates_amount
+                        + lates_amount
                     ),
                     2,
                 ),
@@ -484,6 +455,11 @@ def regeneratePaySlip(data):
         )
         pay_slip.attendance_record = attendanceRecord
 
+        sal_calculations = pay_slip.salary_calculation
+        pay_slip.salary_calculation = []
+        for sal_cal in sal_calculations:
+            print(sal_cal)
+            frappe.delete_doc("Salary Calculation", sal_cal.name)
         if salaryInfo.get("full_days"):
             pay_slip.append(
                 "salary_calculation",
@@ -493,6 +469,7 @@ def regeneratePaySlip(data):
                     "rate": salaryInfo.get("per_day_salary"),
                     "effective_percentage": "100",
                     "amount": full_day_working_amount,
+                    "parent": pay_slip.name,
                 },
             )
         if salaryInfo.get("lates"):
@@ -504,6 +481,7 @@ def regeneratePaySlip(data):
                     "rate": salaryInfo.get("per_day_salary"),
                     "effective_percentage": "10",
                     "amount": lates_amount,
+                    "parent": pay_slip.name,
                 },
             )
         if salaryInfo.get("three_four_quarter_days"):
@@ -515,6 +493,7 @@ def regeneratePaySlip(data):
                     "rate": salaryInfo.get("per_day_salary"),
                     "effective_percentage": "75",
                     "amount": three_four_quarter_days_working_amount,
+                    "parent": pay_slip.name,
                 },
             )
         if salaryInfo.get("half_days"):
@@ -526,6 +505,7 @@ def regeneratePaySlip(data):
                     "rate": salaryInfo.get("per_day_salary"),
                     "effective_percentage": "50",
                     "amount": half_day_working_amount,
+                    "parent": pay_slip.name,
                 },
             )
         if salaryInfo.get("quarter_days"):
@@ -537,6 +517,7 @@ def regeneratePaySlip(data):
                     "rate": salaryInfo.get("per_day_salary"),
                     "effective_percentage": "25",
                     "amount": quarter_day_working_amount,
+                    "parent": pay_slip.name,
                 },
             )
         if salaryInfo.get("others"):
@@ -545,6 +526,7 @@ def regeneratePaySlip(data):
                 {
                     "particulars": "Others Day",
                     "days": salaryInfo.get("others"),
+                    "parent": pay_slip.name,
                 },
             )
         if salaryInfo.get("sundays_working_days"):
@@ -555,6 +537,7 @@ def regeneratePaySlip(data):
                     "days": salaryInfo.get("sundays_working_days"),
                     "rate": salaryInfo.get("per_day_salary"),
                     "amount": salaryInfo.get("sundays_salary"),
+                    "parent": pay_slip.name,
                 },
             )
 
@@ -566,6 +549,7 @@ def regeneratePaySlip(data):
             {
                 "type": "Incentives",
                 "amount": 0,
+                "parent": pay_slip.name,
             },
         )
         pay_slip.append(
@@ -573,6 +557,7 @@ def regeneratePaySlip(data):
             {
                 "type": "Special Incentives",
                 "amount": 0,
+                "parent": pay_slip.name,
             },
         )
         pay_slip.append(
@@ -580,6 +565,7 @@ def regeneratePaySlip(data):
             {
                 "type": "Leave Encashment",
                 "amount": salaryInfo.get("leave_encashment"),
+                "parent": pay_slip.name,
             },
         )
         pay_slip.append(
@@ -587,15 +573,17 @@ def regeneratePaySlip(data):
             {
                 "type": "Overtime",
                 "amount": salaryInfo.get("overtime"),
+                "parent": pay_slip.name,
             },
         )
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Holidays",
-                "amount": salaryInfo.get("holidays"),
-            },
-        )
+        # pay_slip.append(
+        #     "other_earnings",
+        #     {
+        #         "type": "Holidays",
+        #         "amount": salaryInfo.get("holidays"),
+        #         "parent": pay_slip.name,
+        #     },
+        # )
 
         # Save or submit the document
         pay_slip.save()
@@ -619,11 +607,14 @@ def download_sft_report(month=None):
     report_name = "Salary_Beneficiary_List"
     conditions = []
 
-    allowed_roles = ["All", "HR User", "HR Manager"]
     curr_user = frappe.session.user
+    allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
-    if any(role in user_roles for role in allowed_roles):
+    if (
+        any(role in user_roles for role in allowed_roles)
+        and curr_user != "Administrator"
+    ):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
         return
@@ -684,14 +675,19 @@ def download_sft_upld_report(month=None):
     month: integer 1–12 as string or number
     Generates an SFT upload report for the given month.
     """
-    allowed_roles = ["All", "HR User", "HR Manager"]
+    
     curr_user = frappe.session.user
+    allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
-    if any(role in user_roles for role in allowed_roles):
+    if (
+        any(role in user_roles for role in allowed_roles)
+        and curr_user != "Administrator"
+    ):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
         return
+    
     # 1. Validate month
     if not month:
         frappe.throw("Please specify a month (1–12)")
@@ -761,4 +757,133 @@ def download_sft_upld_report(month=None):
     # 6. Send as download response
     frappe.response.filename = filename
     frappe.response.filecontent = xlsx_file.getvalue()
+    frappe.response.type = "binary"
+
+#API to download to pay slip records.
+@frappe.whitelist()
+def download_pay_slip_report(year=None, month=None, company=None):
+    curr_user = frappe.session.user
+    allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
+    user_roles = frappe.get_roles(curr_user)
+
+    if (
+        any(role in user_roles for role in allowed_roles)
+        and curr_user != "Administrator"
+    ):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = "/app/home"
+        return
+
+    if not year or not month:
+        frappe.throw(_("Year and Month are required"))
+
+    records = get_pay_slip_report(
+        year=year, month=month, curr_user=curr_user, company=company
+    )
+
+    if not records:
+        frappe.throw(_("No data found for the given filters."))
+
+    # Define top-level columns
+    columns = [
+        "Pay Slip Name",
+        "Year",
+        "Month",
+        "Employee ID",
+        "Employee Name",
+        "Company",
+        "Designation",
+        "Department",
+        "Personal Email",
+        "Standard Working Days",
+        "PAN Number",
+        "Date of Joining",
+        "Basic Salary",
+        "Per Day Salary",
+        "Actual Working Days",
+        "Absent",
+        "Total",
+        "Net Payable Amount",
+    ]
+
+    # Sub-columns under salary_info
+    salary_info_keys = [
+        "Full Day",
+        "Sunday Workings",
+        "Half Day",
+        "Quarter Day",
+        "3/4 Quarter Day",
+        "Lates",
+    ]
+    salary_info_sub_cols = ["Day", "Amount"]
+
+    # Sub-columns under other_earnings
+    other_earning_keys = [
+        "Incentives",
+        "Special Incentives",
+        "Leave Encashment",
+        "Overtime",
+    ]
+    other_earning_sub_cols = ["Amount"]
+
+    # Prepare headers
+    header_row_1 = (
+        columns
+        + ["Salary Info"] * (len(salary_info_keys) * len(salary_info_sub_cols))
+        + ["Other Earnings"] * (len(other_earning_keys) * len(other_earning_sub_cols))
+    )
+
+    header_row_2 = [""] * len(columns)
+    for key in salary_info_keys:
+        header_row_2 += [f"{key} - Day", f"{key} - Amount"]
+    for key in other_earning_keys:
+        header_row_2 += [f"{key} - Amount"]
+
+    # Prepare rows
+    data_rows = []
+    for r in records:
+        row = [
+            r.get("pay_slip_name"),
+            r.get("year"),
+            r.get("month"),
+            r.get("employee_id"),
+            r.get("employee_name"),
+            r.get("company"),
+            r.get("designation"),
+            r.get("department"),
+            r.get("personal_email"),
+            r.get("standard_working_days"),
+            r.get("pan_number"),
+            r.get("date_of_joining"),
+            r.get("basic_salary"),
+            r.get("per_day_salary"),
+            r.get("actual_working_days"),
+            r.get("absent"),
+            r.get("total"),
+            r.get("net_payable_amount"),
+        ]
+
+        # Salary Info breakdown
+        salary_info = r.get("salary_info", {})
+        for key in salary_info_keys:
+            info = salary_info.get(key, {})
+            row.append(info.get("day", 0))
+            row.append(info.get("amount", 0))
+
+        # Other Earnings
+        other_earnings = r.get("other_earnings", {})
+        for key in other_earning_keys:
+            earning = other_earnings.get(key, {})
+            row.append(earning.get("amount", 0))
+
+        data_rows.append(row)
+
+    # Generate Excel
+    xlsx_data = make_xlsx(
+        data=[header_row_1, header_row_2] + data_rows, sheet_name="Pay Slip Report"
+    )
+
+    filename = f"Pay_Slip_Report_{year}_{month}.xlsx"
+    frappe.response.filename = filename
+    frappe.response.filecontent = xlsx_data.getvalue()
     frappe.response.type = "binary"

@@ -54,6 +54,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" id="email_pay_slips">Email Pay Slips</a></li>
                     <li><a class="dropdown-item" id="print_pay_slips">Print Pay Slips</a></li>
+                    <li><a class="dropdown-item" id="download_report">Download Report</a></li>
                     <li><a class="dropdown-item" id="download_sft_report">Download SFT Report</a></li>
                     <li><a class="dropdown-item" id="download_sft_upld_report">Download SFT Upload Report</a></li>
                 </ul>
@@ -62,41 +63,41 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     </div>
     
     <div style="max-height: 400px; overflow-y: auto;">
-        <table class="table table-bordered mt-3">
-            <thead style="position: sticky; top: 0; z-index: 2; background-color: grey; border-bottom: 2px solid #ddd;">
-                <tr>
-                    ${[
-                      "Select",
-                      "Pay Slip",
-                      "Employee Name",
-                      "Email",
-                      "Joining Date",
-                      "Basic Salary",
-                      "Standard Days",
-                      "Actual Days",
-                      "Full Day",
-                      "Sundays",
-                      "Half Day",
-                      "3/4 Day",
-                      "Quarter Day",
-                      "Lates",
-                      "Absent",
-                      "Total",
-                      "Sunday Earnings",
-                      "Other Earnings",
-                      "Adjustments",
-                      "Net Pay",
-                    ]
-                      .map(
-                        (header) =>
-                          `<th style="border: 2px solid #ddd; background: #f8f9fa;">${header}</th>`
-                      )
-                      .join("")}
-                </tr>
-            </thead>
-            <tbody id="pay_slip_table_body"></tbody>
-        </table>
-    </div>`
+  <table class="table table-bordered mt-3">
+    <thead style="position: sticky; top: 0; z-index: 2; background-color: grey; border-bottom: 2px solid #ddd;">
+      <tr>
+        ${[
+          "Select",
+          "Pay Slip",
+          "Employee Name",
+          "Email",
+          "Joining Date",
+          "Basic Salary",
+          "Standard Days",
+          "Actual Days",
+          "Full Day",
+          "Sundays",
+          "Half Day",
+          "3/4 Day",
+          "Quarter Day",
+          "Lates",
+          "Absent",
+          "Total",
+          "Sunday Earnings",
+          "Other Earnings",
+          "Adjustments",
+          "Net Pay",
+        ]
+          .map(
+            (header) =>
+              `<th style="border: 2px solid #ddd; background: #f8f9fa;">${header}</th>`
+          )
+          .join("")}
+      </tr>
+    </thead>
+    <tbody id="pay_slip_table_body"></tbody>
+  </table>
+</div>`
   ).appendTo(page.body);
 
   frappe.call({
@@ -195,6 +196,15 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     let month = parseInt($form.find("#month").val());
     window.location.href = `/api/method/pinnaclehrms.api.download_sft_upld_report?month=${month}`;
   });
+
+  $form.on("click", "#download_report", function () {
+    const year = parseInt($form.find("#year").val(), 10);
+    const month = parseInt($form.find("#month").val());
+    const selectedCompany = $form.find("#company_list").val();
+  
+    window.location.href = `/api/method/pinnaclehrms.api.download_pay_slip_report?year=${year}&month=${month}&company=${selectedCompany}`;
+  });
+  
 };
 
 // Function to populate table with pay slip data
@@ -207,33 +217,42 @@ function pay_slip_list(records) {
       ? `<span style="text-decoration: none; color: blue; cursor: pointer;" title="${record.personal_email}">Available</span>`
       : "N/A";
 
+    // Handle nested salary_info
+    let salary_info = record.salary_info || {};
+    let other_earnings = record.other_earnings || {};
+
+    const getAmount = (obj, key) => (obj[key] ? obj[key].amount || 0 : 0);
+
     let rowHTML = `
       <tr>
           <td><input type="checkbox" class="row_checkbox" value="${
             record.pay_slip_name
           }" /></td>
-          <td><a href="/app/pay-slips/${record.pay_slip_name}" target="blank">${
-      record.pay_slip_name
-    }</a></td>
+          <td><a href="/app/pay-slips/${
+            record.pay_slip_name
+          }" target="_blank">${record.pay_slip_name}</a></td>
           <td>${record.employee_name}</td>
           <td>${emailLink}</td>
-          <td>${record.date_of_joining}</td>
+          <td>${record.date_of_joining || ""}</td>
           <td>${record.basic_salary || 0}</td>
           <td>${record.standard_working_days || 0}</td>
           <td>${record.actual_working_days || 0}</td>
-          <td>${record.salary_breakup.full_day || 0}</td>
-          <td>${record.salary_breakup.sundays || 0}</td>
-          <td>${record.salary_breakup.half_day || 0}</td>
-          <td>${record.salary_breakup.three_four_day || 0}</td>
-          <td>${record.salary_breakup.quarter_day || 0}</td>
-          <td>${record.salary_breakup.lates || 0}</td>
+          <td>${salary_info["Full Day"]?.day || 0}</td>
+          <td>${salary_info["Sunday Workings"]?.day || 0}</td>
+          <td>${salary_info["Half Day"]?.day || 0}</td>
+          <td>${salary_info["3/4 Quarter Day"]?.day || 0}</td>
+          <td>${salary_info["Quarter Day"]?.day || 0}</td>
+          <td>${salary_info["Lates"]?.day || 0}</td>
           <td>${record.absent || 0}</td>
           <td>${record.total || 0}</td>
-          <td>${record.sunday_working_amount || 0}</td>
-          <td>${record.other_earnings_amount || 0}</td>
+          <td>${getAmount(other_earnings, "Sunday Workings")}</td>
+          <td>${Object.keys(other_earnings)
+            .filter((key) => key !== "Sunday Workings")
+            .reduce((sum, key) => sum + getAmount(other_earnings, key), 0)}</td>
           <td>${record.adjustments || 0}</td>
           <td>${record.net_payable_amount || 0}</td>
-      </tr>`;
+      </tr>
+    `;
     tableBody.innerHTML += rowHTML;
   });
 

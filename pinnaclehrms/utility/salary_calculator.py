@@ -13,7 +13,7 @@ def createPaySlips(data):
     month = data.get("month")
 
     empRecords = getEmpRecords(data)
-
+    
     employeeData = calculateMonthlySalary(empRecords, year, month)
 
     # return frappe.throw(str(dict(employeeData)))
@@ -296,7 +296,7 @@ def getEmpRecords(data):
             JOIN
                 tabAttendance a ON e.employee = a.employee
             WHERE
-                e.status = "Active" AND YEAR(a.attendance_date) = %s AND MONTH(a.attendance_date) = %s
+                e.status = "Active" AND a.docstatus = 1 AND YEAR(a.attendance_date) = %s AND MONTH(a.attendance_date) = %s
         """
 
     year = int(data.get("year"))
