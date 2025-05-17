@@ -13,7 +13,7 @@ def createPaySlips(data):
     month = data.get("month")
 
     empRecords = getEmpRecords(data)
-    
+
     employeeData = calculateMonthlySalary(empRecords, year, month)
 
     # return frappe.throw(str(dict(employeeData)))
@@ -660,6 +660,7 @@ def calculateMonthlySalary(employeeData, year, month):
         allowedLates = data.get("lates")
         holidays = data.get("holidays")
         totalWorkingDays = data.get("total_working_days")
+        company = frappe.db.get_value("Employee", emp_id, "company")
 
         shiftVariationRecord = frappe.db.sql(
             """SELECT 
@@ -675,13 +676,14 @@ def calculateMonthlySalary(employeeData, year, month):
                 WHERE 
                     YEAR(sv.shift_date) = %s 
                     AND MONTH(sv.shift_date) = %s 
+                    AND sv.company = %s
                 GROUP BY 
                     sv.shift_date;
             """,
-            (year, month),
+            (year, month, company),
             as_dict=True,
         )
-
+        
         dojStr = data.get("date_of_joining")
         doj = (
             datetime.strptime(dojStr, "%Y-%m-%d") if isinstance(dojStr, str) else dojStr
@@ -805,7 +807,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -819,7 +821,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -835,7 +837,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -850,7 +852,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                         {
                                             "date": attendanceDate,
                                             "deductionPercentage": deductionPercentage,
-                                            "salary": salary,
+                                            "salary": round(salary, 2),
                                             "status": status,
                                             "check_in": checkIn.time(),
                                             "check_out": checkOut.time(),
@@ -867,7 +869,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                         {
                                             "date": attendanceDate,
                                             "deductionPercentage": deductionPercentage,
-                                            "salary": salary,
+                                            "salary": round(salary, 2),
                                             "status": status,
                                             "check_in": checkIn.time(),
                                             "check_out": checkOut.time(),
@@ -882,7 +884,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                         {
                                             "date": attendanceDate,
                                             "deductionPercentage": 0.0,
-                                            "salary": perDaySalary,
+                                            "salary": round(perDaySalary, 2),
                                             "status": status,
                                             "check_in": checkIn.time(),
                                             "check_out": checkOut.time(),
@@ -898,7 +900,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -912,7 +914,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -928,7 +930,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -942,7 +944,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -958,7 +960,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -972,7 +974,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -988,7 +990,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -1002,7 +1004,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     {
                                         "date": attendanceDate,
                                         "deductionPercentage": deductionPercentage,
-                                        "salary": salary,
+                                        "salary": round(salary, 2),
                                         "status": status,
                                         "check_in": checkIn.time(),
                                         "check_out": checkOut.time(),
@@ -1021,7 +1023,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                 {
                                     "date": attendanceDate,
                                     "deductionPercentage": 1,
-                                    "salary": salary,
+                                    "salary": round(salary, 2),
                                     "status": status,
                                     "check_in": checkIn.time(),
                                     "check_out": checkOut.time(),
@@ -1038,7 +1040,7 @@ def calculateMonthlySalary(employeeData, year, month):
                             {
                                 "date": attendanceDate,
                                 "deductionPercentage": 1,
-                                "salary": salary,
+                                "salary": round(salary, 2),
                                 "status": status,
                                 "check_in": checkIn.time(),
                                 "check_out": checkOut.time(),
@@ -1048,15 +1050,15 @@ def calculateMonthlySalary(employeeData, year, month):
                 if any(holiday["holiday_date"] == today for holiday in holidays):
                     pass
                 else:
-                    checkIn = time(0,0,0)
-                    checkOut = time(0,0,0)
+                    checkIn = time(0, 0, 0)
+                    checkOut = time(0, 0, 0)
                     totalAbsents += 1
                     status = "Absent"
                     empAttendanceRecord.append(
                         {
                             "date": attendanceDate,
                             "deductionPercentage": 1,
-                            "salary": salary,
+                            "salary": round(salary, 2),
                             "status": status,
                             "check_in": checkIn,
                             "check_out": checkOut,

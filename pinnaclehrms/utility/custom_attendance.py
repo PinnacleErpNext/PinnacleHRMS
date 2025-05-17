@@ -1,6 +1,6 @@
 import frappe
 from hrms.hr.doctype.attendance.attendance import Attendance
-
+from datetime import datetime
 
 def custom_before_save(self, method):
     if self.employee is None:
@@ -24,3 +24,14 @@ def custom_before_save(self, method):
         self.employee = empId
         self.shift = d_shift
         self.company = company
+    
+
+    if self.in_time and self.out_time:
+        check_in = self.in_time.time()
+        check_out = self.out_time.time()
+
+        self.in_time = datetime.combine(self.attendance_date, check_in)
+        self.out_time = datetime.combine(self.attendance_date, check_out)
+
+        
+        

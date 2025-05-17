@@ -144,7 +144,7 @@ doc_events = {
     # 	"on_trash": "method"
     # }
     "Attendance": {
-        "before_save": "pinnaclehrms.utility.update_emp_id.custom_before_save"
+        "before_save": "pinnaclehrms.utility.custom_attendance.custom_before_save"
     }
 }
 

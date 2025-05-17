@@ -210,6 +210,7 @@ def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
             "net_payable_amount": pay_slip.net_payble_amount,
             "salary_info": salary_info,
             "other_earnings": other_earnings_info,
+            "other_earnings_total":pay_slip.other_earnings_total
         }
 
         pay_slips_data.append(pay_slip_dict)

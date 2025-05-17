@@ -1,4 +1,7 @@
+// File: public/js/pay_slip_report.js
+
 frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
+  // Create the page container
   var page = frappe.ui.make_app_page({
     parent: wrapper,
     title: "Pay Slip Report",
@@ -7,66 +10,121 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
 
   const currentYear = new Date().getFullYear();
 
-  // Move $form definition here for global access within this function scope
-  const $form = $(
-    `<div class="row">
-        <!-- Year Field -->
-        <div class="col-md-1 form-group">
-            <label for="year">Year</label>
-            <input type="number" id="year" class="form-control" placeholder="Enter year" min="1900" max="2099" value="${currentYear}">
+  // Build the form & table skeleton
+  const $form = $(`
+    <div class="row">
+      <div class="col-md-1 form-group">
+        <label for="year">Year</label>
+        <input type="number" id="year" class="form-control"
+               min="1900" max="2099" value="${currentYear}">
+      </div>
+      <div class="col-md-2 form-group">
+        <label for="month">Month</label>
+        <select id="month" class="form-control">
+          <option value="">Select month</option>
+          ${[...Array(12)]
+            .map(
+              (_, i) =>
+                `<option value="${i + 1}">${new Date(0, i).toLocaleString(
+                  "default",
+                  { month: "long" }
+                )}</option>`
+            )
+            .join("")}
+        </select>
+      </div>
+      <div class="col-md-3 form-group">
+        <label for="company">Company</label>
+        <select id="company_list" class="form-control">
+          <option value="">Select Company</option>
+        </select>
+      </div>
+      <div class="col-md-3 form-group d-flex align-items-end">
+        <button id="fetch_records" class="btn btn-primary">Get Records</button>
+      </div>
+      <div class="col-md-3 form-group d-flex align-items-end">
+        <div id="action_button" class="btn-group" style="display:none;">
+          <button class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+            Actions
+          </button>
+          <ul class="dropdown-menu">
+            <li><a id="email_pay_slips" class="dropdown-item">Email Pay Slips</a></li>
+            <li><a id="print_pay_slips" class="dropdown-item">Print Pay Slips</a></li>
+            <li><a id="download_report" class="dropdown-item">Download Report</a></li>
+            <li><a id="download_sft_report" class="dropdown-item">Download SFT Report</a></li>
+            <li><a id="download_sft_upld_report" class="dropdown-item">Download SFT Upload Report</a></li>
+          </ul>
         </div>
-
-        <!-- Month Field -->
-        <div class="col-md-2 form-group">
-            <label for="month">Month</label>
-            <select id="month" class="form-control">
-                <option value="">Select month</option>
-                ${[...Array(12)]
-                  .map(
-                    (_, i) =>
-                      `<option value="${i + 1}">${new Date(0, i).toLocaleString(
-                        "default",
-                        { month: "long" }
-                      )}</option>`
-                  )
-                  .join("")}
-            </select>
-        </div>
-         <div class="col-md-3 form-group">
-            <label for="company">Company</label>
-            <select id="company_list" class="form-control">
-                <option value="">Select Company</option>
-                
-            </select>
-        </div>
-
-        <!-- Fetch Records Button -->
-        <div class="col-md-3 form-group d-flex align-items-end">
-            <button id="fetch_records" class="btn btn-primary">Get Records</button>
-        </div>
-
-        <!-- Actions Button (Initially Hidden) -->
-        <div class="col-md-3 form-group d-flex align-items-end">
-            <div id="action_button" class="btn-group" style="display: none;">
-                <button class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    Actions
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" id="email_pay_slips">Email Pay Slips</a></li>
-                    <li><a class="dropdown-item" id="print_pay_slips">Print Pay Slips</a></li>
-                    <li><a class="dropdown-item" id="download_report">Download Report</a></li>
-                    <li><a class="dropdown-item" id="download_sft_report">Download SFT Report</a></li>
-                    <li><a class="dropdown-item" id="download_sft_upld_report">Download SFT Upload Report</a></li>
-                </ul>
-            </div>
-        </div>
+      </div>
     </div>
-    
-    <div style="max-height: 400px; overflow-y: auto;">
-  <table class="table table-bordered mt-3">
-    <thead style="position: sticky; top: 0; z-index: 2; background-color: grey; border-bottom: 2px solid #ddd;">
-      <tr>
-        ${[
+    <div style="max-height:400px; overflow-y:auto;">
+      <table class="table table-bordered mt-3">
+        <!-- dynamic <thead> will be injected here -->
+        <thead></thead>
+        <tbody id="pay_slip_table_body"></tbody>
+      </table>
+    </div>
+  `).appendTo(page.body);
+
+  const $table = $form.find("table");
+  const $tbody = $form.find("#pay_slip_table_body");
+
+  // Populate Company dropdown
+  frappe.call({
+    method: "frappe.client.get_list",
+    args: { doctype: "Company", fields: ["name"], limit_page_length: 999 },
+    callback: function (res) {
+      if (res.message) {
+        const $sel = $form.find("#company_list");
+        res.message.forEach((c) => {
+          $sel.append(`<option value="${c.name}">${c.name}</option>`);
+        });
+      }
+    },
+  });
+
+  // Main fetch button click
+  $form.find("#fetch_records").click(function () {
+    const year = parseInt($form.find("#year").val(), 10);
+    const month = parseInt($form.find("#month").val(), 10);
+    const company = $form.find("#company_list").val();
+
+    if (!year || year < 1900 || year > 2099) {
+      frappe.throw("Please enter a valid 4-digit year.");
+      return;
+    }
+    if (!month) {
+      frappe.msgprint("Please select both year and month", "Warning");
+      return;
+    }
+
+    // Hide actions until after fetch
+    $form.find("#action_button").hide();
+
+    // Fetch report data
+    frappe.call({
+      method: "pinnaclehrms.api.get_pay_slip_report",
+      args: {
+        year,
+        month,
+        curr_user: frappe.session.user_email,
+        company,
+      },
+      callback: function (res) {
+        const records = res.message || [];
+        if (!records.length) {
+          $tbody.empty();
+          frappe.msgprint("No records found.");
+          return;
+        }
+
+        // 1. Determine all unique Other Earnings keys
+        const otherKeys = Array.from(
+          new Set(records.flatMap((r) => Object.keys(r.other_earnings || {})))
+        );
+
+        // 2. Build full header list
+        const staticHeaders = [
           "Select",
           "Pay Slip",
           "Employee Name",
@@ -83,102 +141,103 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
           "Lates",
           "Absent",
           "Total",
-          "Sunday Earnings",
-          "Other Earnings",
-          "Adjustments",
-          "Net Pay",
-        ]
-          .map(
-            (header) =>
-              `<th style="border: 2px solid #ddd; background: #f8f9fa;">${header}</th>`
-          )
-          .join("")}
-      </tr>
-    </thead>
-    <tbody id="pay_slip_table_body"></tbody>
-  </table>
-</div>`
-  ).appendTo(page.body);
+        ];
+        const tailHeaders = ["Net Pay"];
+        const allHeaders = [...staticHeaders, ...otherKeys, ...tailHeaders];
 
-  frappe.call({
-    method: "frappe.client.get_list",
-    args: {
-      doctype: "Company",
-      fields: ["name"],
-      limit_page_length: 999,
-    },
-    callback: function (res) {
-      if (res.message) {
-        const $companySelect = $form.find("#company_list");
-        res.message.forEach((company) => {
-          $companySelect.append(
-            `<option value="${company.name}">${company.name}</option>`
-          );
+        // 3. Render <thead>
+        const thead = `
+          <tr>
+            ${allHeaders
+              .map(
+                (h) =>
+                  `<th style="border:2px solid #ddd;
+                           background:#f8f9fa;">
+                 ${h}
+               </th>`
+              )
+              .join("")}
+          </tr>`;
+        $table.find("thead").html(thead);
+
+        // 4. Render each row
+        $tbody.empty();
+        records.forEach((rec) => {
+          const emailLink = rec.personal_email
+            ? `<span title="${rec.personal_email}"
+                     style="color:blue;cursor:pointer">
+                 Available
+               </span>`
+            : "N/A";
+
+          const info = rec.salary_info || {};
+          const other = rec.other_earnings || {};
+
+          // Build dynamic Other Earnings cells
+          const otherCells = otherKeys
+            .map((k) => `<td>${other[k]?.amount || 0}</td>`)
+            .join("");
+
+          const row = `
+            <tr>
+              <td><input type="checkbox"
+                         class="row_checkbox"
+                         value="${rec.pay_slip_name}"></td>
+              <td><a href="/app/pay-slips/${rec.pay_slip_name}"
+                     target="_blank">
+                   ${rec.pay_slip_name}
+                 </a>
+              </td>
+              <td>${rec.employee_name}</td>
+              <td>${emailLink}</td>
+              <td>${rec.date_of_joining || ""}</td>
+              <td>${rec.basic_salary || 0}</td>
+              <td>${rec.standard_working_days || 0}</td>
+              <td>${rec.actual_working_days || 0}</td>
+              <td>${info["Full Day"]?.day || 0}</td>
+              <td>${info["Sunday Workings"]?.day || 0}</td>
+              <td>${info["Half Day"]?.day || 0}</td>
+              <td>${info["3/4 Quarter Day"]?.day || 0}</td>
+              <td>${info["Quarter Day"]?.day || 0}</td>
+              <td>${info["Lates"]?.day || 0}</td>
+              <td>${rec.absent || 0}</td>
+              <td>${rec.total || 0}</td>
+              ${otherCells}
+              <td>${rec.net_payable_amount || 0}</td>
+            </tr>`;
+          $tbody.append(row);
         });
-      }
-    },
-  });
 
-  // Fetch records when button is clicked
-  $form.find("#fetch_records").click(function () {
-    const year = parseInt($form.find("#year").val(), 10);
-    const month = parseInt($form.find("#month").val());
-    const selectedCompany = $form.find("#company_list").val();
+        // 5. Show action button and hide fetch
+        $form.find("#fetch_records").hide();
+        $form.find("#action_button").show();
 
-    if (!year || year < 1900 || year > 2099) {
-      frappe.throw("Please enter a valid 4-digit year.");
-      return;
-    }
-
-    if (!month) {
-      frappe.msgprint("Please select both year and month", "Warning");
-      return;
-    }
-
-    document.getElementById("action_button").style.display = "none";
-
-    const currUser = frappe.session.user_email;
-    frappe.call({
-      method: "pinnaclehrms.api.get_pay_slip_report",
-      args: { year, month, curr_user: currUser, company: selectedCompany },
-      callback: function (res) {
-        if (res.message) {
-          console.log(res.message);
-          pay_slip_list(res.message);
-          $form.find("#fetch_records").hide();
-          document.getElementById("action_button").style.display =
-            "inline-block";
-        } else {
-          document.getElementById("pay_slip_table_body").innerHTML = "";
-          frappe.msgprint("No records found.");
-          $form.find("#fetch_records").show();
-        }
+        // 6. Bind checkbox change to toggle Actions
+        $tbody.find(".row_checkbox").on("change", function () {
+          const anyChecked = $tbody.find(":checked").length > 0;
+          $form.find("#action_button").toggle(anyChecked);
+        });
       },
     });
   });
 
-  // Show fetch button when month changes
-  $form.find("#month, #year, #company_list").on("change", function () {
+  // Show fetch again if filters change
+  $form.find("#year, #month, #company_list").on("change", function () {
     $form.find("#fetch_records").show();
   });
 
+  // Email Pay Slips
   $form.on("click", "#email_pay_slips", function () {
-    // Ensure get_selected function is available
-    const selectedPaySlips = get_selected();
-
-    if (selectedPaySlips.length === 0) {
+    const selected = get_selected();
+    if (!selected.length) {
       frappe.msgprint("Please select at least one pay slip to email.");
       return;
     }
-
     frappe.call({
-      method: "pinnaclehrms.api.email_pay_slips", // Update with correct API method
-      args: {
-        pay_slips: selectedPaySlips,
-      },
+      method: "pinnaclehrms.api.email_pay_slips",
+      args: { pay_slips: selected },
       callback: function (res) {
-        console.log(res.message.message);
-        if (res.message.message === "success") {
+        if (res.message?.message === "success") {
           frappe.msgprint("Pay slips emailed successfully!");
         } else {
           frappe.msgprint("Failed to send email. Please try again.");
@@ -187,95 +246,28 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     });
   });
 
-  $form.on("click", "#download_sft_report", function () {
-    let month = parseInt($form.find("#month").val());
-    window.location.href = `/api/method/pinnaclehrms.api.download_sft_report?month=${month}`;
-  });
-
-  $form.on("click", "#download_sft_upld_report", function () {
-    let month = parseInt($form.find("#month").val());
-    window.location.href = `/api/method/pinnaclehrms.api.download_sft_upld_report?month=${month}`;
-  });
-
+  // Download / Print actions
   $form.on("click", "#download_report", function () {
-    const year = parseInt($form.find("#year").val(), 10);
-    const month = parseInt($form.find("#month").val());
-    const selectedCompany = $form.find("#company_list").val();
-  
-    window.location.href = `/api/method/pinnaclehrms.api.download_pay_slip_report?year=${year}&month=${month}&company=${selectedCompany}`;
+    const y = parseInt($form.find("#year").val(), 10);
+    const m = parseInt($form.find("#month").val(), 10);
+    const c = $form.find("#company_list").val();
+    window.location.href = `/api/method/pinnaclehrms.api.download_pay_slip_report?year=${y}&month=${m}&company=${c}`;
   });
-  
+  $form.on("click", "#download_sft_report", function () {
+    const m = parseInt($form.find("#month").val(), 10);
+    window.location.href = `/api/method/pinnaclehrms.api.download_sft_report?month=${m}`;
+  });
+  $form.on("click", "#download_sft_upld_report", function () {
+    const m = parseInt($form.find("#month").val(), 10);
+    window.location.href = `/api/method/pinnaclehrms.api.download_sft_upld_report?month=${m}`;
+  });
 };
 
-// Function to populate table with pay slip data
-function pay_slip_list(records) {
-  let tableBody = document.getElementById("pay_slip_table_body");
-  tableBody.innerHTML = "";
-
-  records.forEach((record) => {
-    let emailLink = record.personal_email
-      ? `<span style="text-decoration: none; color: blue; cursor: pointer;" title="${record.personal_email}">Available</span>`
-      : "N/A";
-
-    // Handle nested salary_info
-    let salary_info = record.salary_info || {};
-    let other_earnings = record.other_earnings || {};
-
-    const getAmount = (obj, key) => (obj[key] ? obj[key].amount || 0 : 0);
-
-    let rowHTML = `
-      <tr>
-          <td><input type="checkbox" class="row_checkbox" value="${
-            record.pay_slip_name
-          }" /></td>
-          <td><a href="/app/pay-slips/${
-            record.pay_slip_name
-          }" target="_blank">${record.pay_slip_name}</a></td>
-          <td>${record.employee_name}</td>
-          <td>${emailLink}</td>
-          <td>${record.date_of_joining || ""}</td>
-          <td>${record.basic_salary || 0}</td>
-          <td>${record.standard_working_days || 0}</td>
-          <td>${record.actual_working_days || 0}</td>
-          <td>${salary_info["Full Day"]?.day || 0}</td>
-          <td>${salary_info["Sunday Workings"]?.day || 0}</td>
-          <td>${salary_info["Half Day"]?.day || 0}</td>
-          <td>${salary_info["3/4 Quarter Day"]?.day || 0}</td>
-          <td>${salary_info["Quarter Day"]?.day || 0}</td>
-          <td>${salary_info["Lates"]?.day || 0}</td>
-          <td>${record.absent || 0}</td>
-          <td>${record.total || 0}</td>
-          <td>${getAmount(other_earnings, "Sunday Workings")}</td>
-          <td>${Object.keys(other_earnings)
-            .filter((key) => key !== "Sunday Workings")
-            .reduce((sum, key) => sum + getAmount(other_earnings, key), 0)}</td>
-          <td>${record.adjustments || 0}</td>
-          <td>${record.net_payable_amount || 0}</td>
-      </tr>
-    `;
-    tableBody.innerHTML += rowHTML;
-  });
-
-  document
-    .getElementById("pay_slip_table_body")
-    .addEventListener("change", updateActionButtonVisibility);
-}
-
-// Function to get selected pay slips
+// Helper: collect selected pay slip names
 function get_selected() {
-  const selected = [];
-  document
-    .querySelectorAll('input[type="checkbox"].row_checkbox:checked')
-    .forEach((checkbox) => {
-      selected.push(checkbox.value);
-    });
-  return selected;
-}
-
-// Show action button if any checkbox is selected
-function updateActionButtonVisibility() {
-  document.getElementById("action_button").style.display =
-    document.querySelectorAll('input[type="checkbox"]:checked').length > 0
-      ? "inline-block"
-      : "none";
+  return $(".row_checkbox:checked")
+    .map(function () {
+      return this.value;
+    })
+    .get();
 }
