@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "shift_name",
+  "company",
   "month",
   "month_num",
   "column_break_byxw",
@@ -83,11 +84,17 @@
    "fieldtype": "Date",
    "label": "Shift Date",
    "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-12 12:42:50.495883",
+ "modified": "2025-05-16 13:53:14.883567",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Shift Variation",
