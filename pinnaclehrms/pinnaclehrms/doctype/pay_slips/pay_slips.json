@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:pay-slip-{month_num}-{employee_id}",
+ "autoname": "format:pay-slip-{month_num}-{employee}",
  "creation": "2024-10-26 16:42:18.428127",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -202,7 +202,7 @@
   },
   {
    "fieldname": "other_earnings_total",
-   "fieldtype": "Data",
+   "fieldtype": "Currency",
    "label": "Other Earnings Total"
   }
  ],
@@ -213,7 +213,7 @@
    "link_fieldname": "Name"
   }
  ],
- "modified": "2025-05-17 11:36:13.668732",
+ "modified": "2025-05-19 16:01:08.272388",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Pay Slips",

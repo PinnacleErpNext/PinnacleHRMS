@@ -42,17 +42,24 @@ class CreatePaySlips(Document):
             if self.select_employee:
                 employee = self.select_employee
                 data["select_employee"] = employee
-        
+
+            
+            
         createPaySlips(data)
 
+    def on_trash(self):
+        for pay_slip in self.created_pay_slips:
+            exist = frappe.db.exists("Pay Slips", pay_slip.pay_slip)
+            if exist:
+                doc = frappe.get_doc("Pay Slips", pay_slip.pay_slip)
+                doc.delete()
 
     # def on_submit(self):
     #     self.add_regenrate_button = 0
     #     pay_slip_list = self.created_pay_slips
-        
+
     #     for item in pay_slip_list:
     #         docname = item.pay_slip
     #         pay_slip = frappe.get_doc("Pay Slips", docname)
-            
+
     #         pay_slip.submit()
-    

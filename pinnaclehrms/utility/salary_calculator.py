@@ -117,7 +117,7 @@ def createPaySlips(data):
                     "month": monthName,
                     "month_num": month,
                     "company": data.get("company"),
-                    "employee_id": data.get("employee"),
+                    "employee": data.get("employee"),
                     "employee_name": data.get("employee_name"),
                     "personal_email": data.get("personal_email"),
                     "designation": data.get("designation"),
@@ -683,7 +683,7 @@ def calculateMonthlySalary(employeeData, year, month):
             (year, month, company),
             as_dict=True,
         )
-        
+
         dojStr = data.get("date_of_joining")
         doj = (
             datetime.strptime(dojStr, "%Y-%m-%d") if isinstance(dojStr, str) else dojStr
@@ -1034,6 +1034,10 @@ def calculateMonthlySalary(employeeData, year, month):
                     if any(holiday["holiday_date"] == today for holiday in holidays):
                         pass
                     else:
+                        if inTime:
+                            inTime = inTime.time()
+                        if outTime:
+                            outTime = outTime.time()
                         totalAbsents += 1
                         status = "Absent"
                         empAttendanceRecord.append(
@@ -1042,8 +1046,8 @@ def calculateMonthlySalary(employeeData, year, month):
                                 "deductionPercentage": 1,
                                 "salary": round(salary, 2),
                                 "status": status,
-                                "check_in": checkIn.time(),
-                                "check_out": checkOut.time(),
+                                "check_in": inTime,
+                                "check_out": outTime,
                             }
                         )
             else:

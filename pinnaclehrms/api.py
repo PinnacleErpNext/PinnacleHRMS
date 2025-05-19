@@ -15,54 +15,61 @@ from frappe import _
 @frappe.whitelist(allow_guest=True)
 def get_pay_slip_list(parent_docname, month, year, company=None, employee=None):
     baseQuery = """
-                SELECT
-                    name,
-                    employee_name,
-                    employee_id,
-                    net_payble_amount 
-                FROM
-                    `tabPay Slips` 
-                WHERE 
-                    month_num = %s AND year = %s
-                """
+        SELECT
+            name,
+            employee_name,
+            employee,
+            net_payble_amount 
+        FROM
+            `tabPay Slips` 
+        WHERE 
+            month_num = %s AND year = %s
+    """
+
     filters = [month, year]
-    if company != "":
+
+    if company:
+        baseQuery += " AND company = %s"
         filters.append(company)
-        baseQuery += "AND company = %s"
-    if employee != "":
-        baseQuery += " AND employee_id = %s"
+
+    if employee:
+        baseQuery += " AND employee = %s"
         filters.append(employee)
 
     pay_slip_list = frappe.db.sql(baseQuery, filters, as_dict=True)
-
+    
     created_pay_slips = []
 
     for pay_slip in pay_slip_list:
         generated_name = str(uuid.uuid4())  # Generate a unique ID for the name field
+
         frappe.db.sql(
             """
             INSERT INTO `tabCreated Pay Slips` (
-                `name`, `pay_slip`, `employee`,`employee_id`, `salary`, `parent`, `parenttype`, `parentfield`
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
-        """,
+                `name`, `pay_slip`, `employee`, `employee_id`, `salary`,
+                `parent`, `parenttype`, `parentfield`
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
             (
                 generated_name,  # name
                 pay_slip["name"],  # pay_slip
-                pay_slip["employee_name"],  # employee
-                pay_slip["employee_id"],  # employee_id
+                pay_slip["employee_name"],  # employee_name
+                pay_slip["employee"],  # employee (used as employee_id)
                 pay_slip["net_payble_amount"],  # salary
                 parent_docname,  # parent
                 "Create Pay Slips",  # parenttype
                 "created_pay_slips",  # parentfield
             ),
         )
+
+        # Avoid duplicates
         if not any(item["pay_slip"] == pay_slip["name"] for item in created_pay_slips):
             created_pay_slips.append(
                 {
                     "name": generated_name,
                     "pay_slip": pay_slip["name"],
-                    "employee": pay_slip["employee_name"],
-                    "employee_id": pay_slip["employee_id"],
+                    "employee": pay_slip["employee_name"],  # Employee Name
+                    "employee_id": pay_slip["employee"],  # Employee ID
                     "salary": pay_slip["net_payble_amount"],
                     "parent": parent_docname,
                     "parenttype": "Create Pay Slips",
@@ -210,7 +217,7 @@ def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
             "net_payable_amount": pay_slip.net_payble_amount,
             "salary_info": salary_info,
             "other_earnings": other_earnings_info,
-            "other_earnings_total":pay_slip.other_earnings_total
+            "other_earnings_total": pay_slip.other_earnings_total,
         }
 
         pay_slips_data.append(pay_slip_dict)
@@ -676,7 +683,7 @@ def download_sft_upld_report(month=None):
     month: integer 1–12 as string or number
     Generates an SFT upload report for the given month.
     """
-    
+
     curr_user = frappe.session.user
     allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)
@@ -688,7 +695,7 @@ def download_sft_upld_report(month=None):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
         return
-    
+
     # 1. Validate month
     if not month:
         frappe.throw("Please specify a month (1–12)")
@@ -760,7 +767,8 @@ def download_sft_upld_report(month=None):
     frappe.response.filecontent = xlsx_file.getvalue()
     frappe.response.type = "binary"
 
-#API to download to pay slip records.
+
+# API to download to pay slip records.
 @frappe.whitelist()
 def download_pay_slip_report(year=None, month=None, company=None):
     curr_user = frappe.session.user
