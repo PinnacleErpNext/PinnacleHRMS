@@ -1,208 +1,216 @@
 {
-    "actions": [],
-    "allow_rename": 1,
-    "autoname": "format:{company_abbr}{select_employee}-pay-slip-{year}-{month}",
-    "creation": "2024-10-26 16:51:45.513012",
-    "doctype": "DocType",
-    "engine": "InnoDB",
-    "field_order": [
-     "year",
-     "column_break_izvt",
-     "select_month",
-     "month",
-     "column_break_ya1i",
-     "allowed_lates",
-     "column_break_jtxd",
-     "genrate_for_all",
-     "auto_calculate_leave_encashment",
-     "add_regenrate_button",
-     "select_company",
-     "company_abbr",
-     "column_break_027v",
-     "select_employee",
-     "generated_pay_slips_tab",
-     "generated_pay_slips_section",
-     "add_pay_slips",
-     "created_pay_slips",
-     "amended_from"
-    ],
-    "fields": [
-     {
-      "fieldname": "year",
-      "fieldtype": "Data",
-      "in_list_view": 1,
-      "label": "Year",
-      "reqd": 1
-     },
-     {
-      "fieldname": "column_break_izvt",
-      "fieldtype": "Column Break"
-     },
-     {
-      "fieldname": "select_month",
-      "fieldtype": "Select",
-      "in_list_view": 1,
-      "label": "Month",
-      "options": "Select\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
-      "reqd": 1
-     },
-     {
-      "fieldname": "month",
-      "fieldtype": "Int",
-      "hidden": 1,
-      "label": "Month"
-     },
-     {
-      "fieldname": "column_break_jtxd",
-      "fieldtype": "Section Break"
-     },
-     {
-      "allow_in_quick_entry": 1,
-      "default": "0",
-      "fieldname": "genrate_for_all",
-      "fieldtype": "Check",
-      "label": "Genrate for all"
-     },
-     {
-      "default": "0",
-      "fieldname": "add_regenrate_button",
-      "fieldtype": "Check",
-      "hidden": 1,
-      "label": "Add regenrate button"
-     },
-     {
-      "fieldname": "select_company",
-      "fieldtype": "Link",
-      "label": "Select Company",
-      "options": "Company"
-     },
-     {
-      "fetch_from": "select_company.abbr",
-      "fieldname": "company_abbr",
-      "fieldtype": "Data",
-      "label": "Company Abbr"
-     },
-     {
-      "fieldname": "column_break_027v",
-      "fieldtype": "Column Break"
-     },
-     {
-      "fieldname": "select_employee",
-      "fieldtype": "Link",
-      "label": "Select Employee",
-      "options": "Employee"
-     },
-     {
-      "fieldname": "generated_pay_slips_tab",
-      "fieldtype": "Tab Break",
-      "label": "Pay Slips",
-      "show_dashboard": 1
-     },
-     {
-      "fieldname": "generated_pay_slips_section",
-      "fieldtype": "Section Break",
-      "label": "Generated Pay Slips"
-     },
-     {
-      "default": "1",
-      "fieldname": "add_pay_slips",
-      "fieldtype": "Check",
-      "hidden": 1,
-      "label": "Add pay slips"
-     },
-     {
-      "fieldname": "created_pay_slips",
-      "fieldtype": "Table",
-      "label": "Created Pay Slips",
-      "options": "Created Pay Slips"
-     },
-     {
-      "fieldname": "amended_from",
-      "fieldtype": "Link",
-      "label": "Amended From",
-      "no_copy": 1,
-      "options": "Create Pay Slips",
-      "print_hide": 1,
-      "read_only": 1,
-      "search_index": 1
-     },
-     {
-      "default": "0",
-      "fieldname": "auto_calculate_leave_encashment",
-      "fieldtype": "Check",
-      "label": "Auto Calculate Leave Encashment"
-     },
-     {
-      "fieldname": "column_break_ya1i",
-      "fieldtype": "Column Break"
-     },
-     {
-      "default": "3",
-      "fieldname": "allowed_lates",
-      "fieldtype": "Int",
-      "label": "Allowed Lates",
-      "reqd": 1
-     }
-    ],
-    "index_web_pages_for_search": 1,
-    "links": [],
-    "modified": "2024-11-22 18:23:02.166762",
-    "modified_by": "Administrator",
-    "module": "PinnacleHRMS",
-    "name": "Create Pay Slips",
-    "naming_rule": "Expression",
-    "owner": "Administrator",
-    "permissions": [
-     {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "System Manager",
-      "share": 1,
-      "write": 1
-     },
-     {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "Administrator",
-      "share": 1,
-      "write": 1
-     },
-     {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "HR Manager",
-      "share": 1,
-      "write": 1
-     },
-     {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "HR User",
-      "share": 1,
-      "write": 1
-     }
-    ],
-    "sort_field": "creation",
-    "sort_order": "DESC",
-    "states": []
-   }
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{company_abbr}{select_employee}-pay-slip-{year}-{month}",
+ "creation": "2024-10-26 16:51:45.513012",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "year",
+  "column_break_izvt",
+  "select_month",
+  "month",
+  "column_break_ya1i",
+  "allowed_lates",
+  "column_break_jtxd",
+  "genrate_for_all",
+  "auto_calculate_leave_encashment",
+  "add_regenrate_button",
+  "select_company",
+  "company_abbr",
+  "column_break_027v",
+  "employee_list",
+  "select_employee",
+  "generated_pay_slips_tab",
+  "generated_pay_slips_section",
+  "add_pay_slips",
+  "created_pay_slips",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "year",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_izvt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "select_month",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Month",
+   "options": "Select\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
+   "reqd": 1
+  },
+  {
+   "fieldname": "month",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Month"
+  },
+  {
+   "fieldname": "column_break_jtxd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "default": "0",
+   "fieldname": "genrate_for_all",
+   "fieldtype": "Check",
+   "label": "Genrate for all"
+  },
+  {
+   "default": "0",
+   "fieldname": "add_regenrate_button",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Add regenrate button"
+  },
+  {
+   "fieldname": "select_company",
+   "fieldtype": "Link",
+   "label": "Select Company",
+   "options": "Company"
+  },
+  {
+   "fetch_from": "select_company.abbr",
+   "fieldname": "company_abbr",
+   "fieldtype": "Data",
+   "label": "Company Abbr"
+  },
+  {
+   "fieldname": "column_break_027v",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "generated_pay_slips_tab",
+   "fieldtype": "Tab Break",
+   "label": "Pay Slips",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "generated_pay_slips_section",
+   "fieldtype": "Section Break",
+   "label": "Generated Pay Slips"
+  },
+  {
+   "default": "1",
+   "fieldname": "add_pay_slips",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Add pay slips"
+  },
+  {
+   "fieldname": "created_pay_slips",
+   "fieldtype": "Table",
+   "label": "Created Pay Slips",
+   "options": "Created Pay Slips"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Create Pay Slips",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_calculate_leave_encashment",
+   "fieldtype": "Check",
+   "label": "Auto Calculate Leave Encashment"
+  },
+  {
+   "fieldname": "column_break_ya1i",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "3",
+   "fieldname": "allowed_lates",
+   "fieldtype": "Int",
+   "label": "Allowed Lates",
+   "reqd": 1
+  },
+  {
+   "fieldname": "select_employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_list",
+   "fieldtype": "Table",
+   "label": "Select Employee",
+   "options": "Employee Selection"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-19 17:30:48.268221",
+ "modified_by": "Administrator",
+ "module": "Pinnaclehrms",
+ "name": "Create Pay Slips",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

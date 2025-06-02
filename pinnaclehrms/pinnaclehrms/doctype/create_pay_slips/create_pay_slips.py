@@ -16,6 +16,7 @@ class CreatePaySlips(Document):
         data = {}
         year = self.year
         month = int(self.month) if self.month else None
+        employee_list = []
 
         if not year or not month:
             frappe.throw("Select year and month")
@@ -43,8 +44,11 @@ class CreatePaySlips(Document):
                 employee = self.select_employee
                 data["select_employee"] = employee
 
-            
-            
+            if self.employee_list:
+                for employee in self.employee_list:
+                    employee_list.append(employee.select_employee)
+                data["employee_list"] = employee_list
+
         createPaySlips(data)
 
     def on_trash(self):

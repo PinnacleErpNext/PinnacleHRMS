@@ -316,14 +316,17 @@ def getEmpRecords(data):
         company = data.get("select_company")
         baseQuery += "AND e.company = %s"
         filters.append(company)
-    if data.get("select_employee"):
-        employee = data.get("select_employee")
-        baseQuery += "AND e.employee = %s"
+    if data.get("employee_list"):
+        employee = data.get("employee_list")
+        baseQuery += "AND e.employee in %s"
         filters.append(employee)
 
     date = f"{year}-{month:02d}-01"
 
     records = frappe.db.sql(baseQuery, filters, as_dict=False)
+    # print(f"{baseQuery}{filters}")
+
+    
     if not records:
         return frappe.throw("No records found!")
 

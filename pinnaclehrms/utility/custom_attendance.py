@@ -18,7 +18,7 @@ def custom_before_save(self, method):
         
         if not empId:
             frappe.throw(_("Employee could not be identified from device details."))
-    else:
+    else:   
         empId = self.employee
 
     # Fetch shift and company info

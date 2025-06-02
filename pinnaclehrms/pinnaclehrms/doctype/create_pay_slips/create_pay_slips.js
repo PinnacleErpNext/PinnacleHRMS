@@ -125,7 +125,19 @@ frappe.ui.form.on("Create Pay Slips", {
       });
     }
   },
-
+  select_company(frm) {
+    frm.fields_dict["employee_list"].grid.get_field(
+      "select_employee"
+    ).get_query = function (doc, cdt, cdn) {
+      let row = locals[cdt][cdn];
+      return {
+        filters: {
+          company: "Opticodes Technologies Private Limited",
+        },
+      };
+    };
+    frm.refresh_field("employee_list");
+  },
   before_save(frm) {
     frm.set_value("add_regenrate_button", 1);
   },

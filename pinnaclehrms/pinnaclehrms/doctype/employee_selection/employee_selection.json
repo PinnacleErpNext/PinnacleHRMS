@@ -1,24 +1,25 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-11-25 16:48:37.243345",
+ "creation": "2025-05-15 16:12:14.663084",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "employee",
+  "select_employee",
   "employee_name"
  ],
  "fields": [
   {
-   "fieldname": "employee",
+   "fieldname": "select_employee",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Employee",
+   "label": "Select Employee",
+   "link_filters": "[[\"Employee\",\"status\",\"=\",\"Active\"]]",
    "options": "Employee"
   },
   {
-   "fetch_from": "employee.employee_name",
+   "fetch_from": "select_employee.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -29,13 +30,13 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-02 11:14:50.764314",
+ "modified": "2025-05-19 17:44:05.995956",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
- "name": "Shift for employee",
+ "name": "Employee Selection",
  "owner": "Administrator",
  "permissions": [],
- "sort_field": "creation",
+ "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
 }

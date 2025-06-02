@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "PinnacleHRMS",
  "links": [],
- "modified": "2025-05-11 15:21:05.152150",
+ "modified": "2025-06-02 11:04:13.753335",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "PinnacleHRMS",
@@ -25,6 +25,14 @@
  "roles": [],
  "sequence_id": 39.0,
  "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Create Pay Slips",
+   "link_to": "Create Pay Slips",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
   {
    "color": "Grey",
    "doc_view": "List",
@@ -54,14 +62,6 @@
    "doc_view": "New",
    "label": "2. Assign Salary",
    "link_to": "Assign Salary",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "New",
-   "label": "Create Pay Slips",
-   "link_to": "Create Pay Slips",
    "stats_filter": "[]",
    "type": "DocType"
   },
