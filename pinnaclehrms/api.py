@@ -647,11 +647,12 @@ def download_sft_report(month=None):
             te.employee_name AS `Beneficiary Name`,
             tps.net_payble_amount AS `Amount (₹)`
         FROM `tabEmployee` AS te
-        JOIN `tabPay Slips` AS tps ON tps.employee_id = te.name
+        JOIN `tabPay Slips` AS tps ON tps.employee = te.name
         WHERE {where_sql}
     """
+    
     data = frappe.db.sql(query, as_dict=True)
-
+    
     # Prepare headers + rows
     columns = [
         {"header": "IFSC", "key": "IFSC", "width": 20},
@@ -724,7 +725,7 @@ def download_sft_upld_report(month=None):
                 DATE_FORMAT(CURDATE(), '-%Y')
             )                                    AS `Date`
         FROM `tabEmployee` AS te
-        JOIN `tabPay Slips` AS tps ON tps.employee_id = te.name
+        JOIN `tabPay Slips` AS tps ON tps.employee = te.name
         WHERE {where_sql}
     """
     data = frappe.db.sql(query, as_dict=True)

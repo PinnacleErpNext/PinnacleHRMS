@@ -326,7 +326,6 @@ def getEmpRecords(data):
     records = frappe.db.sql(baseQuery, filters, as_dict=False)
     # print(f"{baseQuery}{filters}")
 
-    
     if not records:
         return frappe.throw("No records found!")
 
@@ -705,6 +704,14 @@ def calculateMonthlySalary(employeeData, year, month):
         if len(leaveEncashmentData) > 0:
             leaveEncashmentAmount = leaveEncashmentData[0][0]
 
+        if doj.month == month:
+            filterdHolidays = []
+            for day in holidays:
+                if day.get("holiday_date") >= doj:
+                    filterdHolidays.append({"holiday_date": day.get("holiday_date")})
+            holidays = filterdHolidays
+
+        # frappe.throw(str(holidays))
         perDaySalary = round(basicSalary / totalWorkingDays, 2)
         holidayAmount = perDaySalary * len(holidays)
 
@@ -861,12 +868,16 @@ def calculateMonthlySalary(employeeData, year, month):
                                             "check_out": checkOut.time(),
                                         }
                                     )
-                                elif checkOut < idealCheckOutTime and (
-                                    checkIn < idealCheckInTime
-                                    or checkIn == idealCheckInTime
+                                elif (
+                                    checkOut < idealCheckOutTime
+                                    and (
+                                        checkIn < idealCheckInTime
+                                        or checkIn == idealCheckInTime
+                                    )
+                                    and allowedLates == 0
                                 ):
                                     actualWorkingDays += 1
-                                    earlyCheckOutDays += 1
+                                    lates += 1
                                     status = "Early Check Out"
                                     empAttendanceRecord.append(
                                         {
@@ -1032,7 +1043,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     "check_out": checkOut.time(),
                                 }
                             )
-                    # print(today, deductionPercentage, salary)
+                    print(today, deductionPercentage, salary)
                 else:
                     if any(holiday["holiday_date"] == today for holiday in holidays):
                         pass
