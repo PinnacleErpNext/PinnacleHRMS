@@ -100,7 +100,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
 
     // Hide actions until after fetch
     $form.find("#action_button").hide();
-
+    frappe.dom.freeze("Loading...");
     // Fetch report data
     frappe.call({
       method: "pinnaclehrms.api.get_pay_slip_report",
@@ -111,6 +111,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
         company,
       },
       callback: function (res) {
+        frappe.dom.unfreeze();
         const records = res.message || [];
         if (!records.length) {
           $tbody.empty();
@@ -125,7 +126,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
 
         // 2. Build full header list
         const staticHeaders = [
-          "Select",
+          '<input type="checkbox" id="select_all_rows"> Select All',
           "Pay Slip",
           "Employee Name",
           "Email",
@@ -207,6 +208,13 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
             </tr>`;
           $tbody.append(row);
         });
+        $table.find("#select_all_rows").on("change", function () {
+          const checked = $(this).is(":checked");
+          $tbody.find(".row_checkbox").prop("checked", checked);
+          $form
+            .find("#action_button")
+            .toggle(checked || $tbody.find(".row_checkbox:checked").length > 0);
+        });
 
         // 5. Show action button and hide fetch
         $form.find("#fetch_records").hide();
@@ -244,6 +252,14 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
         }
       },
     });
+  });
+
+  $form.on("click", "#print_pay_slips", function () {
+    const selected = get_selected();
+    if (!selected.length) {
+      frappe.msgprint("Please select at least one pay slip to email.");
+      return;
+    }
   });
 
   // Download / Print actions
