@@ -285,6 +285,7 @@ def getEmpRecords(data):
                 e.department,
                 e.pan_number,
                 e.date_of_joining,
+                e.relieving_date,
                 e.attendance_device_id,
                 e.default_shift,
                 e.holiday_list,
@@ -296,7 +297,7 @@ def getEmpRecords(data):
             JOIN
                 tabAttendance a ON e.employee = a.employee
             WHERE
-                e.status = "Active" AND a.docstatus = 1 AND YEAR(a.attendance_date) = %s AND MONTH(a.attendance_date) = %s
+                e.status in ("Active","Left")  AND a.docstatus = 1 AND YEAR(a.attendance_date) = %s AND MONTH(a.attendance_date) = %s
         """
 
     year = int(data.get("year"))
@@ -320,11 +321,14 @@ def getEmpRecords(data):
         employee = data.get("employee_list")
         baseQuery += "AND e.employee in %s"
         filters.append(employee)
+    if data.get("select_employee"):
+        employee = data.get("select_employee")
+        baseQuery += "AND e.employee = %s"
+        filters.append(employee)
 
     date = f"{year}-{month:02d}-01"
 
     records = frappe.db.sql(baseQuery, filters, as_dict=False)
-    # print(f"{baseQuery}{filters}")
 
     if not records:
         return frappe.throw("No records found!")
@@ -340,6 +344,7 @@ def getEmpRecords(data):
             "department": "",
             "pan_number": "",
             "date_of_joining": "",
+            "relieving_date": "",
             "auto_calculate_leave_encashment": "",
             "lates": "",
             "holidays": "",
@@ -363,6 +368,7 @@ def getEmpRecords(data):
             department,
             pan_number,
             date_of_joining,
+            relieving_date,
             attendance_device_id,
             shift,
             holiday_list,
@@ -407,6 +413,7 @@ def getEmpRecords(data):
                 "department": department,
                 "pan_number": pan_number,
                 "date_of_joining": date_of_joining,
+                "relieving_date": relieving_date,
                 "auto_calculate_leave_encashment": autoCalculateLeaveEncashment,
                 "lates": lates,
                 "holidays": holidays,
@@ -473,67 +480,68 @@ def calculateShiftTimes(attendanceDate, shiftStart, shiftEnd):
     }
 
 
-def getShiftDetails(empId, shiftVariationRecord, attendanceDate, attendanceRecord):
-    if shiftVariationRecord:
-        for shiftVariation in shiftVariationRecord:
-            if shiftVariation.get("attendance_date") == attendanceDate:
-                employeeString = shiftVariation.get("employees")
-                if employeeString:
-                    employeesList = employeeString.split(",")
+# old logic to get shift details
+# def getShiftDetails(empId, shiftVariationRecord, attendanceDate, attendanceRecord):
+#     if shiftVariationRecord:
+#         for shiftVariation in shiftVariationRecord:
+#             if shiftVariation.get("attendance_date") == attendanceDate:
+#                 employeeString = shiftVariation.get("employees")
+#                 if employeeString:
+#                     employeesList = employeeString.split(",")
 
-                    if (
-                        empId in employeesList
-                    ):  # Check if employees are missing or empty
-                        shiftStart = shiftVariation.get("earliest_in_time")
-                        shiftEnd = shiftVariation.get("latest_out_time")
-                        if shiftStart is None or shiftEnd is None:
-                            raise ValueError(
-                                f"Shift times missing for attendance date {attendanceDate}"
-                            )
-                        return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
-                    else:
-                        shift = attendanceRecord.get("shift")
-                        if not shift:
-                            raise ValueError("Shift is missing in attendance record")
+#                     if (
+#                         empId in employeesList
+#                     ):  # Check if employees are missing or empty
+#                         shiftStart = shiftVariation.get("earliest_in_time")
+#                         shiftEnd = shiftVariation.get("latest_out_time")
+#                         if shiftStart is None or shiftEnd is None:
+#                             raise ValueError(
+#                                 f"Shift times missing for attendance date {attendanceDate}"
+#                             )
+#                         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+#                     else:
+#                         shift = attendanceRecord.get("shift")
+#                         if not shift:
+#                             raise ValueError("Shift is missing in attendance record")
 
-                        shiftStart = frappe.db.get_value(
-                            "Shift Type", {"name": shift}, "start_time"
-                        )
-                        shiftEnd = frappe.db.get_value(
-                            "Shift Type", {"name": shift}, "end_time"
-                        )
-                        if shiftStart is None or shiftEnd is None:
-                            raise ValueError(f"Shift details missing for shift {shift}")
-                        return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
-                else:
-                    shiftStart = shiftVariation.get("earliest_in_time")
-                    shiftEnd = shiftVariation.get("latest_out_time")
-                    if shiftStart is None or shiftEnd is None:
-                        raise ValueError(
-                            f"Shift times missing for attendance date {attendanceDate}"
-                        )
-                    return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+#                         shiftStart = frappe.db.get_value(
+#                             "Shift Type", {"name": shift}, "start_time"
+#                         )
+#                         shiftEnd = frappe.db.get_value(
+#                             "Shift Type", {"name": shift}, "end_time"
+#                         )
+#                         if shiftStart is None or shiftEnd is None:
+#                             raise ValueError(f"Shift details missing for shift {shift}")
+#                         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+#                 else:
+#                     shiftStart = shiftVariation.get("earliest_in_time")
+#                     shiftEnd = shiftVariation.get("latest_out_time")
+#                     if shiftStart is None or shiftEnd is None:
+#                         raise ValueError(
+#                             f"Shift times missing for attendance date {attendanceDate}"
+#                         )
+#                     return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
 
-        shift = attendanceRecord.get("shift")
-        if not shift:
-            raise ValueError("Shift is missing in attendance record")
+#         shift = attendanceRecord.get("shift")
+#         if not shift:
+#             raise ValueError("Shift is missing in attendance record")
 
-        shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
-        shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
-        if shiftStart is None or shiftEnd is None:
-            raise ValueError(f"Shift details missing for shift {shift}")
-        return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
-    else:
-        # Fetch shift details directly from attendanceRecord
-        shift = attendanceRecord.get("shift")
-        if not shift:
-            raise ValueError("Shift is missing in attendance record")
+#         shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
+#         shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
+#         if shiftStart is None or shiftEnd is None:
+#             raise ValueError(f"Shift details missing for shift {shift}")
+#         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+#     else:
+#         # Fetch shift details directly from attendanceRecord
+#         shift = attendanceRecord.get("shift")
+#         if not shift:
+#             raise ValueError("Shift is missing in attendance record")
 
-        shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
-        shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
-        if shiftStart is None or shiftEnd is None:
-            raise ValueError(f"Shift details missing for shift {shift}")
-        return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+#         shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
+#         shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
+#         if shiftStart is None or shiftEnd is None:
+#             raise ValueError(f"Shift details missing for shift {shift}")
+#         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
 
 
 def createTimeSlabs(check_in_time, check_out_time):
@@ -711,6 +719,15 @@ def calculateMonthlySalary(employeeData, year, month):
                     filterdHolidays.append({"holiday_date": day.get("holiday_date")})
             holidays = filterdHolidays
 
+        if data.get("relieving_date"):
+
+            filterdHolidays = []
+            for day in holidays:
+                if day.get("holiday_date") <= data.get("relieving_date"):
+                    filterdHolidays.append({"holiday_date": day.get("holiday_date")})
+
+            holidays = filterdHolidays
+
         # frappe.throw(str(holidays))
         perDaySalary = round(basicSalary / totalWorkingDays, 2)
         holidayAmount = perDaySalary * len(holidays)
@@ -765,15 +782,26 @@ def calculateMonthlySalary(employeeData, year, month):
                 inTime = attendanceRecord["in_time"]
                 outTime = attendanceRecord["out_time"]
 
-                shiftDetails = getShiftDetails(
-                    emp_id, shiftVariationRecord, attendanceDate, attendanceRecord
-                )
+                shiftDetails = getShiftDetails(attendanceDate, attendanceRecord)
 
                 idealCheckInTime = shiftDetails.get("idealCheckInTime")
                 idealCheckOutTime = shiftDetails.get("idealCheckOutTime")
                 overtimeThreshold = shiftDetails.get("overtimeThreshold")
 
                 if inTime and outTime:
+                    actCheckIn = inTime
+                    actCheckOut = outTime
+                    attendance = getAttendance(
+                        emp_id,
+                        shiftVariationRecord,
+                        attendanceDate,
+                        attendanceRecord,
+                        shiftDetails,
+                    )
+
+                    inTime = attendance.get("in_time")
+                    outTime = attendance.get("out_time")
+
                     checkIn = datetime.combine(attendanceDate, inTime.time())
                     checkOut = datetime.combine(attendanceDate, outTime.time())
                     status = ""
@@ -785,6 +813,7 @@ def calculateMonthlySalary(employeeData, year, month):
 
                     slabs = createTimeSlabs(idealCheckInTime, idealCheckOutTime)
                     if totalWorkingHours > 3:
+
                         deductionPercentage = calculateDeduction(
                             checkIn, checkOut, slabs
                         )
@@ -792,13 +821,11 @@ def calculateMonthlySalary(employeeData, year, month):
                             perDaySalary, deductionPercentage
                         )  # call getBasicSaly inside this
 
-                        totalSalary += salary
-
-                        if checkIn > idealCheckInTime and (
-                            deductionPercentage == 0.1 or deductionPercentage == 0.2
-                        ):
-                            if lates < allowedLates:
-                                totalSalary += perDaySalary * 0.1
+                        # if checkIn > idealCheckInTime and (
+                        #     deductionPercentage == 0.1 or deductionPercentage == 0.2
+                        # ):
+                        #     if lates < allowedLates:
+                        #         totalSalary += perDaySalary * 0.1
 
                         # overtime salary calculation if marked is eligible
                         if isOvertime and checkOut > overtimeThreshold:
@@ -819,8 +846,8 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
                             else:
@@ -833,10 +860,11 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
+                                totalSalary += salary
                         elif deductionPercentage == 0.1:
                             if attendanceDate.weekday() == 6:
                                 sundays += 1
@@ -849,8 +877,8 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
                             else:
@@ -864,10 +892,11 @@ def calculateMonthlySalary(employeeData, year, month):
                                             "deductionPercentage": deductionPercentage,
                                             "salary": round(salary, 2),
                                             "status": status,
-                                            "check_in": checkIn.time(),
-                                            "check_out": checkOut.time(),
+                                            "check_in": actCheckIn.time(),
+                                            "check_out": actCheckOut.time(),
                                         }
                                     )
+                                    totalSalary += salary
                                 elif (
                                     checkOut < idealCheckOutTime
                                     and (
@@ -885,12 +914,15 @@ def calculateMonthlySalary(employeeData, year, month):
                                             "deductionPercentage": deductionPercentage,
                                             "salary": round(salary, 2),
                                             "status": status,
-                                            "check_in": checkIn.time(),
-                                            "check_out": checkOut.time(),
+                                            "check_in": actCheckIn.time(),
+                                            "check_out": actCheckOut.time(),
                                         }
                                     )
+                                    totalSalary += salary
                                 else:
                                     allowedLates -= 1
+
+                                    totalSalary += round(perDaySalary, 2)
                                     actualWorkingDays += 1
                                     fullDays += 1
                                     status = "Full Day"
@@ -900,8 +932,8 @@ def calculateMonthlySalary(employeeData, year, month):
                                             "deductionPercentage": 0.0,
                                             "salary": round(perDaySalary, 2),
                                             "status": status,
-                                            "check_in": checkIn.time(),
-                                            "check_out": checkOut.time(),
+                                            "check_in": actCheckIn.time(),
+                                            "check_out": actCheckOut.time(),
                                         }
                                     )
                         elif deductionPercentage == 0.25:
@@ -916,8 +948,8 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
                             else:
@@ -930,10 +962,11 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
+                                totalSalary += salary
                         elif deductionPercentage == 0.5:
                             if attendanceDate.weekday() == 6:
                                 sundays += 1
@@ -946,8 +979,8 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
                             else:
@@ -960,10 +993,11 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
+                                totalSalary += salary
                         elif deductionPercentage == 0.25:
                             if attendanceDate.weekday() == 6:
                                 sundays += 1
@@ -976,8 +1010,8 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
                             else:
@@ -990,10 +1024,11 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
+                                totalSalary += salary
                         else:
                             if attendanceDate.weekday() == 6:
                                 sundays += 1
@@ -1006,8 +1041,8 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
                             else:
@@ -1020,10 +1055,11 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "deductionPercentage": deductionPercentage,
                                         "salary": round(salary, 2),
                                         "status": status,
-                                        "check_in": checkIn.time(),
-                                        "check_out": checkOut.time(),
+                                        "check_in": actCheckIn.time(),
+                                        "check_out": actCheckOut.time(),
                                     }
                                 )
+                                totalSalary += salary
                     else:
                         deductionPercentage = 1
                         if any(
@@ -1039,11 +1075,11 @@ def calculateMonthlySalary(employeeData, year, month):
                                     "deductionPercentage": 1,
                                     "salary": round(salary, 2),
                                     "status": status,
-                                    "check_in": checkIn.time(),
-                                    "check_out": checkOut.time(),
+                                    "check_in": actCheckIn.time(),
+                                    "check_out": actCheckOut.time(),
                                 }
                             )
-                    print(today, deductionPercentage, salary)
+                    # print(today, deductionPercentage, salary, status)
                 else:
                     if any(holiday["holiday_date"] == today for holiday in holidays):
                         pass
@@ -1083,9 +1119,9 @@ def calculateMonthlySalary(employeeData, year, month):
                         }
                     )
 
-        totalSalary -= totalLateDeductions
         if actualWorkingDays > 0:
             totalSalary += overtimeSalary + holidayAmount + leaveEncashmentAmount
+            pass
         else:
             holidayAmount = 0
             totalSalary += overtimeSalary + leaveEncashmentAmount
@@ -1185,7 +1221,6 @@ def getSalaryDetails(emp_id, year, month):
                     salaryIncrement[0].salary / totalWorkingDays
                 )
                 basicSalary = beforeIncrementSalary + afterIncrementSalary
-                print(basicSalary)
                 overtimeEligibility = salaryIncrement[0].eligible_for_overtime_salary
             else:
                 # Fallback if no previous data found
@@ -1228,3 +1263,99 @@ def getSalaryDetails(emp_id, year, month):
     salaryDetails["basicSalary"] = basicSalary
     salaryDetails["overtimeEligibility"] = overtimeEligibility
     return salaryDetails
+
+
+# new logic to get shift deta
+def getShiftDetails(attendanceDate, attendanceRecord):
+    # Fetch shift details directly from attendanceRecord
+    shift = attendanceRecord.get("shift")
+    if not shift:
+        raise ValueError("Shift is missing in attendance record")
+
+    shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
+    shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
+    if shiftStart is None or shiftEnd is None:
+        raise ValueError(f"Shift details missing for shift {shift}")
+    return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+
+
+# provide checkIn and checkOut
+def getAttendance(
+    empId, shiftVariationRecord, attendanceDate, attendanceRecord, shiftDetails
+):
+    def to_datetime(att_date, t_obj):
+        if isinstance(t_obj, datetime):
+            return t_obj
+        return datetime.combine(att_date, t_obj)
+
+    idealCheckInTime = shiftDetails.get("idealCheckInTime")
+    idealCheckOutTime = shiftDetails.get("idealCheckOutTime")
+
+    actInTime = attendanceRecord.get("in_time")
+    actOutTime = attendanceRecord.get("out_time")
+
+    if not actInTime or not actOutTime:
+        raise ValueError("Actual in_time or out_time is missing in attendance record")
+
+    # Normalize attendanceDate
+    if isinstance(attendanceDate, datetime):
+        attendanceDateObj = attendanceDate.date()
+    elif isinstance(attendanceDate, str):
+        attendanceDateObj = datetime.strptime(attendanceDate, "%Y-%m-%d").date()
+    else:
+        attendanceDateObj = attendanceDate
+
+    # Convert to datetime
+    idealIn = to_datetime(attendanceDateObj, idealCheckInTime)
+    idealOut = to_datetime(attendanceDateObj, idealCheckOutTime)
+    actualIn = to_datetime(attendanceDateObj, actInTime)
+    actualOut = to_datetime(attendanceDateObj, actOutTime)
+
+    # Apply shift variation if applicable
+    if shiftVariationRecord:
+        for variation in shiftVariationRecord:
+            if variation.get("attendance_date") != attendanceDateObj:
+                continue
+
+            employeeString = variation.get("employees")
+            if employeeString:
+                employeeList = [emp.strip() for emp in employeeString.split(",")]
+                if empId not in employeeList:
+                    continue
+
+            shiftStart = variation.get("earliest_in_time")
+            shiftEnd = variation.get("latest_out_time")
+
+            if not shiftStart or not shiftEnd:
+                raise ValueError(
+                    f"Shift times missing for attendance date {attendanceDateObj}"
+                )
+
+            shiftStartDt = to_datetime(attendanceDateObj, shiftStart)
+            shiftEndDt = to_datetime(attendanceDateObj, shiftEnd)
+
+            if actualIn > shiftStartDt:
+                diffIn = abs(actualIn - shiftStartDt)
+                hours = diffIn.seconds // 3600
+                minutes = (diffIn.seconds % 3600) // 60
+                seconds = diffIn.seconds % 60
+
+                actInTime = idealCheckInTime
+                if hours:
+                    actInTime += timedelta(hours=hours)
+                if minutes:
+                    actInTime += timedelta(minutes=minutes)
+                if seconds:
+                    actInTime += timedelta(seconds=seconds)
+            else:
+                actInTime = idealCheckInTime
+
+            if actualOut >= shiftEndDt:
+                diffOut = abs(shiftEndDt - idealOut)
+                hours = diffOut.seconds // 3600
+                minutes = (diffOut.seconds % 3600) // 60
+                seconds = diffOut.seconds % 60
+
+                actOutTime = idealCheckOutTime
+
+    return {"in_time": actInTime, "out_time": actOutTime}

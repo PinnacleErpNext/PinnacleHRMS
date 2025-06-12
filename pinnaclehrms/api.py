@@ -1,4 +1,4 @@
-import frappe, json, uuid
+import frappe, json, uuid, base64
 from pinnaclehrms.utility.salary_calculator import (
     createPaySlips,
     getEmpRecords,
@@ -37,7 +37,7 @@ def get_pay_slip_list(parent_docname, month, year, company=None, employee=None):
         filters.append(employee)
 
     pay_slip_list = frappe.db.sql(baseQuery, filters, as_dict=True)
-    
+
     created_pay_slips = []
 
     for pay_slip in pay_slip_list:
@@ -344,10 +344,12 @@ def approvePaySlipRequest(data):
 def regeneratePaySlip(data):
 
     data = json.loads(data)
+
     year = int(data.get("year"))
     month = data.get("month")
 
     empRecords = getEmpRecords(data)
+
     employeeData = calculateMonthlySalary(empRecords, year, month)
 
     # frappe.throw(str(employeeData))
@@ -413,8 +415,8 @@ def regeneratePaySlip(data):
         existing_doc = frappe.get_all(
             "Pay Slips",
             filters={
-                "employee_id": data.get("employee"),
-                "docstatus": 0,  # Check for open or draft status
+                "employee": data.get("employee"),
+                "docstatus": 0,
             },
             fields=["name"],
         )
@@ -466,7 +468,7 @@ def regeneratePaySlip(data):
         sal_calculations = pay_slip.salary_calculation
         pay_slip.salary_calculation = []
         for sal_cal in sal_calculations:
-            print(sal_cal)
+
             frappe.delete_doc("Salary Calculation", sal_cal.name)
         if salaryInfo.get("full_days"):
             pay_slip.append(
@@ -608,52 +610,62 @@ def regeneratePaySlip(data):
 
 # API to download sft report
 @frappe.whitelist(allow_guest=False)
-def download_sft_report(month=None):
+def download_sft_report(year=None, month=None, encodedCompany=None):
+    company = base64.b64decode(encodedCompany).decode("utf-8")
     """
     month: integer 1–12 as string or number
     """
-    report_name = "Salary_Beneficiary_List"
+    report_name = ""
     conditions = []
+    params = {}
 
     curr_user = frappe.session.user
     allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
-    if (
+    # Allow access only if user has allowed roles or is Administrator
+    if not (
         any(role in user_roles for role in allowed_roles)
-        and curr_user != "Administrator"
+        or curr_user == "Administrator"
     ):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
         return
 
-    # Validate and use the month parameter
-    if month:
-        try:
-            m = int(month)
-            if 1 <= m <= 12:
-                # Filter on the month() of your date field
-                conditions.append(f"tps.month_num = {m}")
-            else:
-                frappe.throw("Month must be between 1 and 12")
-        except ValueError:
-            frappe.throw("Invalid month format")
+    # Validate inputs
+    if not month or not year:
+        frappe.throw("Please specify a month and year")
+
+    try:
+        m = int(month)
+        if 1 <= m <= 12:
+            conditions.append("tps.month_num = %(month)s AND tps.year = %(year)s")
+            params.update({"month": m, "year": int(year)})
+        else:
+            frappe.throw("Month must be between 1 and 12")
+    except ValueError:
+        frappe.throw("Invalid month format")
+
+    if company:
+        conditions.append("tps.company = %(company)s")
+        params["company"] = company
 
     where_sql = " AND ".join(conditions) or "1=1"
+
     query = f"""
         SELECT
-            te.ifsc_code   AS IFSC,
-            te.bank_ac_no  AS `Beneficiary Account No`,
+            te.ifsc_code AS IFSC,
+            te.bank_ac_no AS `Beneficiary Account No`,
             te.employee_name AS `Beneficiary Name`,
             tps.net_payble_amount AS `Amount (₹)`
         FROM `tabEmployee` AS te
         JOIN `tabPay Slips` AS tps ON tps.employee = te.name
         WHERE {where_sql}
     """
-    
-    data = frappe.db.sql(query, as_dict=True)
-    
-    # Prepare headers + rows
+
+    data = frappe.db.sql(query, params, as_dict=True)
+
+    # Define columns and rows for export
     columns = [
         {"header": "IFSC", "key": "IFSC", "width": 20},
         {
@@ -665,13 +677,14 @@ def download_sft_report(month=None):
         {"header": "Amount (₹)", "key": "Amount (₹)", "width": 15},
     ]
     rows = [[r[col["key"]] for col in columns] for r in data]
+
     xlsx_file = make_xlsx(
-        [[c["header"] for c in columns]] + rows,
+        [[col["header"] for col in columns]] + rows,
         report_name,
-        column_widths=[c["width"] for c in columns],
+        column_widths=[col["width"] for col in columns],
     )
 
-    # Download response
+    # Return file as response
     frappe.response.filename = f"{report_name}.xlsx"
     frappe.response.filecontent = xlsx_file.getvalue()
     frappe.response.type = "binary"
@@ -679,27 +692,24 @@ def download_sft_report(month=None):
 
 # API to download sft upload report
 @frappe.whitelist(allow_guest=False)
-def download_sft_upld_report(month=None):
-    """
-    month: integer 1–12 as string or number
-    Generates an SFT upload report for the given month.
-    """
+def download_sft_upld_report(year=None, month=None, encodedCompany=None):
 
+    company = base64.b64decode(encodedCompany).decode("utf-8")
     curr_user = frappe.session.user
     allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
-    if (
+    if not (
         any(role in user_roles for role in allowed_roles)
-        and curr_user != "Administrator"
+        or curr_user == "Administrator"
     ):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
         return
 
-    # 1. Validate month
-    if not month:
-        frappe.throw("Please specify a month (1–12)")
+    if not month or not year:
+        frappe.throw("Please specify a month and year")
+
     try:
         m = int(month)
         if m < 1 or m > 12:
@@ -707,36 +717,46 @@ def download_sft_upld_report(month=None):
     except ValueError:
         frappe.throw("Invalid month format")
 
-    # 2. Build WHERE clause
-    where_sql = f"tps.month_num = {m}"
+    # Prepare parameters
+    params = {"month": m, "year": int(year)}
+    conditions = ["tps.month_num = %(month)s", "tps.year = %(year)s"]
 
-    # 3. Run your custom SQL
-    query = f"""
+    if company:
+        conditions.append("tps.company = %(company)s")
+        params["company"] = company
+
+    where_sql = " AND ".join(conditions)
+
+    # DO NOT use f-string here
+    query = """
         SELECT
-            '192105002170'                        AS `Debit Ac No`,
-            te.employee_name                     AS `Beneficiary Name`,
-            te.bank_ac_no                        AS `Beneficiary Account No`,
-            te.ifsc_code                         AS `IFSC`,
-            tps.net_payble_amount                AS `Amount (₹)`,
-            'N'                                  AS `Pay Mode`,
+            '192105002170' AS `Debit Ac No`,
+            te.employee_name AS `Beneficiary Name`,
+            te.bank_ac_no AS `Beneficiary Account No`,
+            te.ifsc_code AS `IFSC`,
+            tps.net_payble_amount AS `Amount (₹)`,
+            'N' AS `Pay Mode`,
             CONCAT(
-                DATE_FORMAT(CURDATE(), '%d-'),
-                UPPER(DATE_FORMAT(CURDATE(), '%b')),
-                DATE_FORMAT(CURDATE(), '-%Y')
-            )                                    AS `Date`
+                DATE_FORMAT(CURDATE(), '%%d-'),
+                UPPER(DATE_FORMAT(CURDATE(), '%%b')),
+                DATE_FORMAT(CURDATE(), '-%%Y')
+            ) AS `Date`
         FROM `tabEmployee` AS te
         JOIN `tabPay Slips` AS tps ON tps.employee = te.name
-        WHERE {where_sql}
-    """
-    data = frappe.db.sql(query, as_dict=True)
-    if not data or len(data) == 0:
+        WHERE {where_conditions}
+    """.format(
+        where_conditions=where_sql
+    )
+    print(query)
+    print(params)
+    data = frappe.db.sql(query, params, as_dict=True)
+    print(data)
+    if not data:
         frappe.msgprint(
-            title=_("Notification"),
-            indicator="green",
-            message=_("No data found to update"),
+            _("No data found to update"), title=_("Notification"), indicator="green"
         )
         return
-    # 4. Prepare headers and rows
+
     columns = [
         {"header": "Debit Ac No", "key": "Debit Ac No", "width": 20},
         {"header": "Beneficiary Name", "key": "Beneficiary Name", "width": 30},
@@ -750,20 +770,16 @@ def download_sft_upld_report(month=None):
         {"header": "Pay Mode", "key": "Pay Mode", "width": 10},
         {"header": "Date", "key": "Date", "width": 15},
     ]
-    # Build row data in the order of columns
+
     rows = [[row[col["key"]] for col in columns] for row in data]
 
-    # 5. Generate the XLSX
-    # Use .xls extension for compatibility if required, but content is XLSX
-    today = nowdate()  # YYYY-MM-DD
-    filename = f"sft_upload_report_{today}.xls"
+    filename = f"sft_upload_report_{nowdate()}.xlsx"
     xlsx_file = make_xlsx(
-        [[c["header"] for c in columns]] + rows,
+        [[col["header"] for col in columns]] + rows,
         "SFT Upload",
-        column_widths=[c["width"] for c in columns],
+        column_widths=[col["width"] for col in columns],
     )
 
-    # 6. Send as download response
     frappe.response.filename = filename
     frappe.response.filecontent = xlsx_file.getvalue()
     frappe.response.type = "binary"
@@ -771,7 +787,8 @@ def download_sft_upld_report(month=None):
 
 # API to download to pay slip records.
 @frappe.whitelist()
-def download_pay_slip_report(year=None, month=None, company=None):
+def download_pay_slip_report(year=None, month=None, encodedCompany=None):
+    company = base64.b64decode(encodedCompany).decode("utf-8")
     curr_user = frappe.session.user
     allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)

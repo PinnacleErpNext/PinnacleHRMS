@@ -51,8 +51,8 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
             <li><a id="email_pay_slips" class="dropdown-item">Email Pay Slips</a></li>
             <li><a id="print_pay_slips" class="dropdown-item">Print Pay Slips</a></li>
             <li><a id="download_report" class="dropdown-item">Download Report</a></li>
-            <li><a id="download_sft_report" class="dropdown-item">Download SFT Report</a></li>
-            <li><a id="download_sft_upld_report" class="dropdown-item">Download SFT Upload Report</a></li>
+            <li><a id="download_sft_report" class="dropdown-item">Download ICICI Bank SFTP Excel</a></li>
+            <li><a id="download_sft_upld_report" class="dropdown-item">Download ICICI Bank Bulk Payment Format</a></li>
           </ul>
         </div>
       </div>
@@ -267,15 +267,24 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     const y = parseInt($form.find("#year").val(), 10);
     const m = parseInt($form.find("#month").val(), 10);
     const c = $form.find("#company_list").val();
-    window.location.href = `/api/method/pinnaclehrms.api.download_pay_slip_report?year=${y}&month=${m}&company=${c}`;
+    const encodedCompany = btoa(c);
+    window.location.href = `/api/method/pinnaclehrms.api.download_pay_slip_report?year=${y}&month=${m}&encodedCompany=${encodedCompany}`;
   });
   $form.on("click", "#download_sft_report", function () {
+    const y = parseInt($form.find("#year").val(), 10);
     const m = parseInt($form.find("#month").val(), 10);
-    window.location.href = `/api/method/pinnaclehrms.api.download_sft_report?month=${m}`;
+    const c = $form.find("#company_list").val();
+    const encodedCompany = btoa(c);
+    window.location.href = `/api/method/pinnaclehrms.api.download_sft_report?month=${m}&year=${y}&encodedCompany=${encodedCompany}`;
   });
   $form.on("click", "#download_sft_upld_report", function () {
+    const y = parseInt($form.find("#year").val(), 10);
     const m = parseInt($form.find("#month").val(), 10);
-    window.location.href = `/api/method/pinnaclehrms.api.download_sft_upld_report?month=${m}`;
+    const c = $form.find("#company_list").val();
+    const encodedCompany = btoa(c); // Base64 encode
+    // alert(encodedCompany);
+
+    window.location.href = `/api/method/pinnaclehrms.api.download_sft_upld_report?month=${m}&year=${y}&encodedCompany=${encodedCompany}`;
   });
 };
 
