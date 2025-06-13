@@ -107,7 +107,7 @@ def createPaySlips(data):
                 12: "December",
             }
             monthName = monthMapping.get(month)
-
+            
             # Create a new Pay Slip document
             paySlip = frappe.get_doc(
                 {
@@ -1079,7 +1079,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     "check_out": actCheckOut.time(),
                                 }
                             )
-                    # print(today, deductionPercentage, salary, status)
+                    print(today, deductionPercentage, salary, status,totalSalary)
                 else:
                     if any(holiday["holiday_date"] == today for holiday in holidays):
                         pass
@@ -1120,7 +1120,9 @@ def calculateMonthlySalary(employeeData, year, month):
                     )
 
         if actualWorkingDays > 0:
-            totalSalary += overtimeSalary + holidayAmount + leaveEncashmentAmount
+            totalSalary += (
+                overtimeSalary + holidayAmount + leaveEncashmentAmount + sundaysSalary
+            )
             pass
         else:
             holidayAmount = 0

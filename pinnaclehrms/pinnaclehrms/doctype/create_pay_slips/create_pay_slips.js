@@ -53,7 +53,6 @@ frappe.ui.form.on("Create Pay Slips", {
               label: "Employee",
               fieldname: "select_employee",
               fieldtype: "Select",
-              default: frm.doc.select_employee,
               options: employeeId,
             },
             {
@@ -96,7 +95,8 @@ frappe.ui.form.on("Create Pay Slips", {
               frappe.msgprint("Invalid month name.");
               return;
             }
-
+            
+            // console.log(values)
             // Call the server-side method
             frappe.call({
               method: "pinnaclehrms.api.regeneratePaySlip",
@@ -191,6 +191,34 @@ frappe.ui.form.on("Create Pay Slips", {
     }
   },
 
+  onload(frm) {
+    if (frm.doc.genrate_for_all) {
+      frm.set_df_property(
+        "select_company",
+        "hidden",
+        frm.doc.genrate_for_all ? 1 : 0
+      );
+      frm.doc.select_company = "";
+      frm.set_df_property(
+        "company_abbr",
+        "hidden",
+        frm.doc.genrate_for_all ? 1 : 0
+      );
+      frm.doc.company_abbr = "";
+      frm.set_df_property(
+        "employee_list",
+        "hidden",
+        frm.doc.genrate_for_all ? 1 : 0
+      );
+      frm.doc.employee_list = "";
+      frm.set_df_property(
+        "selectemployee_list",
+        "disabled",
+        frm.doc.genrate_for_all ? 1 : 0
+      );
+    }
+  },
+
   genrate_for_all(frm) {
     frm.set_df_property(
       "select_company",
@@ -205,13 +233,13 @@ frappe.ui.form.on("Create Pay Slips", {
     );
     frm.set_value("company_abbr");
     frm.set_df_property(
-      "select_employee",
+      "employee_list",
       "hidden",
       frm.doc.genrate_for_all ? 1 : 0
     );
-    frm.set_value("select_employee", "");
+    frm.set_value("employee_list", "");
     frm.set_df_property(
-      "select_employee",
+      "selectemployee_list",
       "disabled",
       frm.doc.genrate_for_all ? 1 : 0
     );
