@@ -80,14 +80,8 @@ def createPaySlips(data):
                 ),
                 2,
             )
-            othersDayAmount = round(
-                (
-                    salaryInfo.get("others", 0)
-                    * salaryInfo.get("per_day_salary", 0)
-                    * 0.8
-                ),
-                2,
-            )
+            othersDayAmount = salaryInfo.get("others_day_salary")
+            # print(othersDayAmount)
             otherEarningsAmount = round(
                 (salaryInfo.get("overtime", 0)), 2
             ) + salaryInfo.get("leave_encashment")
@@ -128,7 +122,7 @@ def createPaySlips(data):
                     "basic_salary": data.get("basic_salary"),
                     "per_day_salary": salaryInfo.get("per_day_salary"),
                     "standard_working_days": salaryInfo.get("standard_working_days"),
-                    "others_days": salaryInfo.get("others"),
+                    "others_days": salaryInfo.get("others_day"),
                     "absent": salaryInfo.get("absent"),
                     "actual_working_days": salaryInfo.get("actual_working_days"),
                     "net_payble_amount": salaryInfo.get("total_salary"),
@@ -204,14 +198,14 @@ def createPaySlips(data):
                         "amount": quarterDayWorkingAmount,
                     },
                 )
-            if salaryInfo.get("others"):
+            if salaryInfo.get("others_day"):
                 paySlip.append(
                     "salary_calculation",
                     {
                         "particulars": "Others Day",
-                        "days": salaryInfo.get("others"),
+                        "days": salaryInfo.get("others_day"),
                         "rate": salaryInfo.get("per_day_salary"),
-                        "effective_percentage": "20",
+                        "effective_percentage": "-",
                         "amount": othersDayAmount,
                     },
                 )
@@ -480,70 +474,6 @@ def calculateShiftTimes(attendanceDate, shiftStart, shiftEnd):
     }
 
 
-# old logic to get shift details
-# def getShiftDetails(empId, shiftVariationRecord, attendanceDate, attendanceRecord):
-#     if shiftVariationRecord:
-#         for shiftVariation in shiftVariationRecord:
-#             if shiftVariation.get("attendance_date") == attendanceDate:
-#                 employeeString = shiftVariation.get("employees")
-#                 if employeeString:
-#                     employeesList = employeeString.split(",")
-
-#                     if (
-#                         empId in employeesList
-#                     ):  # Check if employees are missing or empty
-#                         shiftStart = shiftVariation.get("earliest_in_time")
-#                         shiftEnd = shiftVariation.get("latest_out_time")
-#                         if shiftStart is None or shiftEnd is None:
-#                             raise ValueError(
-#                                 f"Shift times missing for attendance date {attendanceDate}"
-#                             )
-#                         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
-#                     else:
-#                         shift = attendanceRecord.get("shift")
-#                         if not shift:
-#                             raise ValueError("Shift is missing in attendance record")
-
-#                         shiftStart = frappe.db.get_value(
-#                             "Shift Type", {"name": shift}, "start_time"
-#                         )
-#                         shiftEnd = frappe.db.get_value(
-#                             "Shift Type", {"name": shift}, "end_time"
-#                         )
-#                         if shiftStart is None or shiftEnd is None:
-#                             raise ValueError(f"Shift details missing for shift {shift}")
-#                         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
-#                 else:
-#                     shiftStart = shiftVariation.get("earliest_in_time")
-#                     shiftEnd = shiftVariation.get("latest_out_time")
-#                     if shiftStart is None or shiftEnd is None:
-#                         raise ValueError(
-#                             f"Shift times missing for attendance date {attendanceDate}"
-#                         )
-#                     return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
-
-#         shift = attendanceRecord.get("shift")
-#         if not shift:
-#             raise ValueError("Shift is missing in attendance record")
-
-#         shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
-#         shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
-#         if shiftStart is None or shiftEnd is None:
-#             raise ValueError(f"Shift details missing for shift {shift}")
-#         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
-#     else:
-#         # Fetch shift details directly from attendanceRecord
-#         shift = attendanceRecord.get("shift")
-#         if not shift:
-#             raise ValueError("Shift is missing in attendance record")
-
-#         shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
-#         shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
-#         if shiftStart is None or shiftEnd is None:
-#             raise ValueError(f"Shift details missing for shift {shift}")
-#         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
-
-
 def createTimeSlabs(check_in_time, check_out_time):
     ideal_working_time = check_out_time - check_in_time
     iwh = ideal_working_time.total_seconds() / 60
@@ -648,7 +578,8 @@ def calculateMonthlySalary(employeeData, year, month):
         totalAbsents = 0
         lates = 0
         sundays = 0
-        others = 0
+        othersDay = 0
+        othersDaySalary = 0
         sundaysSalary = 0.0
         overtimeSalary = 0.0
         actualWorkingDays = 0
@@ -1046,7 +977,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     }
                                 )
                             else:
-                                others += 1
+                                othersDay += 1
                                 actualWorkingDays += 1
                                 status = "Others"
                                 empAttendanceRecord.append(
@@ -1059,7 +990,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                         "check_out": actCheckOut.time(),
                                     }
                                 )
-                                totalSalary += salary
+                                othersDaySalary += salary
                     else:
                         deductionPercentage = 1
                         if any(
@@ -1079,7 +1010,7 @@ def calculateMonthlySalary(employeeData, year, month):
                                     "check_out": actCheckOut.time(),
                                 }
                             )
-                    print(today, deductionPercentage, salary, status,totalSalary)
+                    # print(today, deductionPercentage, salary, status,totalSalary)
                 else:
                     if any(holiday["holiday_date"] == today for holiday in holidays):
                         pass
@@ -1121,7 +1052,7 @@ def calculateMonthlySalary(employeeData, year, month):
 
         if actualWorkingDays > 0:
             totalSalary += (
-                overtimeSalary + holidayAmount + leaveEncashmentAmount + sundaysSalary
+                overtimeSalary + holidayAmount + leaveEncashmentAmount + sundaysSalary + othersDaySalary
             )
             pass
         else:
@@ -1141,7 +1072,8 @@ def calculateMonthlySalary(employeeData, year, month):
             "three_four_quarter_days": threeFourQuarterDays,
             "sundays_working_days": sundays,
             "early_checkout_days": earlyCheckOutDays,
-            "others": others,
+            "others_day": othersDay,
+            "others_day_salary":othersDaySalary,
             "sundays_salary": sundaysSalary,
             "total_salary": round(totalSalary, 2),
             "total_late_deductions": totalLateDeductions,
@@ -1361,3 +1293,67 @@ def getAttendance(
                 actOutTime = idealCheckOutTime
 
     return {"in_time": actInTime, "out_time": actOutTime}
+
+
+# old logic to get shift details
+# def getShiftDetails(empId, shiftVariationRecord, attendanceDate, attendanceRecord):
+#     if shiftVariationRecord:
+#         for shiftVariation in shiftVariationRecord:
+#             if shiftVariation.get("attendance_date") == attendanceDate:
+#                 employeeString = shiftVariation.get("employees")
+#                 if employeeString:
+#                     employeesList = employeeString.split(",")
+
+#                     if (
+#                         empId in employeesList
+#                     ):  # Check if employees are missing or empty
+#                         shiftStart = shiftVariation.get("earliest_in_time")
+#                         shiftEnd = shiftVariation.get("latest_out_time")
+#                         if shiftStart is None or shiftEnd is None:
+#                             raise ValueError(
+#                                 f"Shift times missing for attendance date {attendanceDate}"
+#                             )
+#                         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+#                     else:
+#                         shift = attendanceRecord.get("shift")
+#                         if not shift:
+#                             raise ValueError("Shift is missing in attendance record")
+
+#                         shiftStart = frappe.db.get_value(
+#                             "Shift Type", {"name": shift}, "start_time"
+#                         )
+#                         shiftEnd = frappe.db.get_value(
+#                             "Shift Type", {"name": shift}, "end_time"
+#                         )
+#                         if shiftStart is None or shiftEnd is None:
+#                             raise ValueError(f"Shift details missing for shift {shift}")
+#                         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+#                 else:
+#                     shiftStart = shiftVariation.get("earliest_in_time")
+#                     shiftEnd = shiftVariation.get("latest_out_time")
+#                     if shiftStart is None or shiftEnd is None:
+#                         raise ValueError(
+#                             f"Shift times missing for attendance date {attendanceDate}"
+#                         )
+#                     return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+
+#         shift = attendanceRecord.get("shift")
+#         if not shift:
+#             raise ValueError("Shift is missing in attendance record")
+
+#         shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
+#         shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
+#         if shiftStart is None or shiftEnd is None:
+#             raise ValueError(f"Shift details missing for shift {shift}")
+#         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
+#     else:
+#         # Fetch shift details directly from attendanceRecord
+#         shift = attendanceRecord.get("shift")
+#         if not shift:
+#             raise ValueError("Shift is missing in attendance record")
+
+#         shiftStart = frappe.db.get_value("Shift Type", {"name": shift}, "start_time")
+#         shiftEnd = frappe.db.get_value("Shift Type", {"name": shift}, "end_time")
+#         if shiftStart is None or shiftEnd is None:
+#             raise ValueError(f"Shift details missing for shift {shift}")
+#         return calculateShiftTimes(attendanceDate, shiftStart, shiftEnd)
