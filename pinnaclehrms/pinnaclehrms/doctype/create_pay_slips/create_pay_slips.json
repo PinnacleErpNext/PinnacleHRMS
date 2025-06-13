@@ -125,6 +125,7 @@
    "default": "0",
    "fieldname": "auto_calculate_leave_encashment",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Auto Calculate Leave Encashment"
   },
   {
@@ -154,7 +155,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-19 17:30:48.268221",
+ "modified": "2025-06-05 13:58:08.122627",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Create Pay Slips",

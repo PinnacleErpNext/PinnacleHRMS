@@ -1,0 +1,60 @@
+{
+ "add_total_row": 0,
+ "columns": [
+  {
+   "fieldname": "employee_id",
+   "fieldtype": "Link",
+   "label": "Id",
+   "options": "Employee",
+   "width": 300
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "width": 333
+  },
+  {
+   "fieldname": "salary",
+   "fieldtype": "Currency",
+   "label": "Salary",
+   "width": 333
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Data",
+   "label": "Applicable From",
+   "width": 300
+  }
+ ],
+ "creation": "2025-06-12 22:15:22.983939",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letterhead": null,
+ "modified": "2025-06-12 22:37:12.331955",
+ "modified_by": "Administrator",
+ "module": "Pinnaclehrms",
+ "name": "Salary Report",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT \n    tas.employee_id, \n    tas.employee_name, \n    tsh.salary AS latest_salary, \n    tsh.from_date AS salary_from_date\nFROM `tabAssign Salary` tas\nJOIN `tabSalary History` tsh ON tsh.parent = tas.name\nWHERE tsh.from_date = (\n    SELECT MAX(tsh2.from_date)\n    FROM `tabSalary History` tsh2\n    WHERE tsh2.parent = tas.name\n      AND tsh2.from_date <= CURDATE()\n)\n",
+ "ref_doctype": "Assign Salary",
+ "report_name": "Salary Report",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "HR User"
+  }
+ ],
+ "timeout": 0
+}

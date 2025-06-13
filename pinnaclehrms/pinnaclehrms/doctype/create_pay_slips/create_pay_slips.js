@@ -239,7 +239,7 @@ frappe.ui.form.on("Create Pay Slips", {
     );
     frm.set_value("employee_list", "");
     frm.set_df_property(
-      "selectemployee_list",
+      "employee_list",
       "disabled",
       frm.doc.genrate_for_all ? 1 : 0
     );

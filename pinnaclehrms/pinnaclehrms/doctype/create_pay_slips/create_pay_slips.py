@@ -33,16 +33,16 @@ class CreatePaySlips(Document):
         data["generate_for_all"] = generateForAll
 
         if not generateForAll:
-            if not self.select_company and not self.select_employee:
+            if not self.select_company and not self.employee_list:
                 frappe.throw("Please Select Company or Employee!")
 
             if self.select_company:
                 company = self.select_company
                 data["select_company"] = company
 
-            if self.select_employee:
-                employee = self.select_employee
-                data["select_employee"] = employee
+            # if self.select_employee:
+            #     employee = self.select_employee
+            #     data["select_employee"] = employee
 
             if self.employee_list:
                 for employee in self.employee_list:
