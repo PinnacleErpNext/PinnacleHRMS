@@ -1,0 +1,58 @@
+[
+ {
+  "charts": [],
+  "content": "[{\"id\":\"x7G0b8b2Fp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Employee Dashboard</span>\",\"col\":12}},{\"id\":\"DT-hOPOjkT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slips\",\"col\":3}}]",
+  "custom_blocks": [],
+  "docstatus": 0,
+  "doctype": "Workspace",
+  "for_user": "",
+  "hide_custom": 0,
+  "icon": "support",
+  "indicator_color": "green",
+  "is_hidden": 0,
+  "label": "Employee Dashboard",
+  "links": [],
+  "modified": "2025-06-14 13:15:20.928761",
+  "module": "",
+  "name": "Employee Dashboard",
+  "number_cards": [],
+  "parent_page": "Pinnacle",
+  "public": 1,
+  "quick_lists": [],
+  "restrict_to_domain": null,
+  "roles": [
+   {
+    "parent": "Employee Dashboard",
+    "parentfield": "roles",
+    "parenttype": "Workspace",
+    "role": "All"
+   },
+   {
+    "parent": "Employee Dashboard",
+    "parentfield": "roles",
+    "parenttype": "Workspace",
+    "role": "Employee"
+   }
+  ],
+  "sequence_id": 41.0,
+  "shortcuts": [
+   {
+    "color": "Grey",
+    "doc_view": "List",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Pay Slips",
+    "link_to": "Pay Slips",
+    "parent": "Employee Dashboard",
+    "parentfield": "shortcuts",
+    "parenttype": "Workspace",
+    "restrict_to_domain": null,
+    "stats_filter": "[]",
+    "type": "DocType",
+    "url": null
+   }
+  ],
+  "title": "Employee Dashboard"
+ }
+]
