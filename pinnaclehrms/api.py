@@ -417,10 +417,7 @@ def regeneratePaySlip(data):
             (salaryInfo.get("lates", 0) * salaryInfo.get("per_day_salary", 0) * 0.9),
             2,
         )
-        othersDayAmount = round(
-            (salaryInfo.get("others", 0) * salaryInfo.get("per_day_salary", 0) * 0.8),
-            2,
-        )
+        othersDayAmount = salaryInfo.get("others_day_salary")
         otherEarningsAmount = round(
             (salaryInfo.get("overtime", 0)), 2
         ) + salaryInfo.get("leave_encashment")
@@ -546,12 +543,15 @@ def regeneratePaySlip(data):
                     "parent": pay_slip.name,
                 },
             )
-        if salaryInfo.get("others"):
+        if salaryInfo.get("others_day"):
             pay_slip.append(
                 "salary_calculation",
                 {
                     "particulars": "Others Day",
                     "days": salaryInfo.get("others"),
+                    "rate": salaryInfo.get("per_day_salary"),
+                    "amount": othersDayAmount,
+                    "effective_percentage": "-",
                     "parent": pay_slip.name,
                 },
             )
