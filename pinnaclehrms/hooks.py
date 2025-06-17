@@ -149,6 +149,9 @@ doc_events = {
     # }
     "Attendance": {
         "before_save": "pinnaclehrms.utility.custom_attendance.custom_before_save"
+    },
+    "Employee Checkin":{
+        "after_insert":"pinnaclehrms.api.attendance_notification"
     }
 }
 

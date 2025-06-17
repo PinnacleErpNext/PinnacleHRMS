@@ -10,6 +10,7 @@ from frappe.utils.xlsxutils import make_xlsx
 from frappe.desk.query_report import build_xlsx_data
 from frappe.utils import nowdate, flt
 from frappe import _
+from frappe.utils import format_datetime
 
 
 # API to get pay slips in create pay slips
@@ -934,3 +935,31 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     frappe.response.filename = filename
     frappe.response.filecontent = xlsx_data.getvalue()
     frappe.response.type = "binary"
+
+
+# API to send attendance notification
+def attendance_notification(doc,method):
+    try:
+        hr_email = "hr@mygstcafe.in"
+
+        subject = (
+            f"Attendance Notification – {doc.employee}:{doc.employee_name} - {doc.time}"
+        )
+        status = "In" if doc.log_type == "IN" else "Out"
+        time = format_datetime(doc.time)
+
+        message = f"""
+        Dear HR Team,<br><br>
+        This is to notify that the following employee has checked {status}:<br><br>
+        <b>Employee ID:</b> {doc.employee}<br>
+        <b>Name:</b> {doc.employee_name}<br>
+        <b>Status:</b> Checked {status}<br>
+        <b>Time:</b> {time}<br><br>
+        Regards,<br>
+        PinnacleHRMS
+        """
+
+        frappe.sendmail(recipients=[hr_email], subject=subject, message=message)
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Attendance Notification Error")

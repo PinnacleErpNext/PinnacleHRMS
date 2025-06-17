@@ -8,7 +8,8 @@
   "pay_slip",
   "employee",
   "employee_id",
-  "salary"
+  "salary",
+  "view_slip"
  ],
  "fields": [
   {
@@ -23,6 +24,7 @@
    "fetch_from": "pay_slip.employee_name",
    "fieldname": "employee",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Employee",
    "reqd": 1
   },
@@ -30,6 +32,7 @@
    "fetch_from": "pay_slip.net_payble_amount",
    "fieldname": "salary",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "Salary",
    "precision": "2",
    "reqd": 1
@@ -38,20 +41,30 @@
    "fetch_from": "pay_slip.employee_id",
    "fieldname": "employee_id",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Employee Id",
    "options": "Employee",
    "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "view_slip",
+   "fieldtype": "Button",
+   "in_list_view": 1,
+   "label": "View Slip"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-10 12:28:53.810971",
+ "modified": "2025-06-16 21:16:43.130485",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Created Pay Slips",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": []
