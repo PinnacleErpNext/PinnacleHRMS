@@ -95,7 +95,7 @@ frappe.ui.form.on("Create Pay Slips", {
               frappe.msgprint("Invalid month name.");
               return;
             }
-            
+
             // console.log(values)
             // Call the server-side method
             frappe.call({
@@ -243,6 +243,18 @@ frappe.ui.form.on("Create Pay Slips", {
       "disabled",
       frm.doc.genrate_for_all ? 1 : 0
     );
+  },
+});
+
+frappe.ui.form.on("Created Pay Slips", {
+  view_slip(frm, cdt, cdn) {
+    const row = locals[cdt][cdn];
+
+    if (row.pay_slip) {
+      window.open("/app/pay-slips/" + row.pay_slip, "_blank");
+    } else {
+      frappe.msgprint("No Pay Slip linked to this row.");
+    }
   },
 });
 

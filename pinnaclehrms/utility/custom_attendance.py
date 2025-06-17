@@ -22,11 +22,12 @@ def custom_before_save(self, method):
         empId = self.employee
 
     # Fetch shift and company info
-    d_shift, company = frappe.db.get_value(
-        "Employee", empId, ["default_shift", "company"]
+    d_shift, company, emp_name = frappe.db.get_value(
+        "Employee", empId, ["default_shift", "company", "employee_name"]
     )
     self.employee = empId
     self.shift = d_shift
+    self.employee_name = emp_name
     self.company = company
 
     # Ensure in_time and out_time are combined properly with date
