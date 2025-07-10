@@ -627,7 +627,7 @@ def regeneratePaySlip(data):
 
 # API to download sft report
 @frappe.whitelist(allow_guest=False)
-def download_sft_report(year=None, month=None, encodedCompany=None):
+def download_bank_upld_bulk_report(year=None, month=None, encodedCompany=None):
     company = base64.b64decode(encodedCompany).decode("utf-8")
     """
     month: integer 1–12 as string or number
@@ -711,7 +711,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 
 # API to download sft upload report
 @frappe.whitelist(allow_guest=False)
-def download_sft_upld_report(year=None, month=None, encodedCompany=None):
+def download_sft_report(year=None, month=None, encodedCompany=None):
 
     company = base64.b64decode(encodedCompany).decode("utf-8")
     curr_user = frappe.session.user
