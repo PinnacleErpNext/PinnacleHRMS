@@ -202,7 +202,7 @@ def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
             "pay_slip_name": pay_slip.name,
             "year": pay_slip.year,
             "month": pay_slip.month_num,
-            "employee_id": pay_slip.employee_id,
+            "employee": pay_slip.employee,
             "employee_name": pay_slip.employee_name,
             "company": pay_slip.company,
             "designation": pay_slip.designation,
