@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "creation": "2025-03-18 12:48:13.115088",
  "doctype": "DocType",
@@ -14,6 +15,7 @@
   "upto",
   "section_break_3ki5",
   "encashment_date",
+  "next_encashment_date",
   "column_break_b1uv",
   "amount"
  ],
@@ -71,11 +73,16 @@
   {
    "fieldname": "column_break_b1uv",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "next_encashment_date",
+   "fieldtype": "Date",
+   "label": "Next Encashment Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-18 13:28:24.306009",
+ "modified": "2025-06-26 16:41:38.738600",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Pinnacle Leave Encashment",
@@ -106,6 +113,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

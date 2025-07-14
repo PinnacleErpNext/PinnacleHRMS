@@ -265,7 +265,6 @@ def createPaySlips(data):
             # Insert the new document to save it in the database
             paySlip.insert()
 
-
 def getEmpRecords(data):
 
     # Construct the base query
@@ -323,7 +322,9 @@ def getEmpRecords(data):
     date = f"{year}-{month:02d}-01"
 
     records = frappe.db.sql(baseQuery, filters, as_dict=False)
-
+    
+    # records = get_employee_attendance(data)
+    # frappe.throw(str(records))
     if not records:
         return frappe.throw("No records found!")
 
@@ -719,7 +720,8 @@ def calculateMonthlySalary(employeeData, year, month):
                 idealCheckOutTime = shiftDetails.get("idealCheckOutTime")
                 overtimeThreshold = shiftDetails.get("overtimeThreshold")
 
-                if inTime and outTime:
+                if inTime and outTime and (inTime != "00:00:00" and outTime != "00:00:00")and (outTime > inTime):
+                    
                     actCheckIn = inTime
                     actCheckOut = outTime
                     attendance = getAttendance(

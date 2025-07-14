@@ -44,15 +44,43 @@ def eligible_employee_for_leave_encashment(data):
         if date_of_joining:
             # Calculate difference in years
             years_difference = relativedelta(reference_date, date_of_joining).years
+            last_encashment = frappe.get_all(
+                "Pinnacle Leave Encashment",
+                filters={"employee": emp.get("employee")},
+                fields=["encashment_date", "next_encashment_date"],
+                order_by="encashment_date desc",
+                limit_page_length=1,
+            )
 
+            last_encashment_date = (
+                last_encashment[0]["encashment_date"] if last_encashment else None
+            )
+
+            next_encashment_date = (
+                last_encashment[0]["next_encashment_date"] if last_encashment else None
+            )
+            eligibility = "Yes" if years_difference >= 1 else "No"
+            if years_difference >= 1:
+                if next_encashment_date:
+                    if (
+                        next_encashment_date.month == month
+                        and next_encashment_date.year == year
+                    ):
+                        eligibility = "Yes"
+                    else:
+                        eligibility = "No"
+                else:
+                    eligibility = "Yes"
+            else:
+                eligibility = "No"
             eligible_employee_list.append(
                 {
                     "employee": emp.get("employee"),
                     "employee_name": emp.get("employee_name"),
-                    "date_of_joining": str(
-                        date_of_joining
-                    ),  # Ensure JSON compatibility
-                    "eligible": "Yes" if years_difference >= 1 else "No",
+                    "date_of_joining": str(date_of_joining),
+                    "last_encashment_date": (last_encashment_date),
+                    "next_encashment_date": (next_encashment_date),
+                    "eligible": eligibility,
                 }
             )
 
@@ -64,6 +92,7 @@ def generate_leave_encashment(data):
 
     try:
         data = frappe.parse_json(data)
+
         emp_list = data.get("selected_emp", [])
         year = int(data.get("year", 0))
         month = int(data.get("month", 0))
@@ -76,20 +105,16 @@ def generate_leave_encashment(data):
         encashment_records = []
 
         for emp in emp_list:
+            employee_id = emp.get("employee")
+
             if emp.get("eligible") != "Yes":
                 frappe.msgprint(
-                    _("{0} is not eligible for leave encashment.").format(
-                        emp.get("employee")
-                    )
+                    _("{0} is not eligible for leave encashment.").format(employee_id)
                 )
                 continue
 
-            employee_id = emp.get("employee")
-
-            # Calculate Average Salary
             average_salary = calAvgSalary(employee_id, year, month)
 
-            # Get Paid Leaves
             paid_leaves = (
                 frappe.db.get_value(
                     "Assign Salary", {"employee_id": employee_id}, "paid_leaves"
@@ -98,7 +123,6 @@ def generate_leave_encashment(data):
             )
             paid_leaves = paid_leaves / (24 * 60 * 60)  # Convert to days
 
-            # Get Last Encashment Date
             last_encashment_date = frappe.db.get_list(
                 "Pinnacle Leave Encashment",
                 filters={"employee": employee_id},
@@ -107,7 +131,9 @@ def generate_leave_encashment(data):
                 limit=1,
             )
 
-            if last_encashment_date:
+            if data.get("from_date"):
+                cal_from_date = datetime.strptime(data.get("from_date"), "%Y-%m-%d")
+            elif last_encashment_date:
                 cal_from_date = last_encashment_date[0].get("encashment_date")
             else:
                 cal_from_date = frappe.db.get_value(
@@ -118,19 +144,30 @@ def generate_leave_encashment(data):
                         _("Joining date not found for Employee {0}").format(employee_id)
                     )
 
-            # Compute Encashment Period
-            last_day_of_month = calendar.monthrange(year, month)[1]
-            end_date = datetime(year, month, last_day_of_month)
+            if data.get("to_date"):
+                end_date = datetime.strptime(data.get("to_date"), "%Y-%m-%d")
+            else:
+                last_day_of_month = calendar.monthrange(year, month)[1]
+                end_date = datetime(year, month, last_day_of_month)
 
             difference = relativedelta(end_date, cal_from_date)
             leave_encashment_months = difference.years * 12 + difference.months + 1
 
-            # Calculate Leave Encashment Amount
+            if data.get("next_encashment_date"):
+                next_encashment_date = datetime.strptime(
+                    data["next_encashment_date"], "%Y-%m-%d"
+                )
+            else:
+                today = end_date
+                if today.month >= 4:
+                    next_encashment_date = datetime(today.year + 1, 3, 31)
+                else:
+                    next_encashment_date = datetime(today.year, 3, 31)
+
             leave_encashment_amount = (
                 (paid_leaves / 12) * leave_encashment_months
             ) * average_salary
 
-            # Create Leave Encashment Record
             doc = frappe.get_doc(
                 {
                     "doctype": "Pinnacle Leave Encashment",
@@ -138,6 +175,7 @@ def generate_leave_encashment(data):
                     "from": cal_from_date.strftime("%Y-%m-%d"),
                     "upto": end_date.strftime("%Y-%m-%d"),
                     "encashment_date": end_date.strftime("%Y-%m-%d"),
+                    "next_encashment_date": next_encashment_date,
                     "amount": round(leave_encashment_amount, 2),
                 }
             )
@@ -146,7 +184,7 @@ def generate_leave_encashment(data):
 
         return encashment_records
 
-    except Exception as e:
+    except Exception:
         frappe.log_error(
             frappe.get_traceback(), _("Error in generate_leave_encashment")
         )

@@ -75,6 +75,7 @@ frappe.ui.form.on("Leave Encashment Tool", {
         "pinnaclehrms.pinnaclehrms.doctype.leave_encashment_tool.leave_encashment_tool.eligible_employee_for_leave_encashment",
       args: { data: data },
       callback: function (res) {
+        
         if (res.message) {
           frm.employee_data = res.message;
           frm.current_page = 1;
@@ -123,6 +124,7 @@ function renderEncashmentTable(frm) {
                     <th>From</th>
                     <th>Upto</th>
                     <th>Encashment Date</th>
+                    <th>Next Encashment Date</th>
                     <th>Amount</th>
                   </tr>
                 </thead>
@@ -135,6 +137,7 @@ function renderEncashmentTable(frm) {
                 <td>${formatDate(emp.from)}</td>
                 <td>${formatDate(emp.upto)}</td>
                 <td>${formatDate(emp.encashment_date)}</td>
+                <td>${formatDate(emp.next_encashment_date)}</td>
                 <td>${emp.amount.toLocaleString()}</td>
               </tr>`;
   });
@@ -160,7 +163,10 @@ function renderEmployeeTable(frm) {
                     <th><input type="checkbox" id="select-all"> Select All</th>
                     <th>Employee Name</th>
                     <th>Date of Joining</th>
+                    <th>Last Encashment Date</th>
+                    <th>Next Encashment Date</th>
                     <th>Eligible</th>
+                    <th>Generate Encashment</th>
                   </tr>
                 </thead>
                 <tbody>`;
@@ -173,8 +179,31 @@ function renderEmployeeTable(frm) {
       emp.date_of_joining
     }" data-eligible="${emp.eligible}"></td>
                 <td>${emp.employee_name}</td>
-                <td>${formatDate(emp.date_of_joining)}</td>
+                <td>${
+                  emp.date_of_joining ? formatDate(emp.date_of_joining) : "N/A"
+                }</td>
+                <td>${
+                  emp.last_encashment_date
+                    ? formatDate(emp.last_encashment_date)
+                    : "N/A"
+                }</td>
+                <td>${
+                  emp.next_encashment_date
+                    ? formatDate(emp.next_encashment_date)
+                    : "N/A"
+                }</td>
                 <td>${emp.eligible}</td>
+                <td>
+                  <button class="btn btn-sm btn-primary generate-encashment" 
+                          data-employee='${JSON.stringify({
+                            employee: emp.employee,
+                            employee_name: emp.employee_name,
+                            doj: emp.date_of_joining,
+                            last_encashment_date: emp.last_encashment_date,
+                          })}'>
+                    Generate
+                  </button>
+                </td>
               </tr>`;
   });
 
@@ -202,6 +231,95 @@ document.addEventListener("click", function (event) {
     let frm = cur_frm;
     frm.current_page += event.target.id === "prev-page" ? -1 : 1;
     renderEmployeeTable(frm);
+  }
+});
+
+document.addEventListener("click", function (event) {
+  if (event.target.classList.contains("generate-encashment")) {
+    let emp;
+    try {
+      emp = JSON.parse(event.target.dataset.employee);
+    } catch (e) {
+      frappe.msgprint("Invalid employee data.");
+      return;
+    }
+
+    let d = new frappe.ui.Dialog({
+      title: "Enter details",
+      fields: [
+        {
+          label: "Employee",
+          fieldname: "employee",
+          fieldtype: "Link",
+          options: "Employee",
+          default: emp.employee,
+          read_only: 1,
+        },
+        {
+          label: "Employee Name",
+          fieldname: "employee_name",
+          fieldtype: "Data",
+          default: emp.employee_name,
+          read_only: 1,
+        },
+        {
+          label: "From Date",
+          fieldname: "from_date",
+          fieldtype: "Date",
+          default: emp.last_encashment_date || emp.doj || "",
+        },
+        {
+          label: "To Date",
+          fieldname: "to_date",
+          fieldtype: "Date",
+        },
+        {
+          label: "Next Encashment Date",
+          fieldname: "next_encashment_date",
+          fieldtype: "Date",
+        },
+      ],
+      size: "small",
+      primary_action_label: "Submit",
+      primary_action(values) {
+        const data = {
+          year: cur_frm.doc.year,
+          month: getMonthCode(cur_frm.doc.month),
+          selected_emp: [
+            {
+              employee: emp.employee,
+              employee_name: emp.employee_name,
+              eligible: "Yes",
+            },
+          ],
+          from_date: values.from_date,
+          to_date: values.to_date,
+          next_encashment_date: values.next_encashment_date,
+        };
+
+        frappe.call({
+          method:
+            "pinnaclehrms.pinnaclehrms.doctype.leave_encashment_tool.leave_encashment_tool.generate_leave_encashment",
+          args: { data: data },
+          callback: function (res) {
+            console.log("Leave Encashment Response:", res.message);
+
+            if (res.message) {
+              cur_frm.employee_data = res.message;
+              cur_frm.page_size = 10;
+              cur_frm.current_page = 1;
+              renderEncashmentTable(frm);
+            }
+          },
+          error: function (err) {
+            console.error("Error generating leave encashment:", err);
+          },
+        });
+        d.hide();
+      },
+    });
+
+    d.show();
   }
 });
 
