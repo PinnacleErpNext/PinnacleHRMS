@@ -427,6 +427,8 @@ def regeneratePaySlip(data):
             "Pay Slips",
             filters={
                 "employee": data.get("employee"),
+                "month_num": month,
+                "year": year,
                 "docstatus": 0,
             },
             fields=["name"],
