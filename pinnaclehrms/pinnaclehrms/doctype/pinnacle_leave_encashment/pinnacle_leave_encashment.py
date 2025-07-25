@@ -18,7 +18,8 @@ class PinnacleLeaveEncashment(Document):
         )
         if relieving_date:
             self.next_encashment_date = ""
-            if self.to_date > relieving_date:
+            to_date = datetime.strptime(self.to_date, "%Y-%m-%d").date()
+            if to_date > relieving_date:
                 frappe.throw(
                     _("To Date cannot be after the employee's relieving date.")
                 )
