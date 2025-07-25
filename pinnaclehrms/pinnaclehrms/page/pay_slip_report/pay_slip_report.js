@@ -255,11 +255,12 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   });
 
   $form.on("click", "#print_pay_slips", function () {
-    const selected = get_selected();
-    if (!selected.length) {
-      frappe.msgprint("Please select at least one pay slip to email.");
-      return;
-    }
+    const paySlips = get_selected();
+    const y = parseInt($form.find("#year").val(), 10);
+    const m = parseInt($form.find("#month").val(), 10);
+    window.location.href = `/api/method/pinnaclehrms.api.print_pay_slip?year=${y}&month=${m}&pay_slips=${encodeURIComponent(
+      JSON.stringify(paySlips)
+    )}`;
   });
 
   // Download / Print actions

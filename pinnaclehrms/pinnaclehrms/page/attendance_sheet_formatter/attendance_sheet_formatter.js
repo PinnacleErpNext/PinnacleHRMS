@@ -8,26 +8,12 @@ frappe.pages["attendance-sheet-formatter"].on_page_load = function (wrapper) {
 
 frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   const html = `
-    <div class="mt-2">
-      <label>Select Action:</label>
-      <select id="action-type" class="form-control">
-        <option value="format">Format Attendance Sheet</option>
-        <option value="final">Create Final Attendance</option>
-      </select>
-    </div>
-
     <div>
-      <label>Upload Attendance Files:</label>
-      <input type="file" id="excel-upload" accept=".xlsx" />
-    </div>
-
-    <div class="mt-2" id="excel-type-container">
-      <label>Select Excel Type:</label>
-      <select id="excel-type" class="form-control">
-        <option value="">Select</option>
-        <option value="Pinnacle">Pinnacle</option>
-        <option value="Opticode">Opticode</option>
-      </select>
+      <label>Upload Pinnacle Attendance File:</label>
+      <input type="file" id="pinnacle-excel-upload" accept=".xlsx" />
+      <br/>
+      <label>Upload Opticode Attendance File:</label>
+      <input type="file" id="opticode-excel-upload" accept=".xlsx" />
     </div>
 
     <div class="mt-3">
@@ -40,122 +26,74 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
   $(wrapper).find(".page-body").html(html);
 
-  // 🔁 Switch behavior based on action
-  $("#action-type")
-    .on("change", function () {
-      const selectedAction = $(this).val();
-
-      if (selectedAction === "format") {
-        $("#excel-upload").attr("multiple", false);
-        $("#excel-type-container").show();
-      } else if (selectedAction === "final") {
-        $("#excel-upload").attr("multiple", true);
-        $("#excel-type-container").hide();
-      }
-    })
-    .trigger("change"); // 👈 trigger once on load
-
   // 🔍 Preview Button
   $("#preview-btn").on("click", async function () {
-    const actionType = $("#action-type").val();
-    const files = document.getElementById("excel-upload").files;
-    const excelType = $("#excel-type").val();
+    const pinnacleFile = document.getElementById("pinnacle-excel-upload")
+      .files[0];
+    const opticodeFile = document.getElementById("opticode-excel-upload")
+      .files[0];
 
-    if (!files.length) {
-      frappe.msgprint("Please upload file(s).");
+    if (!pinnacleFile && !opticodeFile) {
+      frappe.msgprint("Please upload at least one file.");
       return;
     }
 
-    if (actionType === "format") {
-      if (!excelType) {
-        frappe.msgprint("Please select Excel type.");
-        return;
+    const formData = new FormData();
+    if (pinnacleFile) {
+      formData.append("pinnacle_file", pinnacleFile);
+    }
+    if (opticodeFile) {
+      formData.append("opticode_file", opticodeFile);
+    }
+
+    frappe.dom.freeze("Generating preview...");
+    const res = await fetch(
+      "/api/method/pinnaclehrms.utility.attendance_formatter.preview_final_attendance_sheet",
+      {
+        method: "POST",
+        headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
+        body: formData,
       }
+    );
+    frappe.dom.unfreeze();
 
-      const formData = new FormData();
-      formData.append("file", files[0]);
-      formData.append("excel_type", excelType);
-
-      frappe.dom.freeze("Previewing formatted file...");
-      const res = await fetch(
-        "/api/method/pinnaclehrms.utility.attendance_formatter.upload_excel",
-        {
-          method: "POST",
-          headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
-          body: formData,
-        }
-      );
-      frappe.dom.unfreeze();
-
-      const result = await res.text();
-      if (res.ok) {
-        $("#attendance-preview").html(result);
-      } else {
-        frappe.msgprint("❌ " + result);
-      }
-    } else if (actionType === "final") {
-      const formData = new FormData();
-      for (let i = 0; i < files.length; i++) {
-        formData.append("files[]", files[i]);
-      }
-
-      frappe.dom.freeze("Generating preview...");
-      const res = await fetch(
-        "/api/method/pinnaclehrms.utility.attendance_formatter.preview_final_attendance_sheet",
-        {
-          method: "POST",
-          headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
-          body: formData,
-        }
-      );
-      frappe.dom.unfreeze();
-
-      const result = await res.text();
-      if (res.ok) {
-        $("#attendance-preview").html(result);
-      } else {
-        frappe.msgprint("❌ " + result);
-      }
+    const result = await res.text();
+    if (res.ok) {
+      $("#attendance-preview").html(result);
+    } else {
+      frappe.msgprint("❌ " + result);
     }
   });
 
   // 📥 Download Button
   $("#download-btn").on("click", async function () {
-    const actionType = $("#action-type").val();
-    const files = document.getElementById("excel-upload").files;
-    const excelType = $("#excel-type").val();
+    const pinnacleFile = document.getElementById("pinnacle-excel-upload")
+      .files[0];
+    const opticodeFile = document.getElementById("opticode-excel-upload")
+      .files[0];
 
-    if (!files.length) {
-      frappe.msgprint("Please upload file(s).");
+    if (!pinnacleFile && !opticodeFile) {
+      frappe.msgprint("Please upload at least one file.");
       return;
     }
 
-    let endpoint = "";
-    let formData = new FormData();
-
-    if (actionType === "format") {
-      if (!excelType) {
-        frappe.msgprint("Please select Excel type.");
-        return;
-      }
-      formData.append("file", files[0]);
-      formData.append("excel_type", excelType);
-      endpoint =
-        "/api/method/pinnaclehrms.utility.attendance_formatter.download_excel";
-    } else {
-      for (let i = 0; i < files.length; i++) {
-        formData.append("files[]", files[i]);
-      }
-      endpoint =
-        "/api/method/pinnaclehrms.utility.attendance_formatter.download_final_attendance_excel";
+    const formData = new FormData();
+    if (pinnacleFile) {
+      formData.append("pinnacle_file", pinnacleFile);
+    }
+    if (opticodeFile) {
+      formData.append("opticode_file", opticodeFile);
     }
 
     frappe.dom.freeze("Downloading...");
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
-      body: formData,
-    });
+    const res = await fetch(
+      "/api/method/pinnaclehrms.utility.attendance_formatter.download_final_attendance_excel",
+      {
+        method: "POST",
+        headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
+        body: formData,
+      }
+    );
 
     const contentType = res.headers.get("Content-Type");
     if (
@@ -168,10 +106,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download =
-        actionType === "final"
-          ? "Final_Attendance_Sheet.xlsx"
-          : "Formatted_Attendance.xlsx";
+      a.download = "Final_Attendance_Sheet.xlsx";
       document.body.appendChild(a);
       a.click();
       a.remove();

@@ -1,5 +1,4 @@
-import frappe, json, uuid, base64
-import calendar
+import frappe, json, uuid, base64, zipfile, calendar, io
 from pinnaclehrms.utility.salary_calculator import (
     createPaySlips,
     getEmpRecords,
@@ -11,6 +10,7 @@ from frappe.desk.query_report import build_xlsx_data
 from frappe.utils import nowdate, flt
 from frappe import _
 from frappe.utils import format_datetime
+from frappe.utils.pdf import get_pdf
 
 
 # API to get pay slips in create pay slips
@@ -249,18 +249,46 @@ def get_pay_slip_request(date=None, requested_by=None):
     return records
 
 
-# API to print pay slip
-@frappe.whitelist(allow_guest=True)
-def print_pay_slip(pay_slips):
-    try:
-        pay_slips = json.loads(pay_slips)
+@frappe.whitelist()
+def print_pay_slip(pay_slips,year=None, month=None):
+    
+    # Parse JSON list of Pay Slip names
+    pay_slips = json.loads(pay_slips)
+
+    # In-memory zip stream
+    zip_stream = io.BytesIO()
+
+    # Create zip file in memory
+    with zipfile.ZipFile(
+        zip_stream, mode="w", compression=zipfile.ZIP_DEFLATED
+    ) as zipf:
         for pay_slip in pay_slips:
-            frappe.utils.print_format.download_pdf(
-                "Pay Slips", pay_slip, format="Pay Slip Format"
+            doc = frappe.get_doc("Pay Slips", pay_slip)
+            context = {"doc": doc}
+
+            # Render HTML from template
+            html = frappe.render_template(
+                "pinnaclehrms/public/templates/pay_slip.html", context
             )
-    except Exception as e:
-        frappe.log_error(message=str(e), title="Pay Slip Printing Error")
-        frappe.throw(f"An error occurred while printing pay slips: {str(e)}")
+
+            # Generate PDF from HTML
+            pdf_bytes = get_pdf(html)
+
+            generated_pay_slips = []
+            filename = f"{doc.employee_name}_{doc.month}_{doc.year}.pdf"
+            if filename in generated_pay_slips:
+                filename = f"{doc.employee}_{doc.month}_{doc.year}.pdf"
+            generated_pay_slips.append(filename)
+            # Add to zip
+            zipf.writestr(filename, pdf_bytes)
+
+    # Reset stream position to start
+    zip_stream.seek(0)
+
+    # Send zip file as response
+    frappe.response.filename = f"{calendar.month_name[int(month)]}_{year}_pay_slips.zip"
+    frappe.response.filecontent = zip_stream.read()
+    frappe.response.type = "binary"
 
 
 # API get pay slip requests
@@ -349,7 +377,6 @@ def regeneratePaySlip(data):
 
     year = int(data.get("year"))
     month = data.get("month")
-
     empRecords = getEmpRecords(data)
 
     employeeData = calculateMonthlySalary(empRecords, year, month)
@@ -940,7 +967,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
 
 
 # API to send attendance notification
-def attendance_notification(doc,method):
+def attendance_notification(doc, method):
     try:
         hr_email = "hr@mygstcafe.in"
 
