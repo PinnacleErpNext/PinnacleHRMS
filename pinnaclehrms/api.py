@@ -115,7 +115,7 @@ def email_pay_slips(pay_slips=None, raw_data=None):
         year = doc.year
         doctype = doc.doctype
         docname = doc.name
-        personal_email = doc.personal_email
+        email = doc.email
 
         subject = f"Pay Slip for {employee_name} - {month} {year}"
 
@@ -126,13 +126,16 @@ def email_pay_slips(pay_slips=None, raw_data=None):
         )
 
         # Attach the pay slip PDF
-        if personal_email:
+        if email:
             frappe.sendmail(
-                recipients=[personal_email],
+                recipients=[email],
+                sender="hr@mygstcafe.in",
                 subject=subject,
                 message=message,
+                email_account="MyGSTcafe HR",
                 # header=["Pay Slip Notification", "green"]
             )
+
             return {"message": "success"}
         else:
             frappe.throw(f"No email address found for employee {employee_name}")
@@ -155,7 +158,7 @@ def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
         # If user is not HR or Admin, restrict by employee
         employee = frappe.get_all(
             "Employee",
-            filters={"personal_email": curr_user},
+            filters={"email": curr_user},
             fields=["name"],
             limit=1,
         )
@@ -207,7 +210,7 @@ def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
             "company": pay_slip.company,
             "designation": pay_slip.designation,
             "department": pay_slip.department,
-            "personal_email": pay_slip.personal_email,
+            "email": pay_slip.email,
             "standard_working_days": pay_slip.standard_working_days,
             "pan_number": pay_slip.pan_number,
             "date_of_joining": pay_slip.date_of_joining,
@@ -250,8 +253,8 @@ def get_pay_slip_request(date=None, requested_by=None):
 
 
 @frappe.whitelist()
-def print_pay_slip(pay_slips,year=None, month=None):
-    
+def print_pay_slip(pay_slips, year=None, month=None):
+
     # Parse JSON list of Pay Slip names
     pay_slips = json.loads(pay_slips)
 
@@ -343,7 +346,7 @@ def approvePaySlipRequest(data):
     year = paySlip.year
     doctype = paySlip.doctype
     docname = paySlip.name
-    personal_email = paySlip.personal_email
+    email = paySlip.email
     subject = f"Pay Slip for {employee_name} - {month} {year}"
     message = f"""
     Dear {employee_name},
@@ -355,9 +358,9 @@ def approvePaySlipRequest(data):
         doctype, docname, file_name=f"Pay Slip {docname}"
     )
 
-    if personal_email:
+    if email:
         frappe.sendmail(
-            recipients=[personal_email],
+            recipients=[email],
             subject=subject,
             message=message,
             attachments=[
@@ -477,7 +480,7 @@ def regeneratePaySlip(data):
                 "company": data.get("company"),
                 "employee_id": data.get("employee"),
                 "employee_name": data.get("employee_name"),
-                "personal_email": data.get("personal_email"),
+                "email": data.get("email"),
                 "designation": data.get("designation"),
                 "department": data.get("department"),
                 "pan_number": data.get("pan_number"),
@@ -928,7 +931,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
             r.get("company"),
             r.get("designation"),
             r.get("department"),
-            r.get("personal_email"),
+            r.get("email"),
             r.get("standard_working_days"),
             r.get("pan_number"),
             r.get("date_of_joining"),

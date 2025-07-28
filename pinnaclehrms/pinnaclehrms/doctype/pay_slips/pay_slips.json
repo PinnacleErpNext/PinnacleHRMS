@@ -11,7 +11,7 @@
   "company",
   "employee",
   "employee_name",
-  "personal_email",
+  "email",
   "designation",
   "department",
   "standard_working_days",
@@ -60,12 +60,6 @@
    "fieldname": "employee_name",
    "fieldtype": "Data",
    "label": "Employee Name"
-  },
-  {
-   "fetch_from": "employee.personal_email",
-   "fieldname": "personal_email",
-   "fieldtype": "Data",
-   "label": "Personal Email"
   },
   {
    "fetch_from": "employee.designation",
@@ -204,8 +198,15 @@
    "fieldname": "other_earnings_total",
    "fieldtype": "Currency",
    "label": "Other Earnings Total"
+  },
+  {
+   "fetch_from": "employee.company_email",
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [
   {
@@ -213,7 +214,7 @@
    "link_fieldname": "Name"
   }
  ],
- "modified": "2025-05-19 16:01:08.272388",
+ "modified": "2025-07-28 18:36:19.344393",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Pay Slips",
@@ -274,6 +275,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": []

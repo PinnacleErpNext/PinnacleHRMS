@@ -57,7 +57,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
         </div>
       </div>
     </div>
-    <div style="max-height:400px; overflow-y:auto;">
+    <div style="max-height:800px; overflow-y:auto;">
       <table class="table table-bordered mt-3">
         <!-- dynamic <thead> will be injected here -->
         <thead></thead>
@@ -164,8 +164,8 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
         // 4. Render each row
         $tbody.empty();
         records.forEach((rec) => {
-          const emailLink = rec.personal_email
-            ? `<span title="${rec.personal_email}"
+          const emailLink = rec.email
+            ? `<span title="${rec.email}"
                      style="color:blue;cursor:pointer">
                  Available
                </span>`
