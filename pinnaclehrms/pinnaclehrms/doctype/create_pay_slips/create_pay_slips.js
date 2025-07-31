@@ -7,7 +7,7 @@ frappe.ui.form.on("Create Pay Slips", {
       employeeId = [""];
       paySlipList = frm.doc.created_pay_slips;
       paySlipList.forEach((paySlip) => {
-        employeeId.push(paySlip.employee_id);
+        employeeId.push(`${paySlip.employee}:${paySlip.employee_id}`);
       });
     }
     add_email_btn(frm);
@@ -52,7 +52,7 @@ frappe.ui.form.on("Create Pay Slips", {
             {
               label: "Employee",
               fieldname: "select_employee",
-              fieldtype: "Select",
+              fieldtype: "Autocomplete",
               options: employeeId,
             },
             {
