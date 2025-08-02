@@ -9,10 +9,10 @@ frappe.pages["attendance-sheet-formatter"].on_page_load = function (wrapper) {
 frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   const html = `
     <div>
-      <label>Upload Pinnacle Attendance File:</label>
+      <label>Upload Zaicom Attendance File:</label>
       <input type="file" id="pinnacle-excel-upload" accept=".xlsx" />
       <br/>
-      <label>Upload Opticode Attendance File:</label>
+      <label>Upload ESSL                              Attendance File:</label>
       <input type="file" id="opticode-excel-upload" accept=".xlsx" />
     </div>
 
