@@ -13,6 +13,12 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   // Build the form & table skeleton
   const $form = $(`
     <div class="row">
+    <div class="col-md-3 form-group">
+        <label for="company">Company</label>
+        <select id="company_list" class="form-control">
+          <option value="">Select Company</option>
+        </select>
+      </div>
       <div class="col-md-1 form-group">
         <label for="year">Year</label>
         <input type="number" id="year" class="form-control"
