@@ -170,7 +170,7 @@
           </tbody>
           <tfoot>
             <tr>
-              <th colspan="4">Total [ ( A + B + C + D ) - E ]</th>
+              <th colspan="4">Total</th>
               <td>{{ doc.total }}</td>
             </tr>
           </tfoot>
@@ -182,17 +182,19 @@
         <h4>Other Earnings:</h4>
         <table>
           <tbody>
-            {% for item in doc.other_earnings %}
+            {% for item in doc.other_earnings %} {% if item.amount != 0 %}
             <tr>
               <td>{{ item.type }}</td>
               <td>{{ item.amount }}</td>
             </tr>
-            {% endfor %}
+            {% endif %} {% endfor %}
           </tbody>
           <tfoot>
             <tr>
-              <th>Total Monthly Salary [ (F + G + H + I + J ) - K ]</th>
-              <td>{{ doc.net_payble_amount }}</td>
+              <th>Total</th>
+              <td>
+                {{ doc.other_earnings | sum(attribute='amount') | round(2) }}
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -206,7 +208,6 @@
       <div class="footer">
         <p>Generated on {{ doc.creation }}</p>
       </div>
-      
     </div>
   </body>
 </html>
