@@ -130,6 +130,7 @@ def email_pay_slips(pay_slips=None, raw_data=None):
             frappe.sendmail(
                 recipients=[email],
                 sender="hr@mygstcafe.in",
+                cc="records@mygstcafe.in",
                 subject=subject,
                 message=message,
                 email_account="MyGSTcafe HR",
