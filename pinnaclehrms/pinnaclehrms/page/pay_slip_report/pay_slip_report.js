@@ -39,12 +39,6 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
             .join("")}
         </select>
       </div>
-      <div class="col-md-3 form-group">
-        <label for="company">Company</label>
-        <select id="company_list" class="form-control">
-          <option value="">Select Company</option>
-        </select>
-      </div>
       <div class="col-md-3 form-group d-flex align-items-end">
         <button id="fetch_records" class="btn btn-primary">Get Records</button>
       </div>
