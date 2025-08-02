@@ -115,8 +115,8 @@ def email_pay_slips(pay_slips=None, raw_data=None):
         year = doc.year
         doctype = doc.doctype
         docname = doc.name
-        email = doc.email
-
+        email = frappe.db.get_value("Employee",doc.employee,"company_email")
+        
         subject = f"Pay Slip for {employee_name} - {month} {year}"
 
         # HTML email body with dynamic content
