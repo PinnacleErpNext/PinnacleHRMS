@@ -177,7 +177,7 @@
         </table>
       </div>
 
-      {% if doc.other_earnings %}
+      {% if doc.other_earnings | sum(attribute='amount') > 0  %}
       <div class="other-earnings">
         <h4>Other Earnings:</h4>
         <table>
@@ -190,12 +190,14 @@
             {% endif %} {% endfor %}
           </tbody>
           <tfoot>
+            {% if doc.other_earnings | sum(attribute='amount') > 0 %}
             <tr>
               <th>Total</th>
               <td>
                 {{ doc.other_earnings | sum(attribute='amount') | round(2) }}
               </td>
             </tr>
+            {% endif %}
           </tfoot>
         </table>
       </div>
