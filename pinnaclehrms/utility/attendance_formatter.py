@@ -249,7 +249,6 @@ def generate_final_sheet(attendance_data=None):
             parsed_date = parse_date_safe(date_val)
             if not parsed_date:
                 continue
-
             if not in_time_raw:
                 in_time = frappe.db.get_value(
                     "Employee Checkin",
@@ -320,6 +319,7 @@ def generate_final_sheet(attendance_data=None):
         final_data[emp_id] = [
             {
                 "employee": emp_id,
+                "employee_name": frappe.db.get_value("Employee", emp_id, "employee_name"),
                 "attendance_date": entry["date"],
                 "shift": entry["shift"],
                 "in_time": (
@@ -368,11 +368,11 @@ def preview_final_attendance_sheet():
     data = result.get("data", {})
 
     html = '<table class="table table-bordered"><thead><tr>'
-    html += "<th>Employee</th><th>Date</th><th>Shift</th><th>In Time</th><th>Out Time</th></tr></thead><tbody>"
+    html += "<th>Employee</th><th>Employee Name</th><th>Date</th><th>Shift</th><th>In Time</th><th>Out Time</th></tr></thead><tbody>"
 
     for emp_id in sorted(data):
         for row in data[emp_id]:
-            html += f"<tr><td>{row['employee']}</td><td>{row['attendance_date']}</td><td>{row['shift']}</td><td>{row['in_time']}</td><td>{row['out_time']}</td></tr>"
+            html += f"<tr><td>{row['employee']}</td><td>{row['employee_name']}</td><td>{row['attendance_date']}</td><td>{row['shift']}</td><td>{row['in_time']}</td><td>{row['out_time']}</td></tr>"
 
     html += "</tbody></table>"
 
@@ -483,13 +483,14 @@ def download_final_attendance_excel():
     wb = Workbook()
     ws = wb.active
     ws.title = "Final Attendance"
-    ws.append(["Employee", "Date", "Shift", "In Time", "Out Time"])
+    ws.append(["Employee","Employee Name", "Date", "Shift", "In Time", "Out Time"])
 
     for emp_id in sorted(data):
         for row in data[emp_id]:
             ws.append(
                 [
                     row["employee"],
+                    row["employee_name"],
                     (
                         row["attendance_date"].strftime("%d-%b-%Y")
                         if isinstance(row["attendance_date"], datetime)
