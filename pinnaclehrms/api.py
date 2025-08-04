@@ -1,5 +1,4 @@
-import frappe, json, uuid, base64
-import calendar
+import frappe, json, uuid, base64, zipfile, calendar, io
 from pinnaclehrms.utility.salary_calculator import (
     createPaySlips,
     getEmpRecords,
@@ -11,6 +10,7 @@ from frappe.desk.query_report import build_xlsx_data
 from frappe.utils import nowdate, flt
 from frappe import _
 from frappe.utils import format_datetime
+from frappe.utils.pdf import get_pdf
 
 
 # API to get pay slips in create pay slips
@@ -115,7 +115,7 @@ def email_pay_slips(pay_slips=None, raw_data=None):
         year = doc.year
         doctype = doc.doctype
         docname = doc.name
-        personal_email = doc.personal_email
+        email = frappe.db.get_value("Employee", doc.employee, "company_email")
 
         subject = f"Pay Slip for {employee_name} - {month} {year}"
 
@@ -126,13 +126,17 @@ def email_pay_slips(pay_slips=None, raw_data=None):
         )
 
         # Attach the pay slip PDF
-        if personal_email:
+        if email:
             frappe.sendmail(
-                recipients=[personal_email],
+                recipients=[email],
+                sender="hr@mygstcafe.in",
+                cc="records@mygstcafe.in",
                 subject=subject,
                 message=message,
+                email_account="MyGSTcafe HR",
                 # header=["Pay Slip Notification", "green"]
             )
+
             return {"message": "success"}
         else:
             frappe.throw(f"No email address found for employee {employee_name}")
@@ -155,7 +159,7 @@ def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
         # If user is not HR or Admin, restrict by employee
         employee = frappe.get_all(
             "Employee",
-            filters={"personal_email": curr_user},
+            filters={"email": curr_user},
             fields=["name"],
             limit=1,
         )
@@ -202,12 +206,14 @@ def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
             "pay_slip_name": pay_slip.name,
             "year": pay_slip.year,
             "month": pay_slip.month_num,
-            "employee_id": pay_slip.employee_id,
+            "employee": pay_slip.employee,
             "employee_name": pay_slip.employee_name,
             "company": pay_slip.company,
             "designation": pay_slip.designation,
             "department": pay_slip.department,
-            "personal_email": pay_slip.personal_email,
+            "email": frappe.db.get_value(
+                "Employee", pay_slip.employee, "company_email"
+            ),
             "standard_working_days": pay_slip.standard_working_days,
             "pan_number": pay_slip.pan_number,
             "date_of_joining": pay_slip.date_of_joining,
@@ -249,18 +255,46 @@ def get_pay_slip_request(date=None, requested_by=None):
     return records
 
 
-# API to print pay slip
-@frappe.whitelist(allow_guest=True)
-def print_pay_slip(pay_slips):
-    try:
-        pay_slips = json.loads(pay_slips)
+@frappe.whitelist()
+def print_pay_slip(pay_slips, year=None, month=None):
+
+    # Parse JSON list of Pay Slip names
+    pay_slips = json.loads(pay_slips)
+
+    # In-memory zip stream
+    zip_stream = io.BytesIO()
+
+    # Create zip file in memory
+    with zipfile.ZipFile(
+        zip_stream, mode="w", compression=zipfile.ZIP_DEFLATED
+    ) as zipf:
         for pay_slip in pay_slips:
-            frappe.utils.print_format.download_pdf(
-                "Pay Slips", pay_slip, format="Pay Slip Format"
+            doc = frappe.get_doc("Pay Slips", pay_slip)
+            context = {"doc": doc}
+
+            # Render HTML from template
+            html = frappe.render_template(
+                "pinnaclehrms/public/templates/pay_slip.html", context
             )
-    except Exception as e:
-        frappe.log_error(message=str(e), title="Pay Slip Printing Error")
-        frappe.throw(f"An error occurred while printing pay slips: {str(e)}")
+
+            # Generate PDF from HTML
+            pdf_bytes = get_pdf(html)
+
+            generated_pay_slips = []
+            filename = f"{doc.employee_name}_{doc.month}_{doc.year}.pdf"
+            if filename in generated_pay_slips:
+                filename = f"{doc.employee}_{doc.month}_{doc.year}.pdf"
+            generated_pay_slips.append(filename)
+            # Add to zip
+            zipf.writestr(filename, pdf_bytes)
+
+    # Reset stream position to start
+    zip_stream.seek(0)
+
+    # Send zip file as response
+    frappe.response.filename = f"{calendar.month_name[int(month)]}_{year}_pay_slips.zip"
+    frappe.response.filecontent = zip_stream.read()
+    frappe.response.type = "binary"
 
 
 # API get pay slip requests
@@ -315,7 +349,7 @@ def approvePaySlipRequest(data):
     year = paySlip.year
     doctype = paySlip.doctype
     docname = paySlip.name
-    personal_email = paySlip.personal_email
+    email = paySlip.email
     subject = f"Pay Slip for {employee_name} - {month} {year}"
     message = f"""
     Dear {employee_name},
@@ -327,9 +361,9 @@ def approvePaySlipRequest(data):
         doctype, docname, file_name=f"Pay Slip {docname}"
     )
 
-    if personal_email:
+    if email:
         frappe.sendmail(
-            recipients=[personal_email],
+            recipients=[email],
             subject=subject,
             message=message,
             attachments=[
@@ -349,7 +383,6 @@ def regeneratePaySlip(data):
 
     year = int(data.get("year"))
     month = data.get("month")
-
     empRecords = getEmpRecords(data)
 
     employeeData = calculateMonthlySalary(empRecords, year, month)
@@ -427,6 +460,8 @@ def regeneratePaySlip(data):
             "Pay Slips",
             filters={
                 "employee": data.get("employee"),
+                "month_num": month,
+                "year": year,
                 "docstatus": 0,
             },
             fields=["name"],
@@ -448,7 +483,7 @@ def regeneratePaySlip(data):
                 "company": data.get("company"),
                 "employee_id": data.get("employee"),
                 "employee_name": data.get("employee_name"),
-                "personal_email": data.get("personal_email"),
+                "email": data.get("email"),
                 "designation": data.get("designation"),
                 "department": data.get("department"),
                 "pan_number": data.get("pan_number"),
@@ -627,7 +662,7 @@ def regeneratePaySlip(data):
 
 # API to download sft report
 @frappe.whitelist(allow_guest=False)
-def download_sft_report(year=None, month=None, encodedCompany=None):
+def download_bank_upld_bulk_report(year=None, month=None, encodedCompany=None):
     company = base64.b64decode(encodedCompany).decode("utf-8")
     """
     month: integer 1–12 as string or number
@@ -711,7 +746,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 
 # API to download sft upload report
 @frappe.whitelist(allow_guest=False)
-def download_sft_upld_report(year=None, month=None, encodedCompany=None):
+def download_sft_report(year=None, month=None, encodedCompany=None):
 
     company = base64.b64decode(encodedCompany).decode("utf-8")
     curr_user = frappe.session.user
@@ -899,7 +934,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
             r.get("company"),
             r.get("designation"),
             r.get("department"),
-            r.get("personal_email"),
+            r.get("email"),
             r.get("standard_working_days"),
             r.get("pan_number"),
             r.get("date_of_joining"),
@@ -938,7 +973,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
 
 
 # API to send attendance notification
-def attendance_notification(doc,method):
+def attendance_notification(doc, method):
     try:
         hr_email = "hr@mygstcafe.in"
 

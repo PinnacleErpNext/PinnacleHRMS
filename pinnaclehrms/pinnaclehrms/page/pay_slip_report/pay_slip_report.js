@@ -13,6 +13,12 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   // Build the form & table skeleton
   const $form = $(`
     <div class="row">
+    <div class="col-md-3 form-group">
+        <label for="company">Company</label>
+        <select id="company_list" class="form-control">
+          <option value="">Select Company</option>
+        </select>
+      </div>
       <div class="col-md-1 form-group">
         <label for="year">Year</label>
         <input type="number" id="year" class="form-control"
@@ -33,12 +39,6 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
             .join("")}
         </select>
       </div>
-      <div class="col-md-3 form-group">
-        <label for="company">Company</label>
-        <select id="company_list" class="form-control">
-          <option value="">Select Company</option>
-        </select>
-      </div>
       <div class="col-md-3 form-group d-flex align-items-end">
         <button id="fetch_records" class="btn btn-primary">Get Records</button>
       </div>
@@ -52,12 +52,12 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
             <li><a id="print_pay_slips" class="dropdown-item">Print Pay Slips</a></li>
             <li><a id="download_report" class="dropdown-item">Download Report</a></li>
             <li><a id="download_sft_report" class="dropdown-item">Download ICICI Bank SFTP Excel</a></li>
-            <li><a id="download_sft_upld_report" class="dropdown-item">Download ICICI Bank Bulk Payment Format</a></li>
+            <li><a id="download_bank_upld_bulk_report" class="dropdown-item">Download ICICI Bank Bulk Payment Format</a></li>
           </ul>
         </div>
       </div>
     </div>
-    <div style="max-height:400px; overflow-y:auto;">
+    <div style="max-height:800px; overflow-y:auto;">
       <table class="table table-bordered mt-3">
         <!-- dynamic <thead> will be injected here -->
         <thead></thead>
@@ -164,8 +164,8 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
         // 4. Render each row
         $tbody.empty();
         records.forEach((rec) => {
-          const emailLink = rec.personal_email
-            ? `<span title="${rec.personal_email}"
+          const emailLink = rec.email
+            ? `<span title="${rec.email}"
                      style="color:blue;cursor:pointer">
                  Available
                </span>`
@@ -255,11 +255,12 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   });
 
   $form.on("click", "#print_pay_slips", function () {
-    const selected = get_selected();
-    if (!selected.length) {
-      frappe.msgprint("Please select at least one pay slip to email.");
-      return;
-    }
+    const paySlips = get_selected();
+    const y = parseInt($form.find("#year").val(), 10);
+    const m = parseInt($form.find("#month").val(), 10);
+    window.location.href = `/api/method/pinnaclehrms.api.print_pay_slip?year=${y}&month=${m}&pay_slips=${encodeURIComponent(
+      JSON.stringify(paySlips)
+    )}`;
   });
 
   // Download / Print actions
@@ -277,14 +278,14 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     const encodedCompany = btoa(c);
     window.location.href = `/api/method/pinnaclehrms.api.download_sft_report?month=${m}&year=${y}&encodedCompany=${encodedCompany}`;
   });
-  $form.on("click", "#download_sft_upld_report", function () {
+  $form.on("click", "#download_bank_upld_bulk_report", function () {
     const y = parseInt($form.find("#year").val(), 10);
     const m = parseInt($form.find("#month").val(), 10);
     const c = $form.find("#company_list").val();
     const encodedCompany = btoa(c); // Base64 encode
     // alert(encodedCompany);
 
-    window.location.href = `/api/method/pinnaclehrms.api.download_sft_upld_report?month=${m}&year=${y}&encodedCompany=${encodedCompany}`;
+    window.location.href = `/api/method/pinnaclehrms.api.download_bank_upld_bulk_report?month=${m}&year=${y}&encodedCompany=${encodedCompany}`;
   });
 };
 

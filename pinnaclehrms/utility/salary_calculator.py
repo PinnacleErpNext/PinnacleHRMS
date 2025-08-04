@@ -113,7 +113,7 @@ def createPaySlips(data):
                     "company": data.get("company"),
                     "employee": data.get("employee"),
                     "employee_name": data.get("employee_name"),
-                    "personal_email": data.get("personal_email"),
+                    "email": data.get("email"),
                     "designation": data.get("designation"),
                     "department": data.get("department"),
                     "pan_number": data.get("pan_number"),
@@ -261,10 +261,9 @@ def createPaySlips(data):
                 {"attendance_record": data.get("attendance_records")},
             )
             paySlip.attendance_record = attendanceRecord
-
+            
             # Insert the new document to save it in the database
             paySlip.insert()
-
 
 def getEmpRecords(data):
 
@@ -274,7 +273,7 @@ def getEmpRecords(data):
                 e.company,
                 e.employee,
                 e.employee_name,
-                e.personal_email,
+                e.company_email as email,
                 e.designation,
                 e.department,
                 e.pan_number,
@@ -323,7 +322,9 @@ def getEmpRecords(data):
     date = f"{year}-{month:02d}-01"
 
     records = frappe.db.sql(baseQuery, filters, as_dict=False)
-
+    
+    # records = get_employee_attendance(data)
+    # frappe.throw(str(records))
     if not records:
         return frappe.throw("No records found!")
 
@@ -333,7 +334,7 @@ def getEmpRecords(data):
             "company": "",
             "employee": "",
             "employee_name": "",
-            "personal_email": "",
+            "email": "",
             "designation": "",
             "department": "",
             "pan_number": "",
@@ -357,7 +358,7 @@ def getEmpRecords(data):
             company,
             employee_id,
             employee_name,
-            personal_email,
+            email,
             designation,
             department,
             pan_number,
@@ -402,7 +403,7 @@ def getEmpRecords(data):
                 "company": company,
                 "employee": employee_id,
                 "employee_name": employee_name,
-                "personal_email": personal_email,
+                "email": email,
                 "designation": designation,
                 "department": department,
                 "pan_number": pan_number,
@@ -719,7 +720,8 @@ def calculateMonthlySalary(employeeData, year, month):
                 idealCheckOutTime = shiftDetails.get("idealCheckOutTime")
                 overtimeThreshold = shiftDetails.get("overtimeThreshold")
 
-                if inTime and outTime:
+                if inTime and outTime and (inTime != "00:00:00" and outTime != "00:00:00")and (outTime > inTime):
+                    
                     actCheckIn = inTime
                     actCheckOut = outTime
                     attendance = getAttendance(

@@ -1,8 +1,10 @@
 // Copyright (c) 2025, OTPL and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Pinnacle Leave Encashment", {
-// 	refresh(frm) {
-
-// 	},
-// });
+frappe.ui.form.on("Pinnacle Leave Encashment", {
+  refresh(frm) {
+    if (!frm.is_new()) {
+      frm.disable_form();
+    }
+  },
+});

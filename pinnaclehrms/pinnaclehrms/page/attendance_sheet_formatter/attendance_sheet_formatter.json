@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-07-10 12:16:41.883590",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-07-10 18:34:36.774305",
+ "modified_by": "Administrator",
+ "module": "Pinnaclehrms",
+ "name": "attendance-sheet-formatter",
+ "owner": "Administrator",
+ "page_name": "attendance-sheet-formatter",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Attendance Sheet Formatter"
+}
