@@ -128,7 +128,7 @@ def process_pinnacle(file):
             row += 2
         else:
             row += 1
-
+    
     return records
 
 
@@ -301,8 +301,8 @@ def generate_final_sheet(attendance_data=None):
         summary = {}
         for log in logs:
             date = str(log["date"])
-            in_t = parse_time_safe(log["in_time"])
-            out_t = parse_time_safe(log["out_time"])
+            in_t = parse_time_safe(log["in_time"]) or time(0, 0, 0)
+            out_t = parse_time_safe(log["out_time"]) or time(0, 0, 0)
             if date not in summary:
                 summary[date] = {
                     "date": log["date"],
