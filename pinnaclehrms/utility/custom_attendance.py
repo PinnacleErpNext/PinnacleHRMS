@@ -1,6 +1,6 @@
 import frappe
 from hrms.hr.doctype.attendance.attendance import Attendance
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from frappe import _
 
 
@@ -15,10 +15,10 @@ def custom_before_save(self, method):
             },
             "parent",
         )
-        
+
         if not empId:
             frappe.throw(_("Employee could not be identified from device details."))
-    else:   
+    else:
         empId = self.employee
 
     # Fetch shift and company info
@@ -45,7 +45,15 @@ def custom_before_save(self, method):
             else:
                 check_out = datetime.strptime(str(self.out_time), "%H:%M:%S").time()
             self.out_time = datetime.combine(self.attendance_date, check_out)
+        print(
+            f"Processed in_time: {self.in_time.time()}, out_time: {self.out_time.time()} type: {type(self.in_time)}"
+        )
 
-        # Set status
-        if not self.in_time or not self.out_time:
+        if (
+            not self.in_time
+            or self.in_time.time() == time(0, 0)
+            or not self.out_time
+            or self.out_time.time() == time(0, 0)
+            or (self.out_time - self.in_time < timedelta(hours=3))
+        ):
             self.status = "Absent"
