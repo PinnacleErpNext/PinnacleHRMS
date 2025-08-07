@@ -133,7 +133,6 @@ def email_pay_slips(pay_slips=None, raw_data=None):
                 cc="records@mygstcafe.in",
                 subject=subject,
                 message=message,
-                email_account="MyGSTcafe HR",
                 # header=["Pay Slip Notification", "green"]
             )
 
