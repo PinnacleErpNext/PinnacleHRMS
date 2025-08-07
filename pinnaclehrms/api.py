@@ -842,16 +842,142 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 
 # API to download to pay slip records.
 @frappe.whitelist()
+# def download_pay_slip_report(year=None, month=None, encodedCompany=None):
+#     company = base64.b64decode(encodedCompany).decode("utf-8")
+#     curr_user = frappe.session.user
+#     allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
+#     user_roles = frappe.get_roles(curr_user)
+
+#     if (
+#         any(role in user_roles for role in allowed_roles)
+#         and curr_user != "Administrator"
+#     ):
+#         frappe.local.response["type"] = "redirect"
+#         frappe.local.response["location"] = "/app/home"
+#         return
+
+#     if not year or not month:
+#         frappe.throw(_("Year and Month are required"))
+
+#     records = get_pay_slip_report(
+#         year=year, month=month, curr_user=curr_user, company=company
+#     )
+
+#     if not records:
+#         frappe.throw(_("No data found for the given filters."))
+
+#     # Define top-level columns
+#     columns = [
+#         "Pay Slip Name",
+#         "Year",
+#         "Month",
+#         "Employee ID",
+#         "Employee Name",
+#         "Company",
+#         "Designation",
+#         "Department",
+#         "Personal Email",
+#         "Standard Working Days",
+#         "PAN Number",
+#         "Date of Joining",
+#         "Basic Salary",
+#         "Per Day Salary",
+#         "Actual Working Days",
+#         "Absent",
+#         "Total",
+#         "Net Payable Amount",
+#     ]
+
+#     # Sub-columns under salary_info
+#     salary_info_keys = [
+#         "Full Day",
+#         "Sunday Workings",
+#         "Half Day",
+#         "Quarter Day",
+#         "3/4 Quarter Day",
+#         "Lates",
+#     ]
+#     salary_info_sub_cols = ["Day", "Amount"]
+
+#     # Sub-columns under other_earnings
+#     other_earning_keys = [
+#         "Incentives",
+#         "Special Incentives",
+#         "Leave Encashment",
+#         "Overtime",
+#     ]
+#     other_earning_sub_cols = ["Amount"]
+
+#     # Prepare headers
+#     header_row_1 = (
+#         columns
+#         + ["Salary Info"] * (len(salary_info_keys) * len(salary_info_sub_cols))
+#         + ["Other Earnings"] * (len(other_earning_keys) * len(other_earning_sub_cols))
+#     )
+
+#     header_row_2 = [""] * len(columns)
+#     for key in salary_info_keys:
+#         header_row_2 += [f"{key} - Day", f"{key} - Amount"]
+#     for key in other_earning_keys:
+#         header_row_2 += [f"{key} - Amount"]
+
+#     # Prepare rows
+#     data_rows = []
+#     for r in records:
+#         row = [
+#             r.get("pay_slip_name"),
+#             r.get("year"),
+#             r.get("month"),
+#             r.get("employee_id"),
+#             r.get("employee_name"),
+#             r.get("company"),
+#             r.get("designation"),
+#             r.get("department"),
+#             r.get("email"),
+#             r.get("standard_working_days"),
+#             r.get("pan_number"),
+#             r.get("date_of_joining"),
+#             r.get("basic_salary"),
+#             r.get("per_day_salary"),
+#             r.get("actual_working_days"),
+#             r.get("absent"),
+#             r.get("total"),
+#             r.get("net_payable_amount"),
+#         ]
+
+#         # Salary Info breakdown
+#         salary_info = r.get("salary_info", {})
+#         for key in salary_info_keys:
+#             info = salary_info.get(key, {})
+#             row.append(info.get("day", 0))
+#             row.append(info.get("amount", 0))
+
+#         # Other Earnings
+#         other_earnings = r.get("other_earnings", {})
+#         for key in other_earning_keys:
+#             earning = other_earnings.get(key, {})
+#             row.append(earning.get("amount", 0))
+
+#         data_rows.append(row)
+
+#     # Generate Excel
+#     xlsx_data = make_xlsx(
+#         data=[header_row_1, header_row_2] + data_rows, sheet_name="Pay Slip Report"
+#     )
+
+#     filename = f"{company.replace(' ', '_')}_Pay_Slip_Report_{calendar.month_name[int(month)]}_{year}.xlsx"
+#     frappe.response.filename = filename
+#     frappe.response.filecontent = xlsx_data.getvalue()
+#     frappe.response.type = "binary"
+
+@frappe.whitelist()
 def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     company = base64.b64decode(encodedCompany).decode("utf-8")
     curr_user = frappe.session.user
     allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
-    if (
-        any(role in user_roles for role in allowed_roles)
-        and curr_user != "Administrator"
-    ):
+    if any(role in user_roles for role in allowed_roles) and curr_user != "Administrator":
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
         return
@@ -866,63 +992,47 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     if not records:
         frappe.throw(_("No data found for the given filters."))
 
-    # Define top-level columns
-    columns = [
-        "Pay Slip Name",
-        "Year",
-        "Month",
-        "Employee ID",
-        "Employee Name",
-        "Company",
-        "Designation",
-        "Department",
-        "Personal Email",
-        "Standard Working Days",
-        "PAN Number",
-        "Date of Joining",
-        "Basic Salary",
-        "Per Day Salary",
-        "Actual Working Days",
-        "Absent",
-        "Total",
-        "Net Payable Amount",
+    # Define static columns
+    static_columns = [
+        "Pay Slip Name", "Year", "Month", "Employee ID", "Employee Name", "Company",
+        "Designation", "Department", "Personal Email", "Standard Working Days",
+        "PAN Number", "Date of Joining", "Basic Salary", "Per Day Salary",
+        "Actual Working Days", "Absent", "Total", "Net Payable Amount"
     ]
 
-    # Sub-columns under salary_info
-    salary_info_keys = [
-        "Full Day",
-        "Sunday Workings",
-        "Half Day",
-        "Quarter Day",
-        "3/4 Quarter Day",
-        "Lates",
-    ]
-    salary_info_sub_cols = ["Day", "Amount"]
+    # Dynamically gather all unique keys for salary_info and other_earnings
+    salary_info_keys = set()
+    other_earning_keys = set()
 
-    # Sub-columns under other_earnings
-    other_earning_keys = [
-        "Incentives",
-        "Special Incentives",
-        "Leave Encashment",
-        "Overtime",
-    ]
-    other_earning_sub_cols = ["Amount"]
+    for r in records:
+        salary_info = r.get("salary_info", {})
+        other_earnings = r.get("other_earnings", {})
 
-    # Prepare headers
+        for key in salary_info.keys():
+            salary_info_keys.add(key)
+
+        for key in other_earnings.keys():
+            other_earning_keys.add(key)
+
+    salary_info_keys = sorted(list(salary_info_keys))
+    other_earning_keys = sorted(list(other_earning_keys))
+
+    # Build headers
     header_row_1 = (
-        columns
-        + ["Salary Info"] * (len(salary_info_keys) * len(salary_info_sub_cols))
-        + ["Other Earnings"] * (len(other_earning_keys) * len(other_earning_sub_cols))
+        static_columns
+        + ["Salary Info"] * (len(salary_info_keys) * 2)
+        + ["Other Earnings"] * len(other_earning_keys)
     )
 
-    header_row_2 = [""] * len(columns)
+    header_row_2 = [""] * len(static_columns)
     for key in salary_info_keys:
         header_row_2 += [f"{key} - Day", f"{key} - Amount"]
     for key in other_earning_keys:
-        header_row_2 += [f"{key} - Amount"]
+        header_row_2.append(f"{key} - Amount")
 
-    # Prepare rows
+    # Prepare data rows
     data_rows = []
+
     for r in records:
         row = [
             r.get("pay_slip_name"),
@@ -945,7 +1055,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
             r.get("net_payable_amount"),
         ]
 
-        # Salary Info breakdown
+        # Salary Info
         salary_info = r.get("salary_info", {})
         for key in salary_info_keys:
             info = salary_info.get(key, {})
