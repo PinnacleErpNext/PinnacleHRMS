@@ -368,7 +368,7 @@ def preview_final_attendance_sheet():
     data = result.get("data", {})
 
     html = '<table class="table table-bordered"><thead><tr>'
-    html += "<th>Employee</th><th>Employee Name</th><th>Date</th><th>Shift</th><th>In Time</th><th>Out Time</th></tr></thead><tbody>"
+    html += "<th>Employee</th><th>Employee Name</th><th>Attendance Date</th><th>Shift</th><th>In Time</th><th>Out Time</th></tr></thead><tbody>"
 
     for emp_id in sorted(data):
         for row in data[emp_id]:
@@ -483,7 +483,7 @@ def download_final_attendance_excel():
     wb = Workbook()
     ws = wb.active
     ws.title = "Final Attendance"
-    ws.append(["Employee","Employee Name", "Date", "Shift", "In Time", "Out Time"])
+    ws.append(["Employee","Employee Name", "Attendance Date", "Shift", "In Time", "Out Time"])
 
     for emp_id in sorted(data):
         for row in data[emp_id]:
