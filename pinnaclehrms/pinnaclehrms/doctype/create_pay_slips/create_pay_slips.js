@@ -4,10 +4,15 @@ var preventSubmission;
 frappe.ui.form.on("Create Pay Slips", {
   refresh(frm) {
     if (frm.doc.created_pay_slips) {
-      employeeId = [""];
+      employeeId = [];
       paySlipList = frm.doc.created_pay_slips;
       paySlipList.forEach((paySlip) => {
-        employeeId.push(`${paySlip.employee}:${paySlip.employee_id}`);
+        if (paySlip.employee && paySlip.employee_id) {
+          employeeId.push({
+            label: `${paySlip.employee} (${paySlip.employee_id})`,
+            value: paySlip.employee_id,
+          });
+        }
       });
     }
     add_email_btn(frm);
@@ -62,12 +67,12 @@ frappe.ui.form.on("Create Pay Slips", {
               default: 3,
               reqd: true,
             },
-            {
-              label: "Auto Calculate Leave Encashment",
-              fieldname: "auto_calculate_leave_encashment",
-              default: 0,
-              fieldtype: "Check",
-            },
+            // {
+            //   label: "Auto Calculate Leave Encashment",
+            //   fieldname: "auto_calculate_leave_encashment",
+            //   default: 0,
+            //   fieldtype: "Check",
+            // },
           ],
           primary_action_label: "Submit",
           primary_action(values) {
