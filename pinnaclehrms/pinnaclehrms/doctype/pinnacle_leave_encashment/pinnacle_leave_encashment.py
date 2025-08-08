@@ -266,12 +266,12 @@ def _calAvgSalary(empID, from_date, end_date):
         salaryStructure[data.get("from_date")] = data.get("salary")
 
     salary = salaryStructure.get(startDate)
-
-    if not salary:
-        salaryDetails = getSalaryDetails(empID, startDate.year, startDate.month)
-        salary = salaryDetails.get("basicSalary")
-
-    salaryStructure[startDate] = salary
+    
+    # if not salary:
+    #     salaryDetails = getSalaryDetails(empID, startDate.year, startDate.month)
+    #     salary = salaryDetails.get("basicSalary")
+    
+    salaryStructure[startDate] = salary or 0
     salaryStructure = dict(sorted(salaryStructure.items()))
     total_salary = 0
     day_count = 0
