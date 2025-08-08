@@ -266,11 +266,32 @@ def _calAvgSalary(empID, from_date, end_date):
         salaryStructure[data.get("from_date")] = data.get("salary")
 
     salary = salaryStructure.get(startDate)
-    
-    # if not salary:
-    #     salaryDetails = getSalaryDetails(empID, startDate.year, startDate.month)
-    #     salary = salaryDetails.get("basicSalary")
-    
+
+    if not salary:
+        salary = frappe.db.sql(
+            """
+                                    SELECT 
+                                        tsh.salary
+                                    FROM 
+                                        `tabSalary History` AS tsh
+                                    JOIN 
+                                        `tabAssign Salary` AS tas
+                                        ON tsh.parent = tas.name
+                                    WHERE 
+                                        tas.employee_id = %s
+                                        AND tsh.from_date <= %s
+                                    ORDER BY 
+                                        tsh.from_date DESC
+                                    LIMIT 1
+                                    """,
+            (empID, startDate),
+            as_dict=True,
+        )
+        if len(salary) > 0:
+            salary = salary[0].get("salary")
+        else:
+            salary = 0
+
     salaryStructure[startDate] = salary or 0
     salaryStructure = dict(sorted(salaryStructure.items()))
     total_salary = 0
