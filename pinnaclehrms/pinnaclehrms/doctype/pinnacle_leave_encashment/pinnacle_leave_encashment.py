@@ -191,7 +191,7 @@ def _process_encashment(data):
     # leave_encashment_months = difference.years * 12 + difference.months + 1
 
     average_salary, salary_structure = _calAvgSalary(emp, from_date, end_date)
-    total_days = (end_date - from_date).days
+    total_days = (end_date - from_date).days + 1
     eligible_days = round(((total_days / 365) * paid_leaves), 2)
 
     if data.get("next_encashment_date"):
