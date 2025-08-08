@@ -550,7 +550,7 @@ def regeneratePaySlip(data):
                     "days": salaryInfo.get("three_four_quarter_days"),
                     "rate": salaryInfo.get("per_day_salary"),
                     "effective_percentage": "75",
-                    "amount": quarterDayWorkingAmount,
+                    "amount": threeFourQuarterDaysWorkingAmount,
                     "parent": pay_slip.name,
                 },
             )
