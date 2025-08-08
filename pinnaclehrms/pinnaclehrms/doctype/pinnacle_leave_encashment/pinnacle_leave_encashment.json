@@ -21,7 +21,9 @@
   "eligible_days",
   "amount",
   "encashment_date",
-  "next_encashment_date"
+  "next_encashment_date",
+  "status",
+  "pay_slip"
  ],
  "fields": [
   {
@@ -111,11 +113,26 @@
    "fieldname": "salary_structure",
    "fieldtype": "Small Text",
    "read_only": 1
+  },
+  {
+   "default": "Unpaid",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "Unpaid\nPaid"
+  },
+  {
+   "fieldname": "pay_slip",
+   "fieldtype": "Link",
+   "label": "Pay Slip",
+   "options": "Pay Slips",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-25 12:32:51.491079",
+ "modified": "2025-08-08 18:15:30.430085",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Pinnacle Leave Encashment",
@@ -151,6 +168,15 @@
  "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
+ "states": [
+  {
+   "color": "Red",
+   "title": "Unpaid"
+  },
+  {
+   "color": "Green",
+   "title": "Paid"
+  }
+ ],
  "title_field": "employee_name"
 }
