@@ -272,6 +272,7 @@ def _calAvgSalary(empID, from_date, end_date):
         salary = salaryDetails.get("basicSalary")
 
     salaryStructure[startDate] = salary
+    salaryStructure = dict(sorted(salaryStructure.items()))
     total_salary = 0
     day_count = 0
 
