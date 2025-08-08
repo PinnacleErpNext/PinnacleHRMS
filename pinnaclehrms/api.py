@@ -648,7 +648,26 @@ def regeneratePaySlip(data):
 
         # Save or submit the document
         pay_slip.save()
+        encashment = frappe.get_list(
+            "Pinnacle Leave Encashment",
+            filters={"employee": emp_id, "status": "Unpaid"},
+            fields=["name", "amount"],
+            order_by="upto desc",
+            limit=1,
+        )
 
+        if encashment:
+            encashment_name = encashment[0].name
+            encashment_amount = encashment[0].amount
+
+            frappe.db.set_value(
+                "Pinnacle Leave Encashment",
+                encashment_name,
+                {
+                    "status": "Paid",
+                    "pay_slip": pay_slip.name,
+                },
+            )
         frappe.db.sql(
             """UPDATE `tabCreated Pay Slips` SET salary = %s WHERE pay_slip = %s AND employee_id = %s""",
             (pay_slip.net_payble_amount, pay_slip.name, pay_slip.employee_id),

@@ -265,6 +265,28 @@ def createPaySlips(data):
             # Insert the new document to save it in the database
             paySlip.insert()
 
+            encashment = frappe.get_list(
+                "Pinnacle Leave Encashment",
+                filters={"employee": emp_id, "status": "Unpaid"},
+                fields=["name", "amount"],
+                order_by="upto desc",
+                limit=1,
+            )
+
+            if encashment:
+                encashment_name = encashment[0].name
+                encashment_amount = encashment[0].amount
+
+                frappe.db.set_value(
+                    "Pinnacle Leave Encashment",
+                    encashment_name,
+                    {
+                        "status": "Paid",
+                        "pay_slip": paySlip.name,
+                    },
+                )
+
+
 def getEmpRecords(data):
 
     # Construct the base query
@@ -635,7 +657,7 @@ def calculateMonthlySalary(employeeData, year, month):
         workingPeriod = (relativedelta(currentDate, doj)).years
         leaveEncashmentData = frappe.db.get_list(
             "Pinnacle Leave Encashment",
-            filters={"employee": emp_id},
+            filters={"employee": emp_id, "status": "Unpaid"},
             fields=["amount"],
             order_by="upto desc",
             limit=1,
