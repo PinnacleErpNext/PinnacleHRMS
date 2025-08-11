@@ -101,7 +101,7 @@ def createPaySlips(data):
                 12: "December",
             }
             monthName = monthMapping.get(month)
-            
+
             # Create a new Pay Slip document
             paySlip = frappe.get_doc(
                 {
@@ -261,17 +261,11 @@ def createPaySlips(data):
                 {"attendance_record": data.get("attendance_records")},
             )
             paySlip.attendance_record = attendanceRecord
-            
+
             # Insert the new document to save it in the database
             paySlip.insert()
 
-            encashment = frappe.get_list(
-                "Pinnacle Leave Encashment",
-                filters={"employee": emp_id, "status": "Unpaid"},
-                fields=["name", "amount"],
-                order_by="upto desc",
-                limit=1,
-            )
+            encashment = getEncashment(emp_id, year, month)
 
             if encashment:
                 encashment_name = encashment[0].name
@@ -344,7 +338,7 @@ def getEmpRecords(data):
     date = f"{year}-{month:02d}-01"
 
     records = frappe.db.sql(baseQuery, filters, as_dict=False)
-    
+
     # records = get_employee_attendance(data)
     # frappe.throw(str(records))
     if not records:
@@ -655,16 +649,10 @@ def calculateMonthlySalary(employeeData, year, month):
 
         currentDate = datetime.today().date()
         workingPeriod = (relativedelta(currentDate, doj)).years
-        leaveEncashmentData = frappe.db.get_list(
-            "Pinnacle Leave Encashment",
-            filters={"employee": emp_id, "status": "Unpaid"},
-            fields=["amount"],
-            order_by="upto desc",
-            limit=1,
-            as_list=True,
-        )
+        leaveEncashmentData = getEncashment(emp_id, year, month)
+        
         if len(leaveEncashmentData) > 0:
-            leaveEncashmentAmount = leaveEncashmentData[0][0]
+            leaveEncashmentAmount = leaveEncashmentData[0].get("amount",0)
 
         if doj.month == month:
             filterdHolidays = []
@@ -742,8 +730,13 @@ def calculateMonthlySalary(employeeData, year, month):
                 idealCheckOutTime = shiftDetails.get("idealCheckOutTime")
                 overtimeThreshold = shiftDetails.get("overtimeThreshold")
 
-                if inTime and outTime and (inTime != "00:00:00" and outTime != "00:00:00")and (outTime > inTime):
-                    
+                if (
+                    inTime
+                    and outTime
+                    and (inTime != "00:00:00" and outTime != "00:00:00")
+                    and (outTime > inTime)
+                ):
+
                     actCheckIn = inTime
                     actCheckOut = outTime
                     attendance = getAttendance(
@@ -1317,6 +1310,32 @@ def getAttendance(
                 actOutTime = idealCheckOutTime
 
     return {"in_time": actInTime, "out_time": actOutTime}
+
+
+def getEncashment(empId, year, month):
+    leaveEncashmentData = frappe.db.sql(
+        """
+            SELECT 
+                name, 
+                amount
+            FROM 
+                `tabPinnacle Leave Encashment`
+            WHERE 
+                employee = %s
+                AND status = 'Unpaid'
+                AND MONTH(to_date) = %s
+                AND YEAR(to_date) = %s
+            ORDER BY 
+                upto DESC
+            LIMIT 1
+        """,
+        (empId, month, year),
+        as_dict=True,
+    )
+
+    if leaveEncashmentData:
+        return leaveEncashmentData
+    return []
 
 
 # old logic to get shift details

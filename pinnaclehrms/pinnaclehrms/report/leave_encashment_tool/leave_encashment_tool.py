@@ -178,15 +178,16 @@ def eligible_employee_for_leave_encashment(data):
                 eligibility = "No"
             encashment_data = frappe.db.sql(
                 """
-                                       SELECT tple.name FROM `tabPinnacle Leave Encashment` tple WHERE tple.employee = %s AND MONTH(encashment_date) = %s AND  YEAR(encashment_date) = %s
+                                       SELECT tple.name FROM `tabPinnacle Leave Encashment` tple WHERE tple.employee = %s AND MONTH(to_date) = %s AND  YEAR(to_date) = %s
                                        """,
                 (emp.get("employee"), month, year),
             )
+            print(f"Encashment Data: {encashment_data}")
             if encashment_data:
                 encashment = f'<a href="/app/pinnacle-leave-encashment/{encashment_data[0][0]}" target="_blank">{encashment_data[0][0]}</a>'
             else:
                 encashment = f"<button class='btn btn-sm btn-primary generate-encashment' data-emp='{emp.get('employee')}' data-empname='{emp.get('employee_name')}' data-doj='{emp.get('date_of_joining')}' data-last='{last_encashment_date}' data-next='{next_encashment_date}'>Generate</button>"
-                
+
             eligible_employee_list.append(
                 {
                     "employee": emp.get("employee"),

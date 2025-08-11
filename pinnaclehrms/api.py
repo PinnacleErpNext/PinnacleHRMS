@@ -3,6 +3,7 @@ from pinnaclehrms.utility.salary_calculator import (
     createPaySlips,
     getEmpRecords,
     calculateMonthlySalary,
+    getEncashment,
 )
 from collections import defaultdict
 from frappe.utils.xlsxutils import make_xlsx
@@ -648,15 +649,9 @@ def regeneratePaySlip(data):
 
         # Save or submit the document
         pay_slip.save()
-        encashment = frappe.get_list(
-            "Pinnacle Leave Encashment",
-            filters={"employee": emp_id, "status": "Unpaid"},
-            fields=["name", "amount"],
-            order_by="upto desc",
-            limit=1,
-        )
-
-        if encashment:
+        encashment = getEncashment(emp_id, year, month)
+        
+        if len(encashment) > 0:
             encashment_name = encashment[0].name
             encashment_amount = encashment[0].amount
 

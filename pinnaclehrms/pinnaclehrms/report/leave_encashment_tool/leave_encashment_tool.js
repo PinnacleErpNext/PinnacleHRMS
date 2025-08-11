@@ -4,6 +4,13 @@
 frappe.query_reports["Leave Encashment Tool"] = {
   filters: [
     {
+      fieldname: "company",
+      label: "Company",
+      fieldtype: "Link",
+      options: "Company",
+      reqd: 1,
+    },
+    {
       fieldname: "month",
       label: "Month",
       fieldtype: "Select",
@@ -32,12 +39,6 @@ frappe.query_reports["Leave Encashment Tool"] = {
       fieldtype: "Int",
       default: new Date().getFullYear(),
       reqd: 1,
-    },
-    {
-      fieldname: "company",
-      label: "Company",
-      fieldtype: "Link",
-      options: "Company",
     },
   ],
 
