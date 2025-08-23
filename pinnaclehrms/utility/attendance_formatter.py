@@ -5,6 +5,8 @@ from datetime import datetime, time
 from collections import defaultdict
 from openpyxl import load_workbook, Workbook
 from werkzeug.wrappers import Response
+from collections import defaultdict
+from datetime import time
 
 # --- Helpers ---
 
@@ -67,7 +69,7 @@ def process_pinnacle(file):
             device_id = str(ws.cell(row=row, column=3).value or "").strip()
             emp_name = str(ws.cell(row=row, column=11).value or "").strip()
             time_log_row = row + 1
-
+            
             for col_index, day in enumerate(dates, start=1):
                 time_log = ws.cell(row=time_log_row, column=col_index).value
                 if isinstance(time_log, str):
@@ -92,7 +94,6 @@ def process_pinnacle(file):
             row += 2
         else:
             row += 1
-
     return records
 
 
@@ -128,7 +129,7 @@ def process_Opticode_final(file):
             in_time = row[col_index["In Time"]]
             out_time = row[col_index["Out Time"]]
 
-            if not all([device_id, emp_name, date_val, in_time, out_time]):
+            if not all([device_id, emp_name, date_val]):
                 continue
 
             if isinstance(date_val, datetime):
@@ -171,18 +172,25 @@ def process_Opticode_final(file):
 
 @frappe.whitelist()
 def generate_final_sheet(attendance_data=None):
+    """Generate final attendance sheet from raw attendance logs."""
     attendance_logs = defaultdict(list)
     seen = set()
 
+    # --- Preload Employee Names for later ---
+    emp_name_cache = {}
+
     for data in attendance_data or []:
+        device_in = device_out = None  # reset each record
+
         try:
             device_id = data.get("device_id")
             device = data.get("device")
             date_val = data.get("attendance_date")
-            shift = data.get("shift", "Regular")
+            shift = data.get("shift", "Regular").strip()
             in_time_raw = data.get("in_time")
             out_time_raw = data.get("out_time")
 
+            # --- Get employee from device allotment ---
             emp_id = frappe.db.get_value(
                 "Attendance Device ID Allotment",
                 {"device": device, "device_id": device_id},
@@ -191,10 +199,16 @@ def generate_final_sheet(attendance_data=None):
             if not emp_id:
                 continue
 
+            # --- Parse date safely ---
             parsed_date = parse_date_safe(date_val)
             if not parsed_date:
                 continue
-            if not in_time_raw:
+
+            # --- If IN missing, fetch from Employee Checkin ---
+            if (
+                not in_time_raw
+                or in_time_raw in ["None", "00:00:00", "00:00"]
+            ):
                 in_time = frappe.db.get_value(
                     "Employee Checkin",
                     {
@@ -205,8 +219,14 @@ def generate_final_sheet(attendance_data=None):
                     "time",
                 )
                 in_time_raw = in_time.time() if in_time else None
+                if in_time_raw:
+                    device_in = "App"
 
-            if not out_time_raw:
+            # --- If OUT missing, fetch from Employee Checkin ---
+            if (
+                not out_time_raw
+                or out_time_raw in ["None", "00:00:00", "00:00"]
+            ):
                 out_time = frappe.db.get_value(
                     "Employee Checkin",
                     {
@@ -217,39 +237,47 @@ def generate_final_sheet(attendance_data=None):
                     "time",
                 )
                 out_time_raw = out_time.time() if out_time else None
+                if out_time_raw:
+                    device_out = "App"
 
+            # --- Format times ---
             in_str = format_time_string(in_time_raw)
             out_str = format_time_string(out_time_raw)
 
             if not in_str and not out_str:
                 continue
 
-            key = (emp_id, parsed_date.date(), in_str, out_str)
+            # --- Deduplicate per employee + date ---
+            key = (emp_id, parsed_date.date())
             if key in seen:
                 continue
             seen.add(key)
 
+            # --- Append log ---
             attendance_logs[emp_id].append(
                 {
                     "date": parsed_date.date(),
-                    "shift": shift.strip(),
+                    "shift": shift,
                     "in_time": in_str,
                     "out_time": out_str,
-                    "custom_log_in_from": device,
-                    "custom_log_out_from": device,
+                    "custom_log_in_from": device_in or device,
+                    "custom_log_out_from": device_out or device,
                 }
             )
+
         except Exception:
             frappe.log_error(frappe.get_traceback(), f"Error processing entry: {data}")
 
-    # Aggregate
+    # --- Aggregate Final Data ---
     final_data = {}
     for emp_id, logs in attendance_logs.items():
         summary = {}
+
         for log in logs:
             date = str(log["date"])
             in_t = parse_time_safe(log["in_time"]) or time(0, 0, 0)
             out_t = parse_time_safe(log["out_time"]) or time(0, 0, 0)
+
             if date not in summary:
                 summary[date] = {
                     "date": log["date"],
@@ -261,28 +289,25 @@ def generate_final_sheet(attendance_data=None):
                 }
             else:
                 summary[date]["min_in_time"] = min(summary[date]["min_in_time"], in_t)
-                summary[date]["max_out_time"] = max(
-                    summary[date]["max_out_time"], out_t
-                )
+                summary[date]["max_out_time"] = max(summary[date]["max_out_time"], out_t)
+                # Keep first non-empty device info
+                if not summary[date]["custom_log_in_from"]:
+                    summary[date]["custom_log_in_from"] = log["custom_log_in_from"]
+                if not summary[date]["custom_log_out_from"]:
+                    summary[date]["custom_log_out_from"] = log["custom_log_out_from"]
+
+        # Cache employee name
+        if emp_id not in emp_name_cache:
+            emp_name_cache[emp_id] = frappe.db.get_value("Employee", emp_id, "employee_name")
 
         final_data[emp_id] = [
             {
                 "employee": emp_id,
-                "employee_name": frappe.db.get_value(
-                    "Employee", emp_id, "employee_name"
-                ),
+                "employee_name": emp_name_cache[emp_id],
                 "attendance_date": entry["date"],
                 "shift": entry["shift"],
-                "in_time": (
-                    entry["min_in_time"].strftime("%H:%M:%S")
-                    if entry["min_in_time"]
-                    else ""
-                ),
-                "out_time": (
-                    entry["max_out_time"].strftime("%H:%M:%S")
-                    if entry["max_out_time"]
-                    else ""
-                ),
+                "in_time": entry["min_in_time"].strftime("%H:%M:%S") if entry["min_in_time"] else "",
+                "out_time": entry["max_out_time"].strftime("%H:%M:%S") if entry["max_out_time"] else "",
                 "custom_log_in_from": entry.get("custom_log_in_from", ""),
                 "custom_log_out_from": entry.get("custom_log_out_from", ""),
             }
