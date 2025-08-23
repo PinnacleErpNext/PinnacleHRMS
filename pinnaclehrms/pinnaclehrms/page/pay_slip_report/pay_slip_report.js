@@ -1,5 +1,3 @@
-// File: public/js/pay_slip_report.js
-
 frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
   // Create the page container
   var page = frappe.ui.make_app_page({
@@ -58,7 +56,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
       </div>
     </div>
     <div style="max-height:800px; overflow-y:auto;">
-      <table class="table table-bordered mt-3">
+      <table id = "record_table" class="table table-bordered mt-3">
         <!-- dynamic <thead> will be injected here -->
         <thead></thead>
         <tbody id="pay_slip_table_body"></tbody>
@@ -101,6 +99,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
     // Hide actions until after fetch
     $form.find("#action_button").hide();
     frappe.dom.freeze("Loading...");
+
     // Fetch report data
     frappe.call({
       method: "pinnaclehrms.api.get_pay_slip_report",
@@ -148,27 +147,34 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
 
         // 3. Render <thead>
         const thead = `
-          <tr>
-            ${allHeaders
-              .map(
-                (h) =>
-                  `<th style="border:2px solid #ddd;
-                           background:#f8f9fa;">
-                 ${h}
-               </th>`
-              )
-              .join("")}
-          </tr>`;
+        <tr>
+          ${allHeaders
+            .map(
+              (h) =>
+                `<th style="border:2px solid #ddd;
+                         background:#f8f9fa;">
+                   ${h}
+                 </th>`
+            )
+            .join("")}
+        </tr>`;
         $table.find("thead").html(thead);
 
-        // 4. Render each row
+        // 4. Sort records by Employee Name alphabetically
+        records.sort((a, b) => {
+          const nameA = (a.employee_name || "").toLowerCase();
+          const nameB = (b.employee_name || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+
+        // 5. Render each row
         $tbody.empty();
         records.forEach((rec) => {
           const emailLink = rec.email
             ? `<span title="${rec.email}"
-                     style="color:blue;cursor:pointer">
-                 Available
-               </span>`
+                   style="color:blue;cursor:pointer">
+               Available
+             </span>`
             : "N/A";
 
           const info = rec.salary_info || {};
@@ -180,34 +186,36 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
             .join("");
 
           const row = `
-            <tr>
-              <td><input type="checkbox"
-                         class="row_checkbox"
-                         value="${rec.pay_slip_name}"></td>
-              <td><a href="/app/pay-slips/${rec.pay_slip_name}"
-                     target="_blank">
-                   ${rec.pay_slip_name}
-                 </a>
-              </td>
-              <td>${rec.employee_name}</td>
-              <td>${emailLink}</td>
-              <td>${rec.date_of_joining || ""}</td>
-              <td>${rec.basic_salary || 0}</td>
-              <td>${rec.standard_working_days || 0}</td>
-              <td>${rec.actual_working_days || 0}</td>
-              <td>${info["Full Day"]?.day || 0}</td>
-              <td>${info["Sunday Workings"]?.day || 0}</td>
-              <td>${info["Half Day"]?.day || 0}</td>
-              <td>${info["3/4 Quarter Day"]?.day || 0}</td>
-              <td>${info["Quarter Day"]?.day || 0}</td>
-              <td>${info["Lates"]?.day || 0}</td>
-              <td>${rec.absent || 0}</td>
-              <td>${rec.total || 0}</td>
-              ${otherCells}
-              <td>${rec.net_payable_amount || 0}</td>
-            </tr>`;
+          <tr>
+            <td><input type="checkbox"
+                       class="row_checkbox"
+                       value="${rec.pay_slip_name}"></td>
+            <td><a href="/app/pay-slips/${rec.pay_slip_name}"
+                   target="_blank">
+                 ${rec.pay_slip_name}
+               </a>
+            </td>
+            <td>${rec.employee_name}</td>
+            <td>${emailLink}</td>
+            <td>${rec.date_of_joining || ""}</td>
+            <td>${rec.basic_salary || 0}</td>
+            <td>${rec.standard_working_days || 0}</td>
+            <td>${rec.actual_working_days || 0}</td>
+            <td>${info["Full Day"]?.day || 0}</td>
+            <td>${info["Sunday Workings"]?.day || 0}</td>
+            <td>${info["Half Day"]?.day || 0}</td>
+            <td>${info["3/4 Quarter Day"]?.day || 0}</td>
+            <td>${info["Quarter Day"]?.day || 0}</td>
+            <td>${info["Lates"]?.day || 0}</td>
+            <td>${rec.absent || 0}</td>
+            <td>${rec.total || 0}</td>
+            ${otherCells}
+            <td>${rec.net_payable_amount || 0}</td>
+          </tr>`;
           $tbody.append(row);
         });
+
+        // 6. Select All checkbox handling
         $table.find("#select_all_rows").on("change", function () {
           const checked = $(this).is(":checked");
           $tbody.find(".row_checkbox").prop("checked", checked);
@@ -216,11 +224,11 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
             .toggle(checked || $tbody.find(".row_checkbox:checked").length > 0);
         });
 
-        // 5. Show action button and hide fetch
+        // 7. Show action button and hide fetch
         $form.find("#fetch_records").hide();
         $form.find("#action_button").show();
 
-        // 6. Bind checkbox change to toggle Actions
+        // 8. Bind checkbox change to toggle Actions
         $tbody.find(".row_checkbox").on("change", function () {
           const anyChecked = $tbody.find(":checked").length > 0;
           $form.find("#action_button").toggle(anyChecked);
@@ -231,7 +239,15 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
 
   // Show fetch again if filters change
   $form.find("#year, #month, #company_list").on("change", function () {
+    // Show Fetch button again
     $form.find("#fetch_records").show();
+
+    // Hide action buttons
+    $form.find("#action_button").hide();
+
+    // Clear table header & body
+    $table.find("thead").empty();
+    $tbody.empty();
   });
 
   // Email Pay Slips
@@ -241,17 +257,54 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
       frappe.msgprint("Please select at least one pay slip to email.");
       return;
     }
-    frappe.call({
-      method: "pinnaclehrms.api.email_pay_slips",
-      args: { pay_slips: selected },
-      callback: function (res) {
-        if (res.message?.message === "success") {
-          frappe.msgprint("Pay slips emailed successfully!");
-        } else {
-          frappe.msgprint("Failed to send email. Please try again.");
-        }
-      },
+
+    // Collect Employee Name + Email from selected rows directly
+    const employees = [];
+    $tbody.find(".row_checkbox:checked").each(function () {
+      const $row = $(this).closest("tr");
+      const empName = $row.find("td:nth-child(3)").text().trim(); // Employee Name column
+      const empEmail = $row.find("td:nth-child(4) span").attr("title") || "N/A"; // Email column (from title attr)
+      employees.push({ name: empName, email: empEmail });
     });
+
+    // Build confirmation list
+    const listHtml = `
+    <ul style="max-height:200px;overflow-y:auto;padding-left:20px;">
+      ${employees
+        .map(
+          (e) =>
+            `<li><strong>${e.name}</strong> (${e.email || "No Email"})</li>`
+        )
+        .join("")}
+    </ul>
+  `;
+
+    frappe.confirm(
+      `
+      <div>
+        <p>Are you sure you want to send pay slips to the following employees?</p>
+        ${listHtml}
+      </div>
+    `,
+      // Yes → send
+      function () {
+        frappe.call({
+          method: "pinnaclehrms.api.email_pay_slips",
+          args: { pay_slips: selected },
+          callback: function (res) {
+            if (res.message?.message === "success") {
+              frappe.msgprint("Pay slips emailed successfully!");
+            } else {
+              frappe.msgprint("Failed to send email. Please try again.");
+            }
+          },
+        });
+      },
+      // No → cancel
+      function () {
+        frappe.msgprint("Email sending cancelled.");
+      }
+    );
   });
 
   $form.on("click", "#print_pay_slips", function () {

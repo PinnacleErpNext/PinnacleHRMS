@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"1cUrv4tZAp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">PinnacleHRMS</span>\",\"col\":12}},{\"id\":\"QLjja6HTdm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"1. Add Employee\",\"col\":6}},{\"id\":\"lPEojI8no_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"2. Assign Salary\",\"col\":6}},{\"id\":\"cwdsZ1q4YR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Pay Slips\",\"col\":3}},{\"id\":\"os4pytHpPV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slip Records\",\"col\":3}},{\"id\":\"we4cr3yl4p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shift Variation\",\"col\":3}},{\"id\":\"IjCYcWcR0w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slips\",\"col\":3}},{\"id\":\"xwMn3QAI_t\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Attendance Sheet Formatter\",\"col\":3}},{\"id\":\"06ufMf15t7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Leave Encashment Tool\",\"col\":3}},{\"id\":\"T4YSw9L_WC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Leave Encashment\",\"col\":3}}]",
+ "content": "[{\"id\":\"1cUrv4tZAp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">PinnacleHRMS</span>\",\"col\":12}},{\"id\":\"QLjja6HTdm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"1. Add Employee\",\"col\":6}},{\"id\":\"lPEojI8no_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"2. Assign Salary\",\"col\":6}},{\"id\":\"cwdsZ1q4YR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Pay Slips\",\"col\":3}},{\"id\":\"os4pytHpPV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slip Records\",\"col\":3}},{\"id\":\"we4cr3yl4p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shift Variation\",\"col\":3}},{\"id\":\"IjCYcWcR0w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slips\",\"col\":3}},{\"id\":\"xwMn3QAI_t\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Attendance Sheet Formatter\",\"col\":3}},{\"id\":\"06ufMf15t7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Leave Encashment Tool\",\"col\":3}},{\"id\":\"T4YSw9L_WC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Leave Encashment\",\"col\":3}},{\"id\":\"lYhjsUM_pV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Recurring Salary Component Tool\",\"col\":3}},{\"id\":\"1gO3NGQv_h\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Recurring Salary Component\",\"col\":3}}]",
  "creation": "2025-01-24 17:29:48.785624",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "PinnacleHRMS",
  "links": [],
- "modified": "2025-08-02 14:59:41.544918",
+ "modified": "2025-08-16 17:08:06.805861",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "PinnacleHRMS",
@@ -28,9 +28,24 @@
   {
    "color": "Grey",
    "doc_view": "List",
+   "label": "Recurring Salary Component Tool",
+   "link_to": "recurring-salary-com",
+   "type": "Page"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
    "label": "Attendance Sheet Formatter",
    "link_to": "attendance-sheet-formatter",
    "type": "Page"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Recurring Salary Component",
+   "link_to": "Recurring Salary Component",
+   "stats_filter": "[]",
+   "type": "DocType"
   },
   {
    "color": "Grey",
