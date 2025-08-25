@@ -87,7 +87,10 @@ def createPaySlips(data):
                 otherEarnings = salaryInfo.get("other_earnings")
                 for earning in otherEarnings:
                     earning = otherEarnings.get(earning)
-                    otherEarningsAmount += earning.get("amount")
+                    if earning.get("type") == "Earning":
+                        otherEarningsAmount += earning.get("amount")
+                    else:
+                        otherEarningsAmount -= earning.get("amount")
             monthMapping = {
                 1: "January",
                 2: "February",
@@ -266,7 +269,6 @@ def createPaySlips(data):
                             "Pinnacle Leave Encashment",
                             earning.get("doc_no"),{"status": "Paid","pay_slip":paySlip.name})
             
-
 
 def getEmpRecords(data):
 
@@ -1061,7 +1063,10 @@ def calculateMonthlySalary(employeeData, year, month):
 
             for earning in otherEarnings:
                 earning = otherEarnings.get(earning)
-                totalSalary += earning.get("amount")
+                if earning.get("type") == "Earning":
+                    totalSalary += earning.get("amount")
+                else:
+                    totalSalary -= earning.get("amount")
             pass
         else:
             holidayAmount = 0
