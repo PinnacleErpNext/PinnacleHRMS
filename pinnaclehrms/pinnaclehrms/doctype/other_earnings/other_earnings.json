@@ -6,8 +6,11 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "component",
   "type",
-  "amount"
+  "amount",
+  "reference_name",
+  "component_reference"
  ],
  "fields": [
   {
@@ -22,17 +25,39 @@
    "in_list_view": 1,
    "label": "Amount",
    "mandatory_depends_on": "type"
+  },
+  {
+   "fieldname": "component",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Component",
+   "options": "Salary Component"
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Refrence Name",
+   "options": "component_reference"
+  },
+  {
+   "fieldname": "component_reference",
+   "fieldtype": "Link",
+   "label": "Component Refrence",
+   "options": "DocType"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-09 18:56:04.505951",
+ "modified": "2025-08-25 15:34:27.355973",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Other Earnings",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

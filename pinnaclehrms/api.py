@@ -860,7 +860,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 
 
 # API to download to pay slip records.
-@frappe.whitelist()
+#@frappe.whitelist()
 # def download_pay_slip_report(year=None, month=None, encodedCompany=None):
 #     company = base64.b64decode(encodedCompany).decode("utf-8")
 #     curr_user = frappe.session.user

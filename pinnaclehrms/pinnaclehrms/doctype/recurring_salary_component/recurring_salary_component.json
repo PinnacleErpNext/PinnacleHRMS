@@ -15,7 +15,9 @@
   "type",
   "amount",
   "month",
-  "recurring_schedule"
+  "due_date",
+  "status",
+  "pay_slip"
  ],
  "fields": [
   {
@@ -72,23 +74,38 @@
    "label": "Amount"
   },
   {
-   "fieldname": "recurring_schedule",
-   "fieldtype": "Date",
-   "label": "Recurring Schedule",
-   "read_only": 1
-  },
-  {
    "fieldname": "month",
    "fieldtype": "Select",
    "label": "Month",
    "options": "\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date",
+   "read_only": 1
+  },
+  {
+   "default": "Due",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "Due\nOverdue\nCleared"
+  },
+  {
+   "fieldname": "pay_slip",
+   "fieldtype": "Link",
+   "label": "Pay Slip",
+   "options": "Pay Slips",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-17 12:44:32.981644",
+ "modified": "2025-08-25 11:24:24.615644",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Recurring Salary Component",
@@ -112,5 +129,18 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [
+  {
+   "color": "Orange",
+   "title": "Due"
+  },
+  {
+   "color": "Green",
+   "title": "Cleared"
+  },
+  {
+   "color": "Red",
+   "title": "Overdue"
+  }
+ ]
 }

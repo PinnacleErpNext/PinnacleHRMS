@@ -66,7 +66,7 @@ def create_rsc(data):
             year = schedule_date.year
             month_num = schedule_date.month
             last_day = calendar.monthrange(year, month_num)[1]
-            recurring_schedule = f"{year}-{month_num:02d}-{last_day:02d}"
+            due_date = f"{year}-{month_num:02d}-{last_day:02d}"
 
             rsc = frappe.get_doc(
                 {
@@ -75,7 +75,7 @@ def create_rsc(data):
                     "component": component,
                     "amount": per_month_amount,
                     "month": month_name,
-                    "recurring_schedule": recurring_schedule,
+                    "due_date": due_date,
                 }
             )
             rsc.insert(ignore_permissions=True)
