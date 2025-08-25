@@ -388,6 +388,7 @@ def regeneratePaySlip(data):
 
     year = int(data.get("year"))
     month = data.get("month")
+    otherEarningsAmount = 0.0
     empRecords = getEmpRecords(data)
 
     employeeData = calculateMonthlySalary(empRecords, year, month)
@@ -478,6 +479,14 @@ def regeneratePaySlip(data):
         else:
             # If no Pay Slip exists, create a new one
             pay_slip = frappe.new_doc("Pay Slips")
+        if salaryInfo.get("other_earnings"):
+            otherEarnings = salaryInfo.get("other_earnings")
+            for earning in otherEarnings:
+                earning = otherEarnings.get(earning)
+                if earning.get("type") == "Earning":
+                    otherEarningsAmount += earning.get("amount")
+                else:
+                    otherEarningsAmount -= earning.get("amount")
 
         # Update the fields
         pay_slip.update(
@@ -501,7 +510,7 @@ def regeneratePaySlip(data):
                 "absent": salaryInfo.get("absent"),
                 "actual_working_days": salaryInfo.get("actual_working_days"),
                 "net_payble_amount": salaryInfo.get("total_salary"),
-                "other_earnings_amount": otherEarningsAmount,  # Corrected key alignment
+                "other_earnings_total": otherEarningsAmount,
                 "total": round(
                     (
                         fullDayWorkingAmount
@@ -611,63 +620,49 @@ def regeneratePaySlip(data):
         # Update child table for "other_earnings"
         pay_slip.other_earnings = []
 
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Incentives",
-                "amount": 0,
-                "parent": pay_slip.name,
-            },
-        )
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Special Incentives",
-                "amount": 0,
-                "parent": pay_slip.name,
-            },
-        )
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Leave Encashment",
-                "amount": salaryInfo.get("leave_encashment"),
-                "parent": pay_slip.name,
-            },
-        )
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Overtime",
-                "amount": salaryInfo.get("overtime"),
-                "parent": pay_slip.name,
-            },
-        )
-        # pay_slip.append(
-        #     "other_earnings",
-        #     {
-        #         "type": "Holidays",
-        #         "amount": salaryInfo.get("holidays"),
-        #         "parent": pay_slip.name,
-        #     },
-        # )
+        if salaryInfo.get("other_earnings"):
+            for component, earning in salaryInfo.get("other_earnings").items():
+                if component != "Leave Encashment":
+                    pay_slip.append(
+                        "other_earnings",
+                        {
+                            "component": component,
+                            "type": earning.get("type"),
+                            "amount": earning.get("amount"),
+                            "component_reference": "Recurring Salary Component",
+                            "reference_name": earning.get("doc_no"),
+                        },
+                    )
+                else:
+                    pay_slip.append(
+                        "other_earnings",
+                        {
+                            "component": component,
+                            "type": earning.get("type"),
+                            "amount": earning.get("amount"),
+                            "component_reference": "Pinnacle Leave Encashment",
+                            "reference_name": earning.get("doc_no"),
+                        },
+                    )
 
         # Save or submit the document
         pay_slip.save()
         encashment = getEncashment(emp_id, year, month)
 
-        if len(encashment) > 0:
-            encashment_name = encashment[0].name
-            encashment_amount = encashment[0].amount
-
-            frappe.db.set_value(
-                "Pinnacle Leave Encashment",
-                encashment_name,
-                {
-                    "status": "Paid",
-                    "pay_slip": pay_slip.name,
-                },
-            )
+        if salaryInfo.get("other_earnings"):
+            for component, earning in salaryInfo.get("other_earnings").items():
+                if component != "Leave Encashment":
+                    frappe.db.set_value(
+                        "Recurring Salary Component",
+                        earning.get("doc_no"),
+                        {"status": "Cleared", "pay_slip": paySlip.name},
+                    )
+                else:
+                    frappe.db.set_value(
+                        "Pinnacle Leave Encashment",
+                        earning.get("doc_no"),
+                        {"status": "Paid", "pay_slip": paySlip.name},
+                    )
         frappe.db.sql(
             """UPDATE `tabCreated Pay Slips` SET salary = %s WHERE pay_slip = %s AND employee_id = %s""",
             (pay_slip.net_payble_amount, pay_slip.name, pay_slip.employee_id),
@@ -860,7 +855,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 
 
 # API to download to pay slip records.
-#@frappe.whitelist()
+# @frappe.whitelist()
 # def download_pay_slip_report(year=None, month=None, encodedCompany=None):
 #     company = base64.b64decode(encodedCompany).decode("utf-8")
 #     curr_user = frappe.session.user
