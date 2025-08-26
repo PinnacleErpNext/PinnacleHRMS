@@ -458,9 +458,7 @@ def regeneratePaySlip(data):
             2,
         )
         othersDayAmount = salaryInfo.get("others_day_salary")
-        otherEarningsAmount = round(
-            (salaryInfo.get("overtime", 0)), 2
-        ) + salaryInfo.get("leave_encashment")
+        
         # Check if a Pay Slip already exists for the employee
         existing_doc = frappe.get_all(
             "Pay Slips",
