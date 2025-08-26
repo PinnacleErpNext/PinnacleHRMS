@@ -553,7 +553,7 @@ def calculateDeduction(checkIn, checkOut, slabs):
 
 def calculateFinalAmount(perDaySalary, deductionPercentage):
 
-    return perDaySalary * (1 - deductionPercentage)
+    return round(perDaySalary * (1 - deductionPercentage),2)
 
 
 def calculateMonthlySalary(employeeData, year, month):
@@ -599,7 +599,7 @@ def calculateMonthlySalary(employeeData, year, month):
         }
         empAttendanceRecord = []
 
-        basicSalary = data.get("basic_salary", 0)
+        basicSalary = round(data.get("basic_salary", 0),2)
         attendanceRecords = data.get("attendance_records", [])
         isOvertime = data.get("is_overtime")
         autoCalculateLeaveEncashment = data.get("auto_calculate_leave_encashment")
