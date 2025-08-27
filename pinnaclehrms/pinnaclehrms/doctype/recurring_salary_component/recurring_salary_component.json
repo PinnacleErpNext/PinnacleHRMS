@@ -57,6 +57,7 @@
   {
    "fieldname": "component",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Component",
    "options": "Salary Component"
   },
@@ -71,6 +72,7 @@
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "Amount"
   },
   {
@@ -82,6 +84,7 @@
   {
    "fieldname": "due_date",
    "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "Due Date",
    "read_only": 1
   },
@@ -105,7 +108,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-25 11:24:24.615644",
+ "modified": "2025-08-27 15:37:14.964877",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Recurring Salary Component",
@@ -142,5 +145,6 @@
    "color": "Red",
    "title": "Overdue"
   }
- ]
+ ],
+ "title_field": "employee_name"
 }
