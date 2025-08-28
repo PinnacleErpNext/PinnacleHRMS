@@ -48,11 +48,16 @@ def create_rsc(data):
     created_docs = []
 
     for row in rows:
+
         component = row.get("salary_component")
         amount = flt(str(row.get("total_amount") or 0).replace(",", ""))
         num_months = cint(row.get("number_of_months") or 0)
-        start_date = getdate(row.get("start_date")) if row.get("start_date") else None
-
+        start_date = (
+            datetime.strptime(row.get("start_date"), "%d-%m-%Y")
+            if row.get("start_date")
+            else None
+        )
+        
         if not component or not amount or not num_months or not start_date:
             continue
 
@@ -60,8 +65,7 @@ def create_rsc(data):
         per_month_amount = amount / num_months
 
         for i in range(num_months):
-            schedule_date = add_months(start_date, i)
-
+            schedule_date = add_months(start_date.date(), i)
             month_name = schedule_date.strftime("%B")
             year = schedule_date.year
             month_num = schedule_date.month
