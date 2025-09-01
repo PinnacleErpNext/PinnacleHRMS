@@ -7,6 +7,10 @@ from openpyxl import load_workbook, Workbook
 from werkzeug.wrappers import Response
 from collections import defaultdict
 from datetime import time
+import openpyxl
+from io import BytesIO
+from frappe.utils.file_manager import save_file
+
 
 # --- Helpers ---
 
@@ -69,7 +73,7 @@ def process_pinnacle(file):
             device_id = str(ws.cell(row=row, column=3).value or "").strip()
             emp_name = str(ws.cell(row=row, column=11).value or "").strip()
             time_log_row = row + 1
-            
+
             for col_index, day in enumerate(dates, start=1):
                 time_log = ws.cell(row=time_log_row, column=col_index).value
                 if isinstance(time_log, str):
@@ -205,10 +209,7 @@ def generate_final_sheet(attendance_data=None):
                 continue
 
             # --- If IN missing, fetch from Employee Checkin ---
-            if (
-                not in_time_raw
-                or in_time_raw in ["None", "00:00:00", "00:00"]
-            ):
+            if not in_time_raw or in_time_raw in ["None", "00:00:00", "00:00"]:
                 in_time = frappe.db.get_value(
                     "Employee Checkin",
                     {
@@ -223,10 +224,7 @@ def generate_final_sheet(attendance_data=None):
                     device_in = "App"
 
             # --- If OUT missing, fetch from Employee Checkin ---
-            if (
-                not out_time_raw
-                or out_time_raw in ["None", "00:00:00", "00:00"]
-            ):
+            if not out_time_raw or out_time_raw in ["None", "00:00:00", "00:00"]:
                 out_time = frappe.db.get_value(
                     "Employee Checkin",
                     {
@@ -289,7 +287,9 @@ def generate_final_sheet(attendance_data=None):
                 }
             else:
                 summary[date]["min_in_time"] = min(summary[date]["min_in_time"], in_t)
-                summary[date]["max_out_time"] = max(summary[date]["max_out_time"], out_t)
+                summary[date]["max_out_time"] = max(
+                    summary[date]["max_out_time"], out_t
+                )
                 # Keep first non-empty device info
                 if not summary[date]["custom_log_in_from"]:
                     summary[date]["custom_log_in_from"] = log["custom_log_in_from"]
@@ -298,7 +298,9 @@ def generate_final_sheet(attendance_data=None):
 
         # Cache employee name
         if emp_id not in emp_name_cache:
-            emp_name_cache[emp_id] = frappe.db.get_value("Employee", emp_id, "employee_name")
+            emp_name_cache[emp_id] = frappe.db.get_value(
+                "Employee", emp_id, "employee_name"
+            )
 
         final_data[emp_id] = [
             {
@@ -306,8 +308,16 @@ def generate_final_sheet(attendance_data=None):
                 "employee_name": emp_name_cache[emp_id],
                 "attendance_date": entry["date"],
                 "shift": entry["shift"],
-                "in_time": entry["min_in_time"].strftime("%H:%M:%S") if entry["min_in_time"] else "",
-                "out_time": entry["max_out_time"].strftime("%H:%M:%S") if entry["max_out_time"] else "",
+                "in_time": (
+                    entry["min_in_time"].strftime("%H:%M:%S")
+                    if entry["min_in_time"]
+                    else ""
+                ),
+                "out_time": (
+                    entry["max_out_time"].strftime("%H:%M:%S")
+                    if entry["max_out_time"]
+                    else ""
+                ),
                 "custom_log_in_from": entry.get("custom_log_in_from", ""),
                 "custom_log_out_from": entry.get("custom_log_out_from", ""),
             }
@@ -350,25 +360,14 @@ def preview_final_attendance_sheet():
 
     html += "</tbody></table>"
 
-    return Response(html, content_type="text/html")
+    return data
 
 
 @frappe.whitelist()
-def download_final_attendance_excel():
-    pinnacle_file = frappe.request.files.get("pinnacle_file")
-    opticode_file = frappe.request.files.get("opticode_file")
-    if not pinnacle_file and not opticode_file:
-        return Response("❌ No files received", status=400)
+def download_final_attendance_excel(logs):
 
-    records = []
-    if pinnacle_file:
-        records += process_pinnacle(pinnacle_file)
-    if opticode_file:
-        records += process_Opticode_final(opticode_file)
-
-    result = generate_final_sheet(records)
-    data = result.get("data", {})
-
+    data = json.loads(logs)
+    # frappe.throw(str(data))
     wb = Workbook()
     ws = wb.active
     ws.title = "Final Attendance"
@@ -378,10 +377,10 @@ def download_final_attendance_excel():
             "Employee Name",
             "Attendance Date",
             "Shift",
-            "In Time",
-            "Out Time",
             "Log In From",
+            "In Time",
             "Log Out From",
+            "Out Time",
         ]
     )
 
@@ -397,10 +396,10 @@ def download_final_attendance_excel():
                         else str(row["attendance_date"])
                     ),
                     row["shift"],
-                    row["in_time"],
-                    row["out_time"],
                     row["custom_log_in_from"],
+                    row["in_time"],
                     row["custom_log_out_from"],
+                    row["out_time"],
                 ]
             )
 
@@ -413,3 +412,88 @@ def download_final_attendance_excel():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=Final_Attendance.xlsx"},
     )
+
+
+@frappe.whitelist()
+def create_data_import_for_attendance(attendance_data=None):
+    """
+    Creates a Data Import record with an Excel file for Attendance List
+    and starts the import process.
+    """
+    # 1. Fetch validated records
+    validated_data = json.loads(attendance_data or "[]")
+    if not validated_data:
+        frappe.throw("No validated records found.")
+
+    # 2. Create Excel file in memory
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Attendance List"
+
+    headers = [
+        "Employee",
+        "Employee Name",
+        "Attendance Date",
+        "Shift",
+        "Log In From",
+        "In Time",
+        "Log Out From",
+        "Out Time",
+    ]
+    ws.append(headers)
+
+    for emp_id in sorted(validated_data):
+        for row in validated_data[emp_id]:
+            ws.append(
+                [
+                    row["employee"],
+                    row["employee_name"],
+                    (
+                        row["attendance_date"].strftime("%Y-%m-%d")
+                        if isinstance(row["attendance_date"], datetime)
+                        else str(row["attendance_date"])
+                    ),
+                    row.get("shift"),
+                    row.get("custom_log_in_from"),
+                    row.get("in_time"),
+                    row.get("custom_log_out_from"),
+                    row.get("out_time"),
+                ]
+            )
+
+    # Save to bytes
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # 3. Create Data Import record first
+    data_import = frappe.get_doc(
+        {
+            "doctype": "Data Import",
+            "import_type": "Insert New Records",
+            "reference_doctype": "Attendance",
+            "submit_after_import": 0,
+            "mute_emails": 1,
+        }
+    )
+    data_import.insert(ignore_permissions=True)
+
+    # 4. Attach the Excel file to Data Import
+    file_doc = save_file(
+        "attendance_import.xlsx",
+        output.getvalue(),
+        "Data Import",
+        data_import.name,
+        is_private=1,
+    )
+    data_import.import_file = file_doc.file_url
+    data_import.save(ignore_permissions=True)
+
+    # 5. Start the import
+    frappe.enqueue(
+        "frappe.core.doctype.data_import.data_import.start_import",
+        data_import=data_import.name,
+        import_type="Insert New Records",
+    )
+
+    return data_import.name
