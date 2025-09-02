@@ -45,9 +45,7 @@ def custom_before_save(self, method):
             else:
                 check_out = datetime.strptime(str(self.out_time), "%H:%M:%S").time()
             self.out_time = datetime.combine(self.attendance_date, check_out)
-        print(
-            f"Processed in_time: {self.in_time.time()}, out_time: {self.out_time.time()} type: {type(self.in_time)}"
-        )
+        
 
         if (
             not self.in_time

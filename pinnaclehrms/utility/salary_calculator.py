@@ -11,6 +11,7 @@ def createPaySlips(data):
 
     year = int(data.get("year"))
     month = data.get("month")
+    otherEarningsAmount = 0.0
 
     empRecords = getEmpRecords(data)
 
@@ -82,10 +83,14 @@ def createPaySlips(data):
             )
             othersDayAmount = salaryInfo.get("others_day_salary")
             # print(othersDayAmount)
-            otherEarningsAmount = round(
-                (salaryInfo.get("overtime", 0)), 2
-            ) + salaryInfo.get("leave_encashment")
-
+            if salaryInfo.get("other_earnings"):
+                otherEarnings = salaryInfo.get("other_earnings")
+                for earning in otherEarnings:
+                    earning = otherEarnings.get(earning)
+                    if earning.get("type") == "Earning":
+                        otherEarningsAmount += earning.get("amount")
+                    else:
+                        otherEarningsAmount -= earning.get("amount")
             monthMapping = {
                 1: "January",
                 2: "February",
@@ -126,7 +131,7 @@ def createPaySlips(data):
                     "absent": salaryInfo.get("absent"),
                     "actual_working_days": salaryInfo.get("actual_working_days"),
                     "net_payble_amount": salaryInfo.get("total_salary"),
-                    "other_earnings_amount": otherEarningsAmount,
+                    "other_earnings_total": round(otherEarningsAmount, 2),
                     "total": round(
                         (
                             fullDayWorkingAmount
@@ -220,41 +225,30 @@ def createPaySlips(data):
                         "amount": salaryInfo.get("sundays_salary"),
                     },
                 )
-            paySlip.append(
-                "other_earnings",
-                {
-                    "type": "Incentives",
-                    "amount": 0,
-                },
-            )
-            paySlip.append(
-                "other_earnings",
-                {
-                    "type": "Special Incentives",
-                    "amount": 0,
-                },
-            )
-            paySlip.append(
-                "other_earnings",
-                {
-                    "type": "Leave Encashment",
-                    "amount": salaryInfo.get("leave_encashment"),
-                },
-            )
-            paySlip.append(
-                "other_earnings",
-                {
-                    "type": "Overtime",
-                    "amount": salaryInfo.get("overtime"),
-                },
-            )
-            # paySlip.append(
-            #     "other_earnings",
-            #     {
-            #         "type": "Holidays",
-            #         "amount": salaryInfo.get("holidays"),
-            #     },
-            # )
+            if salaryInfo.get("other_earnings"):
+                for component, earning in salaryInfo.get("other_earnings").items():
+                    if component != "Leave Encashment":
+                        paySlip.append(
+                            "other_earnings",
+                            {
+                                "component": component,
+                                "type": earning.get("type"),
+                                "amount": earning.get("amount"),
+                                "component_reference": "Recurring Salary Component",
+                                "reference_name": earning.get("doc_no"),
+                            },
+                        )
+                    else:
+                        paySlip.append(
+                            "other_earnings",
+                            {
+                                "component": component,
+                                "type": earning.get("type"),
+                                "amount": earning.get("amount"),
+                                "component_reference": "Pinnacle Leave Encashment",
+                                "reference_name": earning.get("doc_no"),
+                            },
+                        )
 
             attendanceRecord = frappe.render_template(
                 "pinnaclehrms/public/templates/attendance_record.html",
@@ -264,22 +258,17 @@ def createPaySlips(data):
 
             # Insert the new document to save it in the database
             paySlip.insert()
-
-            encashment = getEncashment(emp_id, year, month)
-
-            if encashment:
-                encashment_name = encashment[0].name
-                encashment_amount = encashment[0].amount
-
-                frappe.db.set_value(
-                    "Pinnacle Leave Encashment",
-                    encashment_name,
-                    {
-                        "status": "Paid",
-                        "pay_slip": paySlip.name,
-                    },
-                )
-
+            if salaryInfo.get("other_earnings"):
+                for component, earning in salaryInfo.get("other_earnings").items():
+                    if component != "Leave Encashment":
+                        frappe.db.set_value(
+                            "Recurring Salary Component",
+                            earning.get("doc_no"),{"status": "Cleared","pay_slip":paySlip.name})
+                    else:
+                        frappe.db.set_value(
+                            "Pinnacle Leave Encashment",
+                            earning.get("doc_no"),{"status": "Paid","pay_slip":paySlip.name})
+            
 
 def getEmpRecords(data):
 
@@ -564,7 +553,7 @@ def calculateDeduction(checkIn, checkOut, slabs):
 
 def calculateFinalAmount(perDaySalary, deductionPercentage):
 
-    return perDaySalary * (1 - deductionPercentage)
+    return round(perDaySalary * (1 - deductionPercentage),2)
 
 
 def calculateMonthlySalary(employeeData, year, month):
@@ -600,7 +589,6 @@ def calculateMonthlySalary(employeeData, year, month):
         sundaysSalary = 0.0
         overtimeSalary = 0.0
         actualWorkingDays = 0
-        leaveEncashmentAmount = 0
         earlyCheckOutDays = 0
         holidayAmount = 0
         empAttendance = {
@@ -611,7 +599,7 @@ def calculateMonthlySalary(employeeData, year, month):
         }
         empAttendanceRecord = []
 
-        basicSalary = data.get("basic_salary", 0)
+        basicSalary = round(data.get("basic_salary", 0),2)
         attendanceRecords = data.get("attendance_records", [])
         isOvertime = data.get("is_overtime")
         autoCalculateLeaveEncashment = data.get("auto_calculate_leave_encashment")
@@ -649,10 +637,10 @@ def calculateMonthlySalary(employeeData, year, month):
 
         currentDate = datetime.today().date()
         workingPeriod = (relativedelta(currentDate, doj)).years
-        leaveEncashmentData = getEncashment(emp_id, year, month)
-        
-        if len(leaveEncashmentData) > 0:
-            leaveEncashmentAmount = leaveEncashmentData[0].get("amount",0)
+        # leaveEncashmentData = getEncashment(emp_id, year, month)
+
+        # if len(leaveEncashmentData) > 0:
+        #     leaveEncashmentAmount = leaveEncashmentData[0].get("amount", 0)
 
         if doj.month == month:
             filterdHolidays = []
@@ -1069,12 +1057,20 @@ def calculateMonthlySalary(employeeData, year, month):
 
         if actualWorkingDays > 0:
             totalSalary += (
-                overtimeSalary + holidayAmount + leaveEncashmentAmount + sundaysSalary + othersDaySalary
+                overtimeSalary + holidayAmount + sundaysSalary + othersDaySalary
             )
+            otherEarnings = getOtherEarnings(emp_id, year, month)
+
+            for earning in otherEarnings:
+                earning = otherEarnings.get(earning)
+                if earning.get("type") == "Earning":
+                    totalSalary += earning.get("amount")
+                else:
+                    totalSalary -= earning.get("amount")
             pass
         else:
             holidayAmount = 0
-            totalSalary += overtimeSalary + leaveEncashmentAmount
+            totalSalary += overtimeSalary
 
         data["attendance_records"] = empAttendanceRecord
 
@@ -1090,7 +1086,7 @@ def calculateMonthlySalary(employeeData, year, month):
             "sundays_working_days": sundays,
             "early_checkout_days": earlyCheckOutDays,
             "others_day": othersDay,
-            "others_day_salary":othersDaySalary,
+            "others_day_salary": othersDaySalary,
             "sundays_salary": sundaysSalary,
             "total_salary": round(totalSalary, 2),
             "total_late_deductions": totalLateDeductions,
@@ -1098,7 +1094,7 @@ def calculateMonthlySalary(employeeData, year, month):
             "lates": lates,
             "overtime": round((overtimeSalary), 2),
             "holidays": holidayAmount,
-            "leave_encashment": round((leaveEncashmentAmount), 2),
+            "other_earnings": otherEarnings,
         }
 
     return employeeData
@@ -1336,6 +1332,36 @@ def getEncashment(empId, year, month):
     if leaveEncashmentData:
         return leaveEncashmentData
     return []
+
+
+def getOtherEarnings(empID, year, month):
+    otherEarnings = {}
+    # get last day of the month
+    last_day = calendar.monthrange(year, month)[1]
+    due_date = f"{year}-{month:02d}-{last_day:02d}"
+
+    # fetch recurring salary components
+    rsc_list = frappe.get_list(
+        "Recurring Salary Component",
+        filters={"due_date": due_date, "employee": empID},
+        fields=["name"],
+    )
+
+    for rsc in rsc_list:
+        doc = frappe.get_doc("Recurring Salary Component", rsc.name)
+        otherEarnings[doc.component] = {
+            "type": doc.type,
+            "amount": float(doc.amount) if doc.amount else 0.0,
+            "doc_no": doc.name,
+        }
+    leaveEncashmentData = getEncashment(empID, year, month)
+    if len(leaveEncashmentData) > 0:
+        otherEarnings["Leave Encashment"] = {
+            "type": "Earning",
+            "amount": float(leaveEncashmentData[0].get("amount", 0)),
+            "doc_no": leaveEncashmentData[0].get("name"),
+        }
+    return otherEarnings
 
 
 # old logic to get shift details

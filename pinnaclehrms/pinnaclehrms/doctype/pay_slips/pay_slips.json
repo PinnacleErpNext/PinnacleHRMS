@@ -35,6 +35,7 @@
   "other_earnings_total",
   "net_payable_amount_section",
   "net_payble_amount",
+  "due_date",
   "attendance_record_tab",
   "attendance_record"
  ],
@@ -53,6 +54,7 @@
   {
    "fieldname": "company",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Company"
   },
   {
@@ -71,6 +73,7 @@
    "fetch_from": "employee.department",
    "fieldname": "department",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Department"
   },
   {
@@ -191,6 +194,7 @@
   {
    "fieldname": "employee",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Employee",
    "options": "Employee"
   },
@@ -204,6 +208,12 @@
    "fieldname": "email",
    "fieldtype": "Data",
    "label": "Email"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -214,7 +224,7 @@
    "link_fieldname": "Name"
   }
  ],
- "modified": "2025-07-28 18:36:19.344393",
+ "modified": "2025-08-25 12:49:49.084058",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Pay Slips",
@@ -273,6 +283,16 @@
    "role": "HR User",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pinnacle HR Auditor",
+   "select": 1,
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

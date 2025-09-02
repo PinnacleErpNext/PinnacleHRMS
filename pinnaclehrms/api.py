@@ -22,9 +22,9 @@ def get_pay_slip_list(parent_docname, month, year, company=None, employee=None):
             name,
             employee_name,
             employee,
-            net_payble_amount 
+            net_payble_amount
         FROM
-            `tabPay Slips` 
+            `tabPay Slips`
         WHERE 
             month_num = %s AND year = %s
     """
@@ -39,34 +39,38 @@ def get_pay_slip_list(parent_docname, month, year, company=None, employee=None):
         baseQuery += " AND employee = %s"
         filters.append(employee)
 
+    # ✅ Ensure results are sorted
+    baseQuery += " ORDER BY employee_name ASC, employee ASC"
+
     pay_slip_list = frappe.db.sql(baseQuery, filters, as_dict=True)
 
     created_pay_slips = []
 
-    for pay_slip in pay_slip_list:
-        generated_name = str(uuid.uuid4())  # Generate a unique ID for the name field
-
-        frappe.db.sql(
-            """
-            INSERT INTO `tabCreated Pay Slips` (
-                `name`, `pay_slip`, `employee`, `employee_id`, `salary`,
-                `parent`, `parenttype`, `parentfield`
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                generated_name,  # name
-                pay_slip["name"],  # pay_slip
-                pay_slip["employee_name"],  # employee_name
-                pay_slip["employee"],  # employee (used as employee_id)
-                pay_slip["net_payble_amount"],  # salary
-                parent_docname,  # parent
-                "Create Pay Slips",  # parenttype
-                "created_pay_slips",  # parentfield
-            ),
-        )
+    for idx, pay_slip in enumerate(pay_slip_list, start=1):
+        generated_name = str(uuid.uuid4())  # Generate a unique ID
 
         # Avoid duplicates
         if not any(item["pay_slip"] == pay_slip["name"] for item in created_pay_slips):
+            frappe.db.sql(
+                """
+                INSERT INTO `tabCreated Pay Slips` (
+                    `name`, `pay_slip`, `employee`, `employee_id`, `salary`,
+                    `parent`, `parenttype`, `parentfield`, `idx`
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    generated_name,  # name
+                    pay_slip["name"],  # pay_slip
+                    pay_slip["employee_name"],  # employee (Employee Name)
+                    pay_slip["employee"],  # employee_id
+                    pay_slip["net_payble_amount"],  # salary
+                    parent_docname,  # parent
+                    "Create Pay Slips",  # parenttype
+                    "created_pay_slips",  # parentfield
+                    idx,  # ✅ ensures sorted order in child table
+                ),
+            )
+
             created_pay_slips.append(
                 {
                     "name": generated_name,
@@ -77,6 +81,7 @@ def get_pay_slip_list(parent_docname, month, year, company=None, employee=None):
                     "parent": parent_docname,
                     "parenttype": "Create Pay Slips",
                     "parentfield": "created_pay_slips",
+                    "idx": idx,  # ✅ same idx for JSON return
                 }
             )
 
@@ -383,6 +388,7 @@ def regeneratePaySlip(data):
 
     year = int(data.get("year"))
     month = data.get("month")
+    otherEarningsAmount = 0.0
     empRecords = getEmpRecords(data)
 
     employeeData = calculateMonthlySalary(empRecords, year, month)
@@ -452,9 +458,7 @@ def regeneratePaySlip(data):
             2,
         )
         othersDayAmount = salaryInfo.get("others_day_salary")
-        otherEarningsAmount = round(
-            (salaryInfo.get("overtime", 0)), 2
-        ) + salaryInfo.get("leave_encashment")
+        
         # Check if a Pay Slip already exists for the employee
         existing_doc = frappe.get_all(
             "Pay Slips",
@@ -473,6 +477,14 @@ def regeneratePaySlip(data):
         else:
             # If no Pay Slip exists, create a new one
             pay_slip = frappe.new_doc("Pay Slips")
+        if salaryInfo.get("other_earnings"):
+            otherEarnings = salaryInfo.get("other_earnings")
+            for earning in otherEarnings:
+                earning = otherEarnings.get(earning)
+                if earning.get("type") == "Earning":
+                    otherEarningsAmount += earning.get("amount")
+                else:
+                    otherEarningsAmount -= earning.get("amount")
 
         # Update the fields
         pay_slip.update(
@@ -496,7 +508,7 @@ def regeneratePaySlip(data):
                 "absent": salaryInfo.get("absent"),
                 "actual_working_days": salaryInfo.get("actual_working_days"),
                 "net_payble_amount": salaryInfo.get("total_salary"),
-                "other_earnings_amount": otherEarningsAmount,  # Corrected key alignment
+                "other_earnings_total": otherEarningsAmount,
                 "total": round(
                     (
                         fullDayWorkingAmount
@@ -606,63 +618,49 @@ def regeneratePaySlip(data):
         # Update child table for "other_earnings"
         pay_slip.other_earnings = []
 
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Incentives",
-                "amount": 0,
-                "parent": pay_slip.name,
-            },
-        )
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Special Incentives",
-                "amount": 0,
-                "parent": pay_slip.name,
-            },
-        )
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Leave Encashment",
-                "amount": salaryInfo.get("leave_encashment"),
-                "parent": pay_slip.name,
-            },
-        )
-        pay_slip.append(
-            "other_earnings",
-            {
-                "type": "Overtime",
-                "amount": salaryInfo.get("overtime"),
-                "parent": pay_slip.name,
-            },
-        )
-        # pay_slip.append(
-        #     "other_earnings",
-        #     {
-        #         "type": "Holidays",
-        #         "amount": salaryInfo.get("holidays"),
-        #         "parent": pay_slip.name,
-        #     },
-        # )
+        if salaryInfo.get("other_earnings"):
+            for component, earning in salaryInfo.get("other_earnings").items():
+                if component != "Leave Encashment":
+                    pay_slip.append(
+                        "other_earnings",
+                        {
+                            "component": component,
+                            "type": earning.get("type"),
+                            "amount": earning.get("amount"),
+                            "component_reference": "Recurring Salary Component",
+                            "reference_name": earning.get("doc_no"),
+                        },
+                    )
+                else:
+                    pay_slip.append(
+                        "other_earnings",
+                        {
+                            "component": component,
+                            "type": earning.get("type"),
+                            "amount": earning.get("amount"),
+                            "component_reference": "Pinnacle Leave Encashment",
+                            "reference_name": earning.get("doc_no"),
+                        },
+                    )
 
         # Save or submit the document
         pay_slip.save()
         encashment = getEncashment(emp_id, year, month)
-        
-        if len(encashment) > 0:
-            encashment_name = encashment[0].name
-            encashment_amount = encashment[0].amount
 
-            frappe.db.set_value(
-                "Pinnacle Leave Encashment",
-                encashment_name,
-                {
-                    "status": "Paid",
-                    "pay_slip": pay_slip.name,
-                },
-            )
+        if salaryInfo.get("other_earnings"):
+            for component, earning in salaryInfo.get("other_earnings").items():
+                if component != "Leave Encashment":
+                    frappe.db.set_value(
+                        "Recurring Salary Component",
+                        earning.get("doc_no"),
+                        {"status": "Cleared", "pay_slip": paySlip.name},
+                    )
+                else:
+                    frappe.db.set_value(
+                        "Pinnacle Leave Encashment",
+                        earning.get("doc_no"),
+                        {"status": "Paid", "pay_slip": paySlip.name},
+                    )
         frappe.db.sql(
             """UPDATE `tabCreated Pay Slips` SET salary = %s WHERE pay_slip = %s AND employee_id = %s""",
             (pay_slip.net_payble_amount, pay_slip.name, pay_slip.employee_id),
@@ -855,7 +853,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 
 
 # API to download to pay slip records.
-@frappe.whitelist()
+# @frappe.whitelist()
 # def download_pay_slip_report(year=None, month=None, encodedCompany=None):
 #     company = base64.b64decode(encodedCompany).decode("utf-8")
 #     curr_user = frappe.session.user
@@ -984,6 +982,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 #     frappe.response.filecontent = xlsx_data.getvalue()
 #     frappe.response.type = "binary"
 
+
 @frappe.whitelist()
 def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     company = base64.b64decode(encodedCompany).decode("utf-8")
@@ -991,7 +990,10 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
-    if any(role in user_roles for role in allowed_roles) and curr_user != "Administrator":
+    if (
+        any(role in user_roles for role in allowed_roles)
+        and curr_user != "Administrator"
+    ):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
         return
@@ -1008,10 +1010,24 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
 
     # Define static columns
     static_columns = [
-        "Pay Slip Name", "Year", "Month", "Employee ID", "Employee Name", "Company",
-        "Designation", "Department", "Personal Email", "Standard Working Days",
-        "PAN Number", "Date of Joining", "Basic Salary", "Per Day Salary",
-        "Actual Working Days", "Absent", "Total", "Net Payable Amount"
+        "Pay Slip Name",
+        "Year",
+        "Month",
+        "Employee ID",
+        "Employee Name",
+        "Company",
+        "Designation",
+        "Department",
+        "Personal Email",
+        "Standard Working Days",
+        "PAN Number",
+        "Date of Joining",
+        "Basic Salary",
+        "Per Day Salary",
+        "Actual Working Days",
+        "Absent",
+        "Total",
+        "Net Payable Amount",
     ]
 
     # Dynamically gather all unique keys for salary_info and other_earnings
