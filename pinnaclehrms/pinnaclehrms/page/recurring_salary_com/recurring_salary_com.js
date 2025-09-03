@@ -214,14 +214,16 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
     const amountPerMonth = (totalAmount / numMonths).toFixed(2);
 
     for (let i = 0; i < numMonths; i++) {
-      let year = start.getFullYear();
-      let monthName = start.toLocaleString("default", { month: "long" });
+      const nextDate = new Date(start.getFullYear(), start.getMonth(), 1);
 
-      let rowHtml = `<tr><td>${year} - ${monthName}</td><td>${amountPerMonth}</td></tr>`;
+      nextDate.setMonth(start.getMonth() + i);
+
+      const monthName = nextDate.toLocaleString("default", { month: "long" });
+      const year = nextDate.getFullYear();
+
+      const rowHtml = `<tr><td>${year}-${monthName}</td><td>${amountPerMonth}</td></tr>`;
+
       $("#preview-rows").append(rowHtml);
-
-      // move to next month
-      start.setMonth(start.getMonth() + 1);
     }
 
     $("#preview-table-section").show();
@@ -241,7 +243,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
     let rows = [];
     $("#salary-component-rows tr").each(function () {
       const salaryComp = $(this).find(".salary-component input").val();
-      const compType = $(this).find(".component-type input").val(); // Data field
+      const compType = $(this).find(".component-type input").val();
       const totalAmount = $(this).find(".total-amount input").val();
       const numMonths = $(this).find(".months input").val();
       const startDate = $(this).find(".start-date input").val();
