@@ -62,7 +62,7 @@ def create_rsc(data):
             continue
 
         # divide equally
-        per_month_amount = amount / num_months
+        per_month_amount = amount
 
         for i in range(num_months):
             schedule_date = add_months(start_date.date(), i)

@@ -42,7 +42,6 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
         </table>
         <div style="margin-top:10px;">
           <button class="btn btn-sm btn-info" id="preview-components">Preview</button>
-          <button class="btn btn-sm btn-success" id="save-components" style="margin-left:10px;">Save Components</button>
         </div>
     </div>
 
@@ -58,6 +57,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
             </thead>
             <tbody id="preview-rows"></tbody>
         </table>
+        <button class="btn btn-sm btn-success" id="save-components" style="margin-left:10px;">Save Components</button>
     </div>
   `).appendTo(page.body);
 
@@ -211,8 +211,6 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
       return;
     }
 
-    const amountPerMonth = (totalAmount / numMonths).toFixed(2);
-
     for (let i = 0; i < numMonths; i++) {
       const nextDate = new Date(start.getFullYear(), start.getMonth(), 1);
 
@@ -221,7 +219,12 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
       const monthName = nextDate.toLocaleString("default", { month: "long" });
       const year = nextDate.getFullYear();
 
-      const rowHtml = `<tr><td>${year}-${monthName}</td><td>${amountPerMonth}</td></tr>`;
+      const rowHtml = `
+                      <tr>
+                        <td>${monthName}-${year}</td>
+                        <td><input type="number" value="${totalAmount}" class="amount-input" style="width:100%; border:none; outline:none;" /></td>
+                      </tr>
+                      `;
 
       $("#preview-rows").append(rowHtml);
     }
