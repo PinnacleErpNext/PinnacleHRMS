@@ -202,7 +202,7 @@ def get_pay_slip_report(year=None, month=None, curr_user=None, company=None):
 
         # Collect other_earnings data
         other_earnings_info = {
-            earning.type: {"amount": earning.amount}
+            earning.component: {"amount": earning.amount}
             for earning in pay_slip.other_earnings
         }
 

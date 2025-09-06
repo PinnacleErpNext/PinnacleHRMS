@@ -5,16 +5,16 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
     single_column: true,
   });
 
-  // Render HTML structure
+  // -------------------- UI HTML --------------------
   $(`
     <div class="employee-section" style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 20px;">
         <div id="employee-field" style="min-width: 260px;"></div>
 
         <!-- Hidden initially -->
         <div id="employee-details" class="d-flex align-items-center" style="gap: 16px; display: none;">
-            <div id="emp_name_block"><strong>Name:</strong> <span id="emp_name"></span></div>
-            <div id="emp_company_block"><strong>Company:</strong> <span id="emp_company"></span></div>
-            <div id="emp_department_block"><strong>Department:</strong> <span id="emp_department"></span></div>
+            <div><strong>Name:</strong> <span id="emp_name"></span></div>
+            <div><strong>Company:</strong> <span id="emp_company"></span></div>
+            <div><strong>Department:</strong> <span id="emp_department"></span></div>
         </div>
     </div>
 
@@ -42,7 +42,6 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
         </table>
         <div style="margin-top:10px;">
           <button class="btn btn-sm btn-info" id="preview-components">Preview</button>
-          <button class="btn btn-sm btn-success" id="save-components" style="margin-left:10px;">Save Components</button>
         </div>
     </div>
 
@@ -58,10 +57,11 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
             </thead>
             <tbody id="preview-rows"></tbody>
         </table>
+        <button class="btn btn-sm btn-success" id="save-components" style="margin-left:10px;">Save Components</button>
     </div>
   `).appendTo(page.body);
 
-  // Employee Link field
+  // -------------------- Employee Field --------------------
   const employeeField = frappe.ui.form.make_control({
     df: {
       label: "Employee",
@@ -84,11 +84,8 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
             }
           });
         } else {
-          $("#emp_name").text("");
-          $("#emp_company").text("");
-          $("#emp_department").text("");
-          $("#employee-details").hide();
-          $("#salary-component-table").hide();
+          $("#emp_name, #emp_company, #emp_department").text("");
+          $("#employee-details, #salary-component-table").hide();
         }
       },
     },
@@ -96,15 +93,15 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
     render_input: true,
   });
 
-  // --------- Clear Preview if any value changes ----------
+  // Clear Preview on any value change
   function clearPreview() {
     $("#preview-rows").empty();
     $("#preview-table-section").hide();
   }
 
-  // Function to create row controls
+  // -------------------- Row Controls --------------------
   function createRowControls(row) {
-    // Component Type (auto-filled, read-only Data)
+    // Component Type (auto-filled, read-only)
     const compType = frappe.ui.form.make_control({
       df: {
         fieldtype: "Data",
@@ -140,7 +137,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
       render_input: true,
     });
 
-    // Total Amount (Currency field)
+    // Total Amount
     frappe.ui.form.make_control({
       df: {
         fieldtype: "Currency",
@@ -151,7 +148,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
       render_input: true,
     });
 
-    // Number of Months (Int field)
+    // Number of Months
     frappe.ui.form.make_control({
       df: {
         fieldtype: "Int",
@@ -162,7 +159,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
       render_input: true,
     });
 
-    // Start Date (Date field)
+    // Start Date
     frappe.ui.form.make_control({
       df: {
         fieldtype: "Date",
@@ -174,10 +171,10 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
     });
   }
 
-  // Initialize the single row
+  // Initialize first row
   createRowControls($("#salary-component-rows tr").first());
 
-  // -------- Preview Function --------
+  // -------------------- Generate Preview --------------------
   function generatePreview() {
     $("#preview-rows").empty();
 
@@ -196,11 +193,10 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
       return;
     }
 
-    // Convert to YYYY-MM-DD safely
+    // Convert DD-MM-YYYY → YYYY-MM-DD if needed
     if (startDate.includes("-")) {
       const parts = startDate.split("-");
       if (parts[0].length === 2) {
-        // format DD-MM-YYYY → YYYY-MM-DD
         startDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
     }
@@ -211,18 +207,21 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
       return;
     }
 
-    const amountPerMonth = (totalAmount / numMonths).toFixed(2);
-
+    // Divide equally for preview
     for (let i = 0; i < numMonths; i++) {
-      const nextDate = new Date(start.getFullYear(), start.getMonth(), 1);
-
-      nextDate.setMonth(start.getMonth() + i);
-
+      const nextDate = new Date(start.getFullYear(), start.getMonth() + i, 1);
       const monthName = nextDate.toLocaleString("default", { month: "long" });
       const year = nextDate.getFullYear();
 
-      const rowHtml = `<tr><td>${year}-${monthName}</td><td>${amountPerMonth}</td></tr>`;
-
+      const rowHtml = `
+        <tr>
+          <td>${monthName}-${year}</td>
+          <td>
+            <input type="number" value="${totalAmount}" class="amount-input" 
+              style="width:100%; border:none; outline:none; text-align:left;" />
+          </td>
+        </tr>
+      `;
       $("#preview-rows").append(rowHtml);
     }
 
@@ -232,7 +231,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
   // Preview Button
   $("#preview-components").on("click", generatePreview);
 
-  // Save Components
+  // -------------------- Save Components --------------------
   $("#save-components").on("click", function () {
     const empId = employeeField.get_value();
     if (!empId) {
@@ -240,45 +239,58 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
       return;
     }
 
-    let rows = [];
-    $("#salary-component-rows tr").each(function () {
-      const salaryComp = $(this).find(".salary-component input").val();
-      const compType = $(this).find(".component-type input").val();
-      const totalAmount = $(this).find(".total-amount input").val();
-      const numMonths = $(this).find(".months input").val();
-      const startDate = $(this).find(".start-date input").val();
+    const salaryComp = $(
+      "#salary-component-rows .salary-component input"
+    ).val();
+    const compType = $("#salary-component-rows .component-type input").val();
+    const totalAmount = $("#salary-component-rows .total-amount input").val();
+    const numMonths = $("#salary-component-rows .months input").val();
+    const startDate = $("#salary-component-rows .start-date input").val();
 
-      if (salaryComp) {
-        rows.push({
-          salary_component: salaryComp,
-          component_type: compType,
-          total_amount: totalAmount || 0,
-          number_of_months: numMonths || 0,
-          start_date: startDate || null,
-        });
-      }
-    });
-
-    if (rows.length === 0) {
-      frappe.msgprint("Please add a Salary Component.");
+    if (!salaryComp || !totalAmount || !numMonths || !startDate) {
+      frappe.msgprint(
+        "Please fill all Salary Component details before saving."
+      );
       return;
     }
+
+    // Extract data from Preview Table
+    const previewData = [];
+    $("#preview-rows tr").each(function () {
+      const monthLabel = $(this).find("td:first").text();
+      const amount = parseFloat($(this).find("input.amount-input").val()) || 0;
+
+      previewData.push({
+        month: monthLabel,
+        amount: amount,
+      });
+    });
+
+    // Final payload
+    const payload = {
+      employee: empId,
+      salary_component: salaryComp,
+      component_type: compType,
+      total_amount: totalAmount,
+      number_of_months: numMonths,
+      start_date: startDate,
+      schedule: previewData,
+    };
 
     frappe.call({
       method:
         "pinnaclehrms.pinnaclehrms.doctype.recurring_salary_component.recurring_salary_component.create_rsc",
-      args: {
-        data: JSON.stringify({
-          employee: empId,
-          rows: rows,
-        }),
-      },
+      args: { data: JSON.stringify(payload) },
       callback: function (res) {
         if (!res.exc) {
-          let rsc = res.message.created || [];
-          if (rsc.length) {
-            rsc.forEach((name) => {
-              let link = `<a href="/app/recurring-salary-component/${name}" target="_blank">${name}</a>`;
+         
+
+          // Extract created array safely
+          const created = (res.message && res.message.message.created) || [];
+
+          if (created.length) {
+            created.forEach((name) => {
+              const link = `<a href="/app/recurring-salary-component/${name}" target="_blank">${name}</a>`;
               frappe.show_alert(
                 {
                   message: __("Recurring Salary Component Created: {0}", [
@@ -290,8 +302,12 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
               );
             });
           }
+
           frappe.msgprint(
-            __("Recurring Salary Components saved successfully!")
+            __(
+              "Recurring Salary Components saved successfully! Total created: {0}",
+              [created.length]
+            )
           );
         }
       },

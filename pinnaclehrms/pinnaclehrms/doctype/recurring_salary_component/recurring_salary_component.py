@@ -8,7 +8,7 @@ import calendar
 from frappe.utils import getdate
 from frappe.model.document import Document
 import frappe, json, calendar
-from frappe.utils import getdate, add_months, formatdate, cint, flt
+from frappe.utils import getdate, add_months, formatdate, cint, flt, get_last_day
 from datetime import datetime
 
 
@@ -16,75 +16,72 @@ class RecurringSalaryComponent(Document):
     pass
 
 
-@frappe.whitelist()
+@frappe.whitelist() 
 def create_rsc(data):
-    """
-    Creates Recurring Salary Component entries in bulk
-
-    Args:
-        data (json): {
-            "employee": "EMP-0001",
-            "rows": [
-                {
-                    "salary_component": "Basic Salary",
-                    "total_amount": "12000",
-                    "number_of_months": 12,
-                    "start_date": "2025-09-30"
-                }
-            ]
-        }
-    """
-    frappe.logger().info(f"Creating Recurring Salary Components with data: {data}")
-    data = json.loads(data)
-    emp_id = data.get("employee")
-
-    if not emp_id:
-        frappe.throw(_("Employee ID is required."))
-
-    rows = data.get("rows", [])
-    if not rows:
-        frappe.throw(_("At least one salary component is required."))
-
-    created_docs = []
-
-    for row in rows:
-
-        component = row.get("salary_component")
-        amount = flt(str(row.get("total_amount") or 0).replace(",", ""))
-        num_months = cint(row.get("number_of_months") or 0)
-        start_date = (
-            datetime.strptime(row.get("start_date"), "%d-%m-%Y")
-            if row.get("start_date")
-            else None
-        )
+    
+    try:
+        # Parse incoming JSON
+        if isinstance(data, str):
+            data = json.loads(data)
         
-        if not component or not amount or not num_months or not start_date:
-            continue
+        employee = data.get("employee")
+        salary_component = data.get("salary_component")
+        total_amount = flt(str(data.get("total_amount") or "0").replace(",", ""))
+        number_of_months = cint(data.get("number_of_months") or 0)
+        start_date = data.get("start_date")
+        schedule = data.get("schedule", [])
+        
+        # Validation
+        if not employee or not salary_component or not total_amount or not number_of_months or not start_date:
+            frappe.throw("Missing required fields: Employee, Salary Component, Total Amount, Number of Months, Start Date")
 
-        # divide equally
-        per_month_amount = amount / num_months
+        if not schedule:
+            frappe.throw("Schedule data is missing. Please generate preview before saving.")
 
-        for i in range(num_months):
-            schedule_date = add_months(start_date.date(), i)
-            month_name = schedule_date.strftime("%B")
-            year = schedule_date.year
-            month_num = schedule_date.month
-            last_day = calendar.monthrange(year, month_num)[1]
-            due_date = f"{year}-{month_num:02d}-{last_day:02d}"
+        created_docs = []
 
-            rsc = frappe.get_doc(
-                {
-                    "doctype": "Recurring Salary Component",
-                    "employee": emp_id,
-                    "component": component,
-                    "amount": per_month_amount,
-                    "month": month_name,
-                    "due_date": due_date,
-                }
-            )
+        # Process each month in schedule
+        for entry in schedule:
+            month_label = entry.get("month")
+            amount = flt(entry.get("amount") or 0)
+
+            if not month_label or amount <= 0:
+                continue
+            
+            # Extract year and month safely from "MonthName-Year" format
+            try:
+                schedule_date = datetime.strptime(month_label, "%B-%Y")
+            except ValueError:
+                frappe.throw(f"Invalid month format: {month_label}. Expected 'Month-Year' like 'September-2025'")
+
+            # Get last day of that month
+            due_date = get_last_day(schedule_date)
+            
+            # Create document
+            rsc = frappe.get_doc({
+                "doctype": "Recurring Salary Component",
+                "employee": employee,
+                "component": salary_component,
+                "amount": amount,
+                "month": schedule_date.strftime("%B"),
+                "due_date": due_date.strftime("%Y-%m-%d")
+            })
             rsc.insert(ignore_permissions=True)
             created_docs.append(rsc.name)
 
-    frappe.db.commit()
+        # Commit once at the end
+        frappe.db.commit()
+        return {
+            "status": "success",
+            "message": {
+                "created": created_docs,
+                "total_created": len(created_docs)
+            }
+        }
 
-    return {"created": created_docs}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Recurring Salary Component Creation Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
