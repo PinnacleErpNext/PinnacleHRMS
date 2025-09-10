@@ -132,7 +132,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-08 18:15:30.430085",
+ "modified": "2025-09-10 11:46:15.868571",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Pinnacle Leave Encashment",
@@ -165,7 +165,6 @@
   }
  ],
  "row_format": "Dynamic",
- "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [
