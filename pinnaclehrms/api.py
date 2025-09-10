@@ -388,7 +388,7 @@ def regeneratePaySlip(data):
 
     year = int(data.get("year"))
     month = data.get("month")
-    otherEarningsAmount = 0.0
+    
     empRecords = getEmpRecords(data)
 
     employeeData = calculateMonthlySalary(empRecords, year, month)
@@ -396,7 +396,7 @@ def regeneratePaySlip(data):
     # frappe.throw(str(employeeData))
 
     for emp_id, data in employeeData.items():
-
+        otherEarningsAmount = 0.0
         month_mapping = {
             1: "January",
             2: "February",

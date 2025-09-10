@@ -11,7 +11,7 @@ def createPaySlips(data):
 
     year = int(data.get("year"))
     month = data.get("month")
-    otherEarningsAmount = 0.0
+    
 
     empRecords = getEmpRecords(data)
 
@@ -23,6 +23,7 @@ def createPaySlips(data):
     progress = 0
 
     for index, (emp_id, data) in enumerate(employeeData.items(), start=1):
+        otherEarningsAmount = 0.0
         progress = int((index / total_employees) * 100)
         frappe.publish_progress(
             progress,
