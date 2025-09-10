@@ -1318,7 +1318,6 @@ def getEncashment(empId, year, month):
                 `tabPinnacle Leave Encashment`
             WHERE 
                 employee = %s
-                AND status = 'Unpaid'
                 AND MONTH(to_date) = %s
                 AND YEAR(to_date) = %s
             ORDER BY 
