@@ -653,13 +653,13 @@ def regeneratePaySlip(data):
                     frappe.db.set_value(
                         "Recurring Salary Component",
                         earning.get("doc_no"),
-                        {"status": "Cleared", "pay_slip": paySlip.name},
+                        {"status": "Cleared", "pay_slip": pay_slip.name},
                     )
                 else:
                     frappe.db.set_value(
                         "Pinnacle Leave Encashment",
                         earning.get("doc_no"),
-                        {"status": "Paid", "pay_slip": paySlip.name},
+                        {"status": "Paid", "pay_slip": pay_slip.name},
                     )
         frappe.db.sql(
             """UPDATE `tabCreated Pay Slips` SET salary = %s WHERE pay_slip = %s AND employee_id = %s""",
