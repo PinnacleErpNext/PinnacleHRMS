@@ -1,0 +1,172 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:ATT-CR-{YYYY}-{#}",
+ "creation": "2025-09-18 15:03:10.029067",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_bdcp",
+  "amended_from",
+  "employee",
+  "employee_name",
+  "shift",
+  "log_type",
+  "time",
+  "corrected_attendance",
+  "column_break_zuaj",
+  "status",
+  "attendance_date",
+  "actual_in_time",
+  "actual_out_time",
+  "reason_for_correction",
+  "reason_for_approval"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_bdcp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Attendance Correction",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "log_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Log Type",
+   "options": "\nIn\nOut",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.default_shift",
+   "fieldname": "shift",
+   "fieldtype": "Data",
+   "label": "Shift",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attendance_date",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Attendance Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_zuaj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_in_time",
+   "fieldtype": "Datetime",
+   "label": "Actual In Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_out_time",
+   "fieldtype": "Datetime",
+   "label": "Actual Out Time",
+   "read_only": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nApproved\nRejected",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason_for_correction",
+   "fieldtype": "Small Text",
+   "label": "Reason For Correction",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason_for_approval",
+   "fieldtype": "Small Text",
+   "label": "Reason For Approve/Rejection",
+   "read_only": 1
+  },
+  {
+   "fieldname": "corrected_attendance",
+   "fieldtype": "Link",
+   "label": "Corrected Attendance",
+   "options": "Attendance",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-24 13:12:14.024851",
+ "modified_by": "Administrator",
+ "module": "Pinnaclehrms",
+ "name": "Attendance Correction",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Gray",
+   "title": "Pending"
+  },
+  {
+   "color": "Green",
+   "title": "Approved"
+  },
+  {
+   "color": "Red",
+   "title": "Rejected"
+  }
+ ]
+}
