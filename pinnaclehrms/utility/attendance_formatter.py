@@ -10,9 +10,52 @@ from datetime import time
 import openpyxl
 from io import BytesIO
 from frappe.utils.file_manager import save_file
+from collections import defaultdict
 
 
 # --- Helpers ---
+
+
+def format_date_safe(date_value):
+    """
+    Safely format a date value to 'YYYY-MM-DD'.
+    Handles datetime objects, strings, or None.
+    Returns an empty string if the date is invalid.
+    """
+    if not date_value:
+        return ""
+
+    # If already a datetime or date object
+    if isinstance(date_value, (datetime,)):
+        return date_value.strftime("%Y-%m-%d")
+
+    # If it's a string, try to parse it
+    try:
+        parsed_date = datetime.strptime(str(date_value), "%Y-%m-%d")
+        return parsed_date.strftime("%Y-%m-%d")
+    except ValueError:
+        # If parsing fails, just return the original string
+        return str(date_value)
+
+
+def convert_app_attendance_to_records(app_attendance):
+    """Convert app_attendance dict into records list matching final sheet format."""
+    converted_records = []
+    for emp_id, records in app_attendance.items():
+        for rec in records:
+            converted_records.append(
+                {
+                    "device_id": "",  # App logs don't have device_id
+                    "device": "App",  # Mark source as App
+                    "employee_name": rec.get("employee_name"),
+                    "employee_id": emp_id,
+                    "attendance_date": rec.get("attendance_date"),
+                    "shift": rec.get("shift") or "Regular",
+                    "in_time": rec.get("in_time"),
+                    "out_time": rec.get("out_time"),
+                }
+            )
+    return converted_records
 
 
 def parse_date_safe(date_val):
@@ -47,6 +90,80 @@ def format_time_string(t):
     elif t:
         return str(t).strip()
     return None
+
+
+def get_employee(company):
+
+    employees = frappe.get_all(
+        "Employee",
+        filters={"company": company, "status": "Active"},
+        fields=["name", "employee_name"],
+    )
+    return {emp.name: emp.employee_name for emp in employees}
+
+
+def get_app_attendance(employee_list, payrollFrom, payrollTo):
+    """
+    Fetch attendance data for a list of employees within a given date range.
+    Groups by employee and date, returning in_time, out_time, and status.
+
+    Args:
+        employee_list (list): List of employee IDs
+        payrollFrom (str): Start date (YYYY-MM-DD)
+        payrollTo (str): End date (YYYY-MM-DD)
+
+    Returns:
+        dict: { employee_id: [attendance_records] }
+    """
+    # Ensure employee list is not empty
+    if not employee_list:
+        return {}
+
+    # Build dynamic condition string
+    condition_str = """
+        WHERE employee IN %(employee_list)s
+        AND DATE(`time`) BETWEEN %(from_date)s AND %(to_date)s
+    """
+
+    # SQL Query
+    query = f"""
+        SELECT  
+            employee,
+            employee_name,
+            shift, 
+            DATE(`time`) AS attendance_date, 
+            MIN(CASE WHEN log_type = 'IN'  THEN `time` END)  AS in_time,  
+            MAX(CASE WHEN log_type = 'OUT' THEN `time` END)  AS out_time,
+            CASE 
+                WHEN SUM(CASE WHEN skip_auto_attendance = 1 THEN 1 ELSE 0 END) > 0 THEN 'Pending'
+                ELSE 'Approved'
+            END AS raw_status
+        FROM  
+            `tabEmployee Checkin`
+        {condition_str}
+        GROUP BY  
+            employee, DATE(`time`)
+        ORDER BY  
+            employee, attendance_date
+    """
+
+    # Execute query safely with parameters
+    attendance = frappe.db.sql(
+        query,
+        {
+            "employee_list": tuple(employee_list),
+            "from_date": payrollFrom,
+            "to_date": payrollTo,
+        },
+        as_dict=True,
+    )
+
+    # Convert to structured dictionary { employee_id: [records] }
+    attendance_dict = defaultdict(list)
+    for record in attendance:
+        attendance_dict[record["employee"]].append(record)
+
+    return dict(attendance_dict)
 
 
 # --- Processors ---
@@ -195,11 +312,15 @@ def generate_final_sheet(attendance_data=None):
             out_time_raw = data.get("out_time")
 
             # --- Get employee from device allotment ---
-            emp_id = frappe.db.get_value(
-                "Attendance Device ID Allotment",
-                {"device": device, "device_id": device_id},
-                "parent",
-            )
+            if device == "App":
+                emp_id = data.get("employee_id")
+            else:
+                emp_id = frappe.db.get_value(
+                    "Attendance Device ID Allotment",
+                    {"device": device, "device_id": device_id},
+                    "parent",
+                )
+
             if not emp_id:
                 continue
 
@@ -323,7 +444,7 @@ def generate_final_sheet(attendance_data=None):
             }
             for entry in summary.values()
         ]
-
+   
     return {
         "message": "✅ Attendance extracted successfully",
         "total_employees": len(final_data),
@@ -339,28 +460,70 @@ def generate_final_sheet(attendance_data=None):
 def preview_final_attendance_sheet():
     pinnacle_file = frappe.request.files.get("pinnacle_file")
     opticode_file = frappe.request.files.get("opticode_file")
-    if not pinnacle_file and not opticode_file:
-        return Response("❌ No files received", status=400)
 
+    company = frappe.form_dict.get("company")
+    payrollFrom = frappe.form_dict.get("from_date")
+    payrollTo = frappe.form_dict.get("to_date")
+
+    if not company or not payrollFrom or not payrollTo:
+        return Response("❌ Company and Payroll Period are required", status=400)
+
+    # Fetch employees for the selected company
+    employeeList = get_employee(company)
+
+    if not employeeList:
+        return Response("❌ No active employees found for this company", status=404)
+
+    # Fetch attendance from the app for given employees and period
+    app_attendance = get_app_attendance(
+        list(employeeList.keys()), payrollFrom, payrollTo
+    )
+
+    # Convert app_attendance to same structure as other records
+    app_records = convert_app_attendance_to_records(app_attendance)
+
+    # Combine all records
     records = []
     if pinnacle_file:
         records += process_pinnacle(pinnacle_file)
     if opticode_file:
         records += process_Opticode_final(opticode_file)
+    records += app_records
 
     result = generate_final_sheet(records)
+    print(result)
     data = result.get("data", {})
 
+    # Build HTML preview
     html = '<table class="table table-bordered"><thead><tr>'
-    html += "<th>Employee</th><th>Employee Name</th><th>Attendance Date</th><th>Shift</th><th>Log In From</th><th>In Time</th><th>Log Out From</th><th>Out Time</th></tr></thead><tbody>"
+    html += (
+        "<th>Employee</th><th>Employee Name</th><th>Attendance Date</th>"
+        "<th>Shift</th><th>Log In From</th><th>In Time</th>"
+        "<th>Log Out From</th><th>Out Time</th></tr></thead><tbody>"
+    )
 
     for emp_id in sorted(data):
         for row in data[emp_id]:
-            html += f"<tr><td>{row['employee']}</td><td>{row['employee_name']}</td><td>{row['attendance_date']}</td><td>{row['shift']}</td><td>{row['custom_log_in_from']}</td><td>{row['in_time']}</td><td>{row['custom_log_out_from']}</td><td>{row['out_time']}</td></tr>"
+            html += (
+                f"<tr><td>{row['employee']}</td>"
+                f"<td>{row['employee_name']}</td>"
+                f"<td>{format_date_safe(row['attendance_date'])}</td>"
+                f"<td>{row['shift']}</td>"
+                f"<td>{row['custom_log_in_from']}</td>"
+                f"<td>{row['in_time']}</td>"
+                f"<td>{row['custom_log_out_from']}</td>"
+                f"<td>{row['out_time']}</td></tr>"
+            )
 
     html += "</tbody></table>"
 
-    return data
+    return {
+        "message": "Preview generated successfully",
+        "data": data,
+        "html": html,
+        "total_employees": len(data),
+        "total_records": sum(len(x) for x in data.values()),
+    }
 
 
 @frappe.whitelist()
@@ -386,6 +549,7 @@ def download_final_attendance_excel(logs):
 
     for emp_id in sorted(data):
         for row in data[emp_id]:
+            print(row)
             ws.append(
                 [
                     row["employee"],
