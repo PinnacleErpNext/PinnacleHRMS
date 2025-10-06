@@ -11,38 +11,98 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   rawData = {};
   validatedRecord = {};
   let selectedCompany = null;
+  // Load SheetJS if not already loaded
+  if (typeof XLSX === "undefined") {
+    const script = document.createElement("script");
+    script.src =
+      "https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js";
+    script.onload = () => {
+      setupDownloadButton(); // Call function after XLSX is ready
+    };
+    document.head.appendChild(script);
+  } else {
+    setupDownloadButton(); // Already loaded
+  }
+  function setupDownloadButton() {
+    document
+      .getElementById("download-template-btn")
+      .addEventListener("click", () => {
+        const data = [
+          [
+            "Employee",
+            "Employee Name",
+            "Attendance Date",
+            "Shift",
+            "In Time",
+            "Out Time",
+          ],
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Attendance Template");
+        XLSX.writeFile(wb, "Attendance Template.xlsx");
+      });
+  }
 
   const html = `
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <div style="font-family: Inter; line-height: 1.8; display: flex; flex-direction: column; height: 100vh;">
+      
       <!-- Sticky Controls -->
       <div style="position: sticky; top: 0; background: #fff; z-index: 1000; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
-        <!-- Company & Payroll Period -->
+        
+        <!-- Company -->
         <div class="mt-3" id="company-field-wrapper">
           <label>Company:</label>
           <div id="company-link-field" style="max-width: 300px;"></div>
         </div>
+
+        <!-- Payroll Period -->
         <div class="mt-3">
           <h6>Payroll Period</h6>
           <div class="d-flex align-items-center gap-2">
-            <div id="payroll-from-field" style="max-width: 200px;"></div>
+            <div id="payroll-from-field" style="max-width: 200px; margin-right: 20px;"></div>
             <div id="payroll-to-field" style="max-width: 200px;"></div>
           </div>
         </div>
 
-        <!-- File Upload Section -->
+        <!-- Upload Sections -->
         <div class="mt-3">
           <label>1. Upload Zaicom Attendance File:</label>
           <input type="file" id="pinnacle-excel-upload" accept=".xlsx" />
         </div>
+
         <div class="mt-2">
           <label>2. Upload ESSL Attendance File:</label>
           <input type="file" id="opticode-excel-upload" accept=".xlsx" />
         </div>
 
-        <!-- Buttons -->
+        <div class="mt-2">
+          <label>3. Upload Mantra Attendance File:</label>
+          <input type="file" id="mantra-excel-upload" accept=".xlsx" />
+        </div>
+
+        <!-- Other File Upload with Download Template Icon -->
+        <div class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+          <label style="margin: 0;">4. Upload Other Attendance File:</label>
+          <input type="file" id="other-excel-upload" accept=".xlsx" />
+          
+          <!-- Icon Button -->
+          <button id="download-template-btn" 
+                  title="Download Excel Template"
+                  style="background: none; border: none; cursor: pointer; padding: 4px;">
+            <i class="fa fa-file-excel-o" style="font-size: 20px; color: #28a745;"></i>
+          </button>
+        </div>
+
+        <!-- Action Buttons -->
         <div class="mt-3">
           <button id="preview-btn" class="btn btn-light">Load Raw Data</button>
         </div>
+
         <div class="mt-3 text-center">
           <button id="validate-btn" class="btn btn-warning mx-2">Validate</button>
           <button id="download-raw-btn" class="btn btn-info mx-2">Download Raw Data</button>
@@ -52,9 +112,15 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
         <!-- Tabs -->
         <ul class="nav nav-tabs mt-3" id="attendance-tabs" role="tablist">
-          <li class="nav-item"><a class="nav-link active" id="raw-tab" data-target="#raw-tab-pane" role="tab">Raw Data</a></li>
-          <li class="nav-item"><a class="nav-link" id="non-validated-tab" data-target="#non-validated-tab-pane" role="tab">Non-Validated</a></li>
-          <li class="nav-item"><a class="nav-link" id="validated-tab" data-target="#validated-tab-pane" role="tab">Validated</a></li>
+          <li class="nav-item">
+            <a class="nav-link active" id="raw-tab" data-target="#raw-tab-pane" role="tab">Raw Data</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="non-validated-tab" data-target="#non-validated-tab-pane" role="tab">Non-Validated</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="validated-tab" data-target="#validated-tab-pane" role="tab">Validated</a>
+          </li>
         </ul>
       </div>
 
@@ -65,24 +131,25 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
             Upload files & click <strong>Load Raw Data</strong>
           </div>
         </div>
+
         <div class="tab-pane fade" id="non-validated-tab-pane">
           <div id="non-validated-section" class="alert alert-warning text-center">No records yet.</div>
         </div>
+
         <div class="tab-pane fade" id="validated-tab-pane">
           <div id="validated-section" class="alert alert-success text-center">No validated records yet.</div>
         </div>
       </div>
 
+      <!-- Styles -->
       <style>
-        /* Scrollable container for table */
         .table-container {
-          max-height: calc(100vh - 300px); /* Adjust according to UI */
+          max-height: calc(100vh - 300px);
           overflow-y: auto;
           overflow-x: auto;
           border: 1px solid #dee2e6;
         }
 
-        /* Sticky Table Header */
         .table-container table thead th {
           position: sticky;
           top: 0;
@@ -91,14 +158,14 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
           border-bottom: 2px solid #dee2e6;
         }
 
-        /* Ensure proper border rendering for sticky */
         #attendance-table,
         #non-validated-section table,
         #validated-section table {
           border-collapse: separate;
         }
       </style>
-    </div>`;
+    </div>
+  `;
 
   $(wrapper).find(".page-body").html(html);
 
@@ -163,6 +230,8 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
     const pinnacleFile = $("#pinnacle-excel-upload")[0].files[0];
     const opticodeFile = $("#opticode-excel-upload")[0].files[0];
+    const mantraFile = $("#mantra-excel-upload")[0].files[0];
+    const otherFile = $("#other-excel-upload")[0].files[0];
     const payrollFrom = payrollFromField.get_value();
     const payrollTo = payrollToField.get_value();
 
@@ -170,7 +239,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       return frappe.msgprint("Select Payroll Period.");
     if (new Date(payrollFrom) > new Date(payrollTo))
       return frappe.msgprint("Invalid Date Range.");
-    if (!pinnacleFile && !opticodeFile)
+    if (!pinnacleFile && !opticodeFile && !mantraFile && !otherFile)
       return frappe.msgprint("Upload at least one file.");
 
     const formData = new FormData();
@@ -179,6 +248,8 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
     formData.append("to_date", payrollTo);
     if (pinnacleFile) formData.append("pinnacle_file", pinnacleFile);
     if (opticodeFile) formData.append("opticode_file", opticodeFile);
+    if (mantraFile) formData.append("mantra_file", mantraFile);
+    if (otherFile) formData.append("other_file", otherFile);
 
     frappe.dom.freeze("Loading...");
     try {
