@@ -3,6 +3,7 @@ import json
 import io
 from frappe import _
 from frappe.utils.xlsxutils import make_xlsx
+from frappe.utils import format_datetime
 
 
 def execute(filters=None):
@@ -139,12 +140,12 @@ def bulk_approve_attendance(records):
             (employee, date),
             as_dict=True,
         )
-
+        
         for log in logs:
             frappe.db.set_value(
                 "Employee Checkin", log["name"], "skip_auto_attendance", 0
             )
-
+            attendance_notification(log["name"])
     frappe.db.commit()
     return {"status": "success"}
 
@@ -248,3 +249,40 @@ def download_final_attendance_excel(filters):
     frappe.response.filename = filename
     frappe.response.filecontent = xlsx_file.getvalue()
     frappe.response.type = "binary"
+
+
+@frappe.whitelist()
+def attendance_notification(log):
+    try:
+        # Fetch Employee Checkin document
+        doc = frappe.get_doc("Employee Checkin", log)
+
+        hr_email = "hr@mygstcafe.in"
+
+        # Prepare subject
+        subject = f"Attendance Approval – {doc.employee}: {doc.employee_name} - {format_datetime(doc.time)}"
+
+        # Determine status
+        status = "In" if doc.log_type == "IN" else "Out"
+
+        # Format the message
+        message = f"""
+        Dear HR Team,<br><br>
+        This is to notify that the following employee's attendance has been approved:<br><br>
+        <b>Employee ID:</b> {doc.employee}<br>
+        <b>Name:</b> {doc.employee_name}<br>
+        <b>Status:</b> Checked {status}<br>
+        <b>Time:</b> {format_datetime(doc.time)}<br><br>
+        Regards,<br>
+        PinnacleHRMS
+        """
+
+        # Send email
+        frappe.sendmail(
+            recipients=[hr_email],
+            subject=subject,
+            message=message
+        )
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Attendance Notification Error")

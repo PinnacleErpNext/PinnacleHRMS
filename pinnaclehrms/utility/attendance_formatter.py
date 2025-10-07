@@ -10,9 +10,52 @@ from datetime import time
 import openpyxl
 from io import BytesIO
 from frappe.utils.file_manager import save_file
+from collections import defaultdict
 
 
 # --- Helpers ---
+
+
+def format_date_safe(date_value):
+    """
+    Safely format a date value to 'YYYY-MM-DD'.
+    Handles datetime objects, strings, or None.
+    Returns an empty string if the date is invalid.
+    """
+    if not date_value:
+        return ""
+
+    # If already a datetime or date object
+    if isinstance(date_value, (datetime,)):
+        return date_value.strftime("%Y-%m-%d")
+
+    # If it's a string, try to parse it
+    try:
+        parsed_date = datetime.strptime(str(date_value), "%Y-%m-%d")
+        return parsed_date.strftime("%Y-%m-%d")
+    except ValueError:
+        # If parsing fails, just return the original string
+        return str(date_value)
+
+
+def convert_app_attendance_to_records(app_attendance):
+    """Convert app_attendance dict into records list matching final sheet format."""
+    converted_records = []
+    for emp_id, records in app_attendance.items():
+        for rec in records:
+            converted_records.append(
+                {
+                    "device_id": "",  # App logs don't have device_id
+                    "device": "App",  # Mark source as App
+                    "employee_name": rec.get("employee_name"),
+                    "employee_id": emp_id,
+                    "attendance_date": rec.get("attendance_date"),
+                    "shift": rec.get("shift") or "Regular",
+                    "in_time": rec.get("in_time"),
+                    "out_time": rec.get("out_time"),
+                }
+            )
+    return converted_records
 
 
 def parse_date_safe(date_val):
@@ -47,6 +90,80 @@ def format_time_string(t):
     elif t:
         return str(t).strip()
     return None
+
+
+def get_employee(company):
+
+    employees = frappe.get_all(
+        "Employee",
+        filters={"company": company, "status": "Active"},
+        fields=["name", "employee_name"],
+    )
+    return {emp.name: emp.employee_name for emp in employees}
+
+
+def get_app_attendance(employee_list, payrollFrom, payrollTo):
+    """
+    Fetch attendance data for a list of employees within a given date range.
+    Groups by employee and date, returning in_time, out_time, and status.
+
+    Args:
+        employee_list (list): List of employee IDs
+        payrollFrom (str): Start date (YYYY-MM-DD)
+        payrollTo (str): End date (YYYY-MM-DD)
+
+    Returns:
+        dict: { employee_id: [attendance_records] }
+    """
+    # Ensure employee list is not empty
+    if not employee_list:
+        return {}
+
+    # Build dynamic condition string
+    condition_str = """
+        WHERE employee IN %(employee_list)s
+        AND DATE(`time`) BETWEEN %(from_date)s AND %(to_date)s
+    """
+
+    # SQL Query
+    query = f"""
+        SELECT  
+            employee,
+            employee_name,
+            shift, 
+            DATE(`time`) AS attendance_date, 
+            MIN(CASE WHEN log_type = 'IN'  THEN `time` END)  AS in_time,  
+            MAX(CASE WHEN log_type = 'OUT' THEN `time` END)  AS out_time,
+            CASE 
+                WHEN SUM(CASE WHEN skip_auto_attendance = 1 THEN 1 ELSE 0 END) > 0 THEN 'Pending'
+                ELSE 'Approved'
+            END AS raw_status
+        FROM  
+            `tabEmployee Checkin`
+        {condition_str}
+        GROUP BY  
+            employee, DATE(`time`)
+        ORDER BY  
+            employee, attendance_date
+    """
+
+    # Execute query safely with parameters
+    attendance = frappe.db.sql(
+        query,
+        {
+            "employee_list": tuple(employee_list),
+            "from_date": payrollFrom,
+            "to_date": payrollTo,
+        },
+        as_dict=True,
+    )
+
+    # Convert to structured dictionary { employee_id: [records] }
+    attendance_dict = defaultdict(list)
+    for record in attendance:
+        attendance_dict[record["employee"]].append(record)
+
+    return dict(attendance_dict)
 
 
 # --- Processors ---
@@ -171,6 +288,159 @@ def process_Opticode_final(file):
     return records
 
 
+def process_mantra(file):
+    file_stream = file.stream.read()
+    wb = load_workbook(filename=io.BytesIO(file_stream), data_only=True)
+    sheet = wb.active
+
+    records = []
+    seen = set()
+    current_id = None
+    current_name = None
+    current_dept = None
+    day = 1
+
+    for row in sheet.iter_rows(values_only=True):
+        # Join all non-empty cells into a single string line
+        line = " ".join([str(v).strip() for v in row if v not in (None, "", " ")])
+
+        # Detect employee info line (ID, Name, Dept)
+        if "ID" in line and "Name" in line:
+            parts = line.split()
+            try:
+                id_index = parts.index("ID") + 2 if "ID" in parts else None
+                name_index = parts.index("Name") + 2 if "Name" in parts else None
+                dept_index = parts.index("Dept.") + 2 if "Dept." in parts else None
+
+                current_id = (
+                    parts[id_index] if id_index and id_index < len(parts) else None
+                )
+                current_name = (
+                    parts[name_index]
+                    if name_index and name_index < len(parts)
+                    else None
+                )
+                current_dept = (
+                    parts[dept_index]
+                    if dept_index and dept_index < len(parts)
+                    else None
+                )
+            except:
+                current_id = current_name = current_dept = None
+
+            day = 1  # reset for next employee
+            continue
+
+        # Skip if no employee context or blank line
+        if not current_id or not any(row):
+            continue
+
+        # Extract valid time entries (contain ":")
+        times = [str(t).strip() for t in line.split() if ":" in str(t)]
+        if not times:
+            continue
+
+        # Each cell may contain something like "10:0519:20"
+        for time_str in times:
+            time_str = time_str.replace(" ", "").strip()
+            if len(time_str) < 5:
+                continue
+
+            in_time = time_str[:5]  # first 5 chars (e.g., 10:05)
+            out_time = (
+                time_str[-5:] if len(time_str) >= 10 else ""
+            )  # last 5 chars (e.g., 19:31)
+            date_str = f"{day:02d}-Oct-2025"  # adjust month as needed
+
+            unique_key = (current_id, date_str, in_time, out_time)
+            if unique_key in seen:
+                continue
+            seen.add(unique_key)
+
+            records.append(
+                {
+                    "device_id": str(current_id),
+                    "device": "Mantra Moti Mohal",
+                    "employee_name": current_name,
+                    "department": current_dept,
+                    "attendance_date": date_str,
+                    "shift": "Regular",
+                    "in_time": in_time,
+                    "out_time": out_time,
+                }
+            )
+            day += 1
+
+    frappe.msgprint(f"✅ Processed {len(records)} attendance records")
+    return records
+
+
+def process_other(file):
+    file_stream = file.stream.read()
+    wb = load_workbook(filename=io.BytesIO(file_stream), data_only=True)
+    sheet = wb.active
+    records = []
+    seen = set()
+
+    if sheet.max_row < 2:
+        return []
+
+    header_row = [
+        cell.value.strip() if isinstance(cell.value, str) else cell.value
+        for cell in sheet[1]
+    ]
+    col_index = {header: idx for idx, header in enumerate(header_row)}
+
+    required_fields = ["Employee", "Employee Name", "Attendance Date", "In Time", "Out Time"]
+    for field in required_fields:
+        if field not in col_index:
+            frappe.throw(f"Missing required column: {field}")
+
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        try:
+            employee = row[col_index["Employee"]]
+            emp_name = row[col_index["Employee Name"]]
+            date_val = row[col_index["Attendance Date"]]
+            in_time = row[col_index["In Time"]]
+            out_time = row[col_index["Out Time"]]
+
+            if not all([employee, emp_name, date_val]):
+                continue
+
+            if isinstance(date_val, datetime):
+                date_key = date_val.date()
+                date_str = date_val.strftime("%d-%b-%Y")
+            else:
+                date_obj = datetime.strptime(str(date_val), "%Y-%m-%d")
+                date_key = date_obj.date()
+                date_str = date_obj.strftime("%d-%b-%Y")
+
+            in_time_str = str(in_time).strip()
+            out_time_str = str(out_time).strip()
+
+            unique_key = (str(employee), date_key, in_time_str, out_time_str)
+            if unique_key in seen:
+                continue
+            seen.add(unique_key)
+
+            records.append(
+                {
+                    "employee_id": str(employee),
+                    "employee_name": emp_name.strip(),
+                    "attendance_date": date_str,
+                    "shift": "Regular",
+                    "in_time": in_time_str,
+                    "out_time": out_time_str,
+                }
+            )
+        except Exception as e:
+            frappe.log_error(
+                f"Error processing Opticode row: {e}", "Opticode Formatter"
+            )
+
+    return records
+
+
 # --- Core Final Generator ---
 
 
@@ -185,21 +455,26 @@ def generate_final_sheet(attendance_data=None):
 
     for data in attendance_data or []:
         device_in = device_out = None  # reset each record
-
         try:
             device_id = data.get("device_id")
             device = data.get("device")
+            emmployee = data.get("employee_id")
+            emmployee_name = data.get("employee_name")
             date_val = data.get("attendance_date")
             shift = data.get("shift", "Regular").strip()
             in_time_raw = data.get("in_time")
             out_time_raw = data.get("out_time")
-
+            
             # --- Get employee from device allotment ---
-            emp_id = frappe.db.get_value(
-                "Attendance Device ID Allotment",
-                {"device": device, "device_id": device_id},
-                "parent",
-            )
+            if device == "App" or device is None:
+                emp_id = emmployee
+            else:
+                emp_id = frappe.db.get_value(
+                    "Attendance Device ID Allotment",
+                    {"device": device, "device_id": device_id},
+                    "parent",
+                )
+
             if not emp_id:
                 continue
 
@@ -258,8 +533,8 @@ def generate_final_sheet(attendance_data=None):
                     "shift": shift,
                     "in_time": in_str,
                     "out_time": out_str,
-                    "custom_log_in_from": device_in or device,
-                    "custom_log_out_from": device_out or device,
+                    "custom_log_in_from": device_in or device or "N/A",
+                    "custom_log_out_from": device_out or device or "N/A",
                 }
             )
 
@@ -339,28 +614,76 @@ def generate_final_sheet(attendance_data=None):
 def preview_final_attendance_sheet():
     pinnacle_file = frappe.request.files.get("pinnacle_file")
     opticode_file = frappe.request.files.get("opticode_file")
-    if not pinnacle_file and not opticode_file:
-        return Response("❌ No files received", status=400)
+    mantra_file = frappe.request.files.get("mantra_file")
+    other_file = frappe.request.files.get("other_file")
 
+    company = frappe.form_dict.get("company")
+    payrollFrom = frappe.form_dict.get("from_date")
+    payrollTo = frappe.form_dict.get("to_date")
+
+    if not company or not payrollFrom or not payrollTo:
+        return Response("❌ Company and Payroll Period are required", status=400)
+
+    # Fetch employees for the selected company
+    employeeList = get_employee(company)
+
+    if not employeeList:
+        return Response("❌ No active employees found for this company", status=404)
+
+    # Fetch attendance from the app for given employees and period
+    app_attendance = get_app_attendance(
+        list(employeeList.keys()), payrollFrom, payrollTo
+    )
+
+    # Convert app_attendance to same structure as other records
+    app_records = convert_app_attendance_to_records(app_attendance)
+
+    # Combine all records
     records = []
     if pinnacle_file:
         records += process_pinnacle(pinnacle_file)
     if opticode_file:
         records += process_Opticode_final(opticode_file)
-
+    if mantra_file:
+        records += process_mantra(mantra_file)
+    if other_file:
+        records += process_other(other_file)
+    records += app_records
+    
     result = generate_final_sheet(records)
+
     data = result.get("data", {})
 
+    # Build HTML preview
     html = '<table class="table table-bordered"><thead><tr>'
-    html += "<th>Employee</th><th>Employee Name</th><th>Attendance Date</th><th>Shift</th><th>Log In From</th><th>In Time</th><th>Log Out From</th><th>Out Time</th></tr></thead><tbody>"
+    html += (
+        "<th>Employee</th><th>Employee Name</th><th>Attendance Date</th>"
+        "<th>Shift</th><th>Log In From</th><th>In Time</th>"
+        "<th>Log Out From</th><th>Out Time</th></tr></thead><tbody>"
+    )
 
     for emp_id in sorted(data):
         for row in data[emp_id]:
-            html += f"<tr><td>{row['employee']}</td><td>{row['employee_name']}</td><td>{row['attendance_date']}</td><td>{row['shift']}</td><td>{row['custom_log_in_from']}</td><td>{row['in_time']}</td><td>{row['custom_log_out_from']}</td><td>{row['out_time']}</td></tr>"
+            html += (
+                f"<tr><td>{row['employee']}</td>"
+                f"<td>{row['employee_name']}</td>"
+                f"<td>{format_date_safe(row['attendance_date'])}</td>"
+                f"<td>{row['shift']}</td>"
+                f"<td>{row['custom_log_in_from']}</td>"
+                f"<td>{row['in_time']}</td>"
+                f"<td>{row['custom_log_out_from']}</td>"
+                f"<td>{row['out_time']}</td></tr>"
+            )
 
     html += "</tbody></table>"
 
-    return data
+    return {
+        "message": "Preview generated successfully",
+        "data": data,
+        "html": html,
+        "total_employees": len(data),
+        "total_records": sum(len(x) for x in data.values()),
+    }
 
 
 @frappe.whitelist()
@@ -386,6 +709,7 @@ def download_final_attendance_excel(logs):
 
     for emp_id in sorted(data):
         for row in data[emp_id]:
+            print(row)
             ws.append(
                 [
                     row["employee"],

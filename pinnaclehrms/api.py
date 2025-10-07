@@ -12,6 +12,8 @@ from frappe.utils import nowdate, flt
 from frappe import _
 from frappe.utils import format_datetime
 from frappe.utils.pdf import get_pdf
+import calendar
+from datetime import date
 
 
 # API to get pay slips in create pay slips
@@ -388,7 +390,7 @@ def regeneratePaySlip(data):
 
     year = int(data.get("year"))
     month = data.get("month")
-    
+
     empRecords = getEmpRecords(data)
 
     employeeData = calculateMonthlySalary(empRecords, year, month)
@@ -458,7 +460,7 @@ def regeneratePaySlip(data):
             2,
         )
         othersDayAmount = salaryInfo.get("others_day_salary")
-        
+
         # Check if a Pay Slip already exists for the employee
         existing_doc = frappe.get_all(
             "Pay Slips",
@@ -1137,3 +1139,113 @@ def attendance_notification(doc, method):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Attendance Notification Error")
+
+
+@frappe.whitelist()
+def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
+    company = base64.b64decode(encodedCompany).decode("utf-8")
+    """
+    month: integer 1–12 as string or number
+    """
+
+    report_name = ""
+    conditions = []
+    params = {}
+
+    curr_user = frappe.session.user
+    allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
+    user_roles = frappe.get_roles(curr_user)
+
+    # Allow access only if user has allowed roles or is Administrator
+    if not (
+        any(role in user_roles for role in allowed_roles)
+        or curr_user == "Administrator"
+    ):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = "/app/home"
+        return
+
+    # Validate inputs
+    if not month or not year:
+        frappe.throw("Please specify a month and year")
+
+    try:
+        m = int(month)
+        if 1 <= m <= 12:
+            conditions.append("tps.month_num = %(month)s AND tps.year = %(year)s")
+            params.update({"month": m, "year": int(year)})
+            report_name = f"{company.replace(' ', '_')}_IDFC_BLKPAY_{calendar.month_name[m]}_{year}"
+        else:
+            frappe.throw("Month must be between 1 and 12")
+    except ValueError:
+        frappe.throw("Invalid month format")
+
+    if company:
+        conditions.append("tps.company = %(company)s")
+        params["company"] = company
+
+    where_sql = " AND ".join(conditions) or "1=1"
+
+    query = f"""
+        SELECT
+            te.ifsc_code AS IFSC,
+            te.bank_ac_no AS `Beneficiary Account No`,
+            te.employee_name AS `Beneficiary Name`,
+            te.company,
+            tps.net_payble_amount AS `Amount (₹)`
+        FROM `tabEmployee` AS te
+        JOIN `tabPay Slips` AS tps ON tps.employee = te.name
+        WHERE {where_sql}
+    """
+
+    data = frappe.db.sql(query, params, as_dict=True)
+
+    # Mapping for company debit accounts
+    company_debit_map = {
+        "Opticodes Technologies Private Limited": "10238672140",
+        "Pinnacle Finserv Advisors Pvt. Ltd.": "10237782223",
+    }
+
+    today_str = date.today().strftime("%Y-%m-%d")  # current date
+
+    # Define columns and rows for export
+    columns = [
+        {"header": "Beneficiary Name", "key": "Beneficiary Name", "width": 30},
+        {
+            "header": "Beneficiary Account No",
+            "key": "Beneficiary Account No",
+            "width": 25,
+        },
+        {"header": "IFSC", "key": "IFSC", "width": 20},
+        {"header": "Transaction Type", "key": "Transaction Type", "width": 30},
+        {"header": "Debit Account Number", "key": "Debit Account Number", "width": 30},
+        {"header": "Transaction Date", "key": "Transaction Date", "width": 30},
+        {"header": "Amount (₹)", "key": "Amount (₹)", "width": 15},
+        {"header": "Currency", "key": "Currency", "width": 15},
+    ]
+
+    rows = []
+    for r in data:
+        debit_account = company_debit_map.get(r["company"], "N/A")
+        row = [
+            r["Beneficiary Name"],
+            r["Beneficiary Account No"],
+            r["IFSC"],
+            "NEFT",  # assuming transaction type is NEFT
+            debit_account,
+            today_str,
+            r["Amount (₹)"],
+            "INR",  # assuming currency INR
+        ]
+        rows.append(row)
+
+    xlsx_file = make_xlsx(
+        [[col["header"] for col in columns]] + rows,
+        report_name,
+        column_widths=[col["width"] for col in columns],
+    )
+
+    # Return file as response
+    frappe.response.filename = f"{report_name}.xlsx"
+    frappe.response.filecontent = xlsx_file.getvalue()
+    frappe.response.type = "binary"

@@ -51,6 +51,7 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
             <li><a id="download_report" class="dropdown-item">Download Report</a></li>
             <li><a id="download_sft_report" class="dropdown-item">Download ICICI Bank SFTP Excel</a></li>
             <li><a id="download_bank_upld_bulk_report" class="dropdown-item">Download ICICI Bank Bulk Payment Format</a></li>
+            <li><a id="download_idfc_blkpay" class="dropdown-item">Download IDFC Bank Bulk Payment Format</a></li>
           </ul>
         </div>
       </div>
@@ -344,6 +345,32 @@ frappe.pages["pay-slip-report"].on_page_load = function (wrapper) {
       const encodedCompany = btoa(c); // Base64 encode
 
       const url = `/api/method/pinnaclehrms.api.download_bank_upld_bulk_report?month=${m}&year=${y}&encodedCompany=${encodedCompany}`;
+
+      // Attempt redirect
+      window.location.href = url;
+    } catch (err) {
+      console.error("❌ Failed to redirect:", err);
+      frappe.msgprint({
+        title: "Download Failed",
+        message:
+          err.message || "Something went wrong while downloading the report.",
+        indicator: "red",
+      });
+    }
+  });
+  $form.on("click", "#download_idfc_blkpay", function () {
+    try {
+      const y = parseInt($form.find("#year").val(), 10);
+      const m = parseInt($form.find("#month").val(), 10);
+      const c = $form.find("#company_list").val();
+
+      if (!y || !m || !c) {
+        throw new Error("Year, Month, or Company is missing!");
+      }
+
+      const encodedCompany = btoa(c); // Base64 encode
+
+      const url = `/api/method/pinnaclehrms.api.download_idfc_blkpay?month=${m}&year=${y}&encodedCompany=${encodedCompany}`;
 
       // Attempt redirect
       window.location.href = url;
