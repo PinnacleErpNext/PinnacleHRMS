@@ -57,9 +57,22 @@ frappe.ui.form.on("Create Pay Slips", {
             {
               label: "Employee",
               fieldname: "select_employee",
-              fieldtype: "Autocomplete",
-              options: employeeId,
+              fieldtype: "Link",
+              options: "Employee",
+              get_query: function () {
+                let filters = { status: "Active" };
+                if (frm.doc.select_company) {
+                  filters.company = frm.doc.select_company;
+                }
+                return { filters: filters };
+              },
             },
+            // {
+            //   label: "Employee",
+            //   fieldname: "select_employee",
+            //   fieldtype: "Autocomplete",
+            //   options: employeeId,
+            // },
             {
               label: "Allowed Lates",
               fieldname: "allowed_lates",
