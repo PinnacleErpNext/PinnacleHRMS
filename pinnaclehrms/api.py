@@ -384,10 +384,10 @@ def approvePaySlipRequest(data):
 
 # API to regenerate pay slip
 @frappe.whitelist(allow_guest=True)
-def regeneratePaySlip(data):
+def regeneratePaySlip(data,parent=None):
 
     data = json.loads(data)
-
+    
     year = int(data.get("year"))
     month = data.get("month")
 
@@ -495,7 +495,7 @@ def regeneratePaySlip(data):
                 "month": month_name,
                 "month_num": month,
                 "company": data.get("company"),
-                "employee_id": data.get("employee"),
+                "employee": data.get("employee"),
                 "employee_name": data.get("employee_name"),
                 "email": data.get("email"),
                 "designation": data.get("designation"),
@@ -663,10 +663,34 @@ def regeneratePaySlip(data):
                         earning.get("doc_no"),
                         {"status": "Paid", "pay_slip": pay_slip.name},
                     )
-        frappe.db.sql(
-            """UPDATE `tabCreated Pay Slips` SET salary = %s WHERE pay_slip = %s AND employee_id = %s""",
-            (pay_slip.net_payble_amount, pay_slip.name, pay_slip.employee_id),
-        )
+        
+        createdPaySlip = frappe.db.sql("""
+                                       select name from `tabCreated Pay Slips`
+                                       where employee_id = %s and pay_slip = %s
+                                       """, (data.get("employee"), pay_slip.name), as_dict=True)
+        
+        if createdPaySlip:
+            frappe.db.sql(
+                """UPDATE `tabCreated Pay Slips` SET salary = %s WHERE pay_slip = %s AND employee_id = %s""",
+                (pay_slip.net_payble_amount, pay_slip.name, pay_slip.employee),
+            )
+        else:
+            frappe.db.sql(
+                """
+                                       INSERT INTO `tabCreated Pay Slips` (name, pay_slip, employee, employee_id, salary, parent, parenttype, parentfield)
+                                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                       """,
+                (
+                    str(uuid.uuid4()),
+                    pay_slip.name,
+                    pay_slip.employee_name,
+                    pay_slip.employee,
+                    pay_slip.net_payble_amount,
+                    parent,
+                    "Create Pay Slips",
+                    "created_pay_slips",
+                ),
+            )
 
         # frappe.db.commit()
 
