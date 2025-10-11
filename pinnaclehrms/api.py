@@ -671,8 +671,8 @@ def regeneratePaySlip(data,parent=None):
         
         if createdPaySlip:
             frappe.db.sql(
-                """UPDATE `tabCreated Pay Slips` SET salary = %s WHERE pay_slip = %s AND employee_id = %s""",
-                (pay_slip.net_payble_amount, pay_slip.name, pay_slip.employee),
+                """UPDATE `tabCreated Pay Slips` SET salary = %s WHERE pay_slip = %s AND employee_id = %s AND parent = %s""",
+                (pay_slip.net_payble_amount, pay_slip.name, pay_slip.employee, parent),
             )
         else:
             frappe.db.sql(
