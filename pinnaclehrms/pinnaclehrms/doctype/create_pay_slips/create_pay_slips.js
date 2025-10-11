@@ -118,7 +118,7 @@ frappe.ui.form.on("Create Pay Slips", {
             // Call the server-side method
             frappe.call({
               method: "pinnaclehrms.api.regeneratePaySlip",
-              args: { data: values },
+              args: { data: values, parent:frm.docname },
               callback: function (res) {
                 console.log(res.message.message);
                 if (res.message.message === "Success") {
