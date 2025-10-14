@@ -10,6 +10,14 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   let attendanceData = [];
   rawData = {};
   validatedRecord = {};
+  previewData = {};
+  const fileMapping = {
+    "zaicom-attendance": "pinnacle",
+    "essl-attendance": "opticode",
+    "mantra-attendance": "mantra",
+    "app-attendance": "app",
+    "other-attendance": "other",
+  };
   let selectedCompany = null;
   // Load SheetJS if not already loaded
   if (typeof XLSX === "undefined") {
@@ -45,142 +53,22 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       });
   }
 
-  const html = `
-    <!-- Font Awesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <div style="font-family: Inter; line-height: 1.8; display: flex; flex-direction: column; height: 100vh;">
-      
-      <!-- Sticky Controls -->
-      <div style="position: sticky; top: 0; background: #fff; z-index: 1000; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
-        
-        <!-- Company -->
-        <div class="mt-3" id="company-field-wrapper">
-          <label>Company:</label>
-          <div id="company-link-field" style="max-width: 300px;"></div>
-        </div>
-
-        <!-- Payroll Period -->
-        <div class="mt-3">
-          <h6>Payroll Period</h6>
-          <div class="d-flex align-items-center gap-2">
-            <div id="payroll-from-field" style="max-width: 200px; margin-right: 20px;"></div>
-            <div id="payroll-to-field" style="max-width: 200px;"></div>
-          </div>
-        </div>
-
-        <!-- Upload Sections -->
-        <div class="mt-3">
-          <label>1. Upload Zaicom Attendance File:</label>
-          <input type="file" id="pinnacle-excel-upload" accept=".xlsx" />
-        </div>
-
-        <div class="mt-2">
-          <label>2. Upload ESSL Attendance File:</label>
-          <input type="file" id="opticode-excel-upload" accept=".xlsx" />
-        </div>
-
-        <div class="mt-2">
-          <label>3. Upload Mantra Attendance File:</label>
-          <input type="file" id="mantra-excel-upload" accept=".xlsx" />
-        </div>
-
-        <!-- Other File Upload with Download Template Icon -->
-        <div class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-          <label style="margin: 0;">4. Upload Other Attendance File:</label>
-          <input type="file" id="other-excel-upload" accept=".xlsx" />
-          
-          <!-- Icon Button -->
-          <button id="download-template-btn" 
-                  title="Download Excel Template"
-                  style="background: none; border: none; cursor: pointer; padding: 4px;">
-            <i class="fa fa-file-excel-o" style="font-size: 20px; color: #28a745;"></i>
-          </button>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="mt-3">
-          <button id="preview-btn" class="btn btn-light">Load Raw Data</button>
-        </div>
-
-        <div class="mt-3 text-center">
-          <button id="validate-btn" class="btn btn-warning mx-2">Validate</button>
-          <button id="download-raw-btn" class="btn btn-info mx-2">Download Raw Data</button>
-          <button id="download-validated-btn" class="btn btn-success mx-2">Download Validated Data</button>
-          <button id="import-validated-btn" class="btn btn-primary mx-2" disabled>Import Validated Records</button>
-        </div>
-
-        <!-- Tabs -->
-        <ul class="nav nav-tabs mt-3" id="attendance-tabs" role="tablist">
-          <li class="nav-item">
-            <a class="nav-link active" id="raw-tab" data-target="#raw-tab-pane" role="tab">Raw Data</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="non-validated-tab" data-target="#non-validated-tab-pane" role="tab">Non-Validated</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="validated-tab" data-target="#validated-tab-pane" role="tab">Validated</a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Tab Contents -->
-      <div class="tab-content mt-3" style="flex: 1; overflow: hidden; padding: 10px;">
-        <div class="tab-pane fade show active" id="raw-tab-pane">
-          <div id="attendance-preview" class="alert alert-info text-center">
-            Upload files & click <strong>Load Raw Data</strong>
-          </div>
-        </div>
-
-        <div class="tab-pane fade" id="non-validated-tab-pane">
-          <div id="non-validated-section" class="alert alert-warning text-center">No records yet.</div>
-        </div>
-
-        <div class="tab-pane fade" id="validated-tab-pane">
-          <div id="validated-section" class="alert alert-success text-center">No validated records yet.</div>
-        </div>
-      </div>
-
-      <!-- Styles -->
-      <style>
-        .table-container {
-          max-height: calc(100vh - 300px);
-          overflow-y: auto;
-          overflow-x: auto;
-          border: 1px solid #dee2e6;
-        }
-
-        .table-container table thead th {
-          position: sticky;
-          top: 0;
-          background: #f8f9fa;
-          z-index: 10;
-          border-bottom: 2px solid #dee2e6;
-        }
-
-        #attendance-table,
-        #non-validated-section table,
-        #validated-section table {
-          border-collapse: separate;
-        }
-      </style>
-    </div>
-  `;
+  const html = frappe.render_template("attendance_sheet_formatter", {});
 
   $(wrapper).find(".page-body").html(html);
 
   // Create Company Link Field
-  const companyControl = frappe.ui.form.make_control({
-    df: {
-      label: "Company",
-      fieldtype: "Link",
-      options: "Company",
-      reqd: 1,
-      onchange: () => (selectedCompany = companyControl.get_value()),
-    },
-    parent: $("#company-link-field"),
-    render_input: true,
-  });
+  // const companyControl = frappe.ui.form.make_control({
+  //   df: {
+  //     label: "Company",
+  //     fieldtype: "Link",
+  //     options: "Company",
+  //     reqd: 1,
+  //     onchange: () => (selectedCompany = companyControl.get_value()),
+  //   },
+  //   parent: $("#company-link-field"),
+  //   render_input: true,
+  // });
 
   // Payroll Period Date Fields
   let payrollFromField = frappe.ui.form.make_control({
@@ -192,8 +80,15 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
         let from_date = payrollFromField.get_value();
         if (from_date) {
           let date = new Date(from_date);
+          // Get last day of the month
           let lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-          payrollToField.set_value(lastDay.toISOString().slice(0, 10));
+
+          // Format as yyyy-mm-dd in local time
+          const yyyy = lastDay.getFullYear();
+          const mm = String(lastDay.getMonth() + 1).padStart(2, "0");
+          const dd = String(lastDay.getDate()).padStart(2, "0");
+          const formatted = `${yyyy}-${mm}-${dd}`;
+          payrollToField.set_value(formatted);
         }
       },
     },
@@ -207,26 +102,141 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
     render_input: true,
   });
 
-  // Handle Tabs
-  $(document).on("click", "#attendance-tabs .nav-link", function (e) {
-    e.preventDefault();
-    $("#attendance-tabs .nav-link").removeClass("active");
-    $(".tab-pane").removeClass("show active");
+  // Nested Raw Data Tabs
+  $("#raw-sub-tabs .nav-link").on("click", function () {
+    const target = $(this).data("target");
+
+    // Activate clicked sub-tab
+    $("#raw-sub-tabs .nav-link").removeClass("active");
     $(this).addClass("active");
-    $($(this).data("target")).addClass("show active");
+
+    // Show corresponding table
+    $("#raw-tab-pane .tab-pane").removeClass("show active");
+    $(target).addClass("show active");
   });
 
-  function ensureCompanySelected() {
-    if (!selectedCompany) {
-      frappe.msgprint("❌ Please select a company.");
-      return false;
+  // Handle Main Tabs
+  $("#attendance-tabs .nav-link").on("click", function () {
+    const target = $(this).data("target");
+
+    // Activate main tab
+    $("#attendance-tabs .nav-link").removeClass("active");
+    $(this).addClass("active");
+
+    // Show target tab content
+    $(".tab-pane").removeClass("show active");
+    $(target).addClass("show active");
+
+    // Reset Raw sub-tabs only if leaving Raw
+    if (target !== "#raw-tab-pane") {
+      $("#raw-sub-tabs .nav-link").removeClass("active");
+      // Do NOT force show a specific raw sub-tab
+      $("#raw-tab-pane .tab-pane").removeClass("show active");
+    } else {
+      // Show the previously active sub-tab or default to first
+      const activeSub = $("#raw-sub-tabs .nav-link.active").data("target");
+      if (activeSub) {
+        $("#raw-tab-pane .tab-pane").removeClass("show active");
+        $(activeSub).addClass("show active");
+      } else {
+        $("#raw-sub-tabs .nav-link").first().addClass("active");
+        $("#raw-tab-pane .tab-pane").removeClass("show active");
+        $("#raw-tab-pane .tab-pane").first().addClass("show active");
+      }
     }
-    return true;
+  });
+
+  // function ensureCompanySelected() {
+  //   if (!selectedCompany) {
+  //     frappe.msgprint("❌ Please select a company.");
+  //     return false;
+  //   }
+  //   return true;
+  // }
+
+  // render Raw Data in Tables
+  function renderRawDataByFile(rawData) {
+    for (const tabId in fileMapping) {
+      const key = fileMapping[tabId];
+      const data = rawData[key] || [];
+      const html = generateTableHtml(data);
+      $("#" + tabId).html(html);
+    }
+  }
+
+  function generateTableHtml(data) {
+    if (!data || !data.length) {
+      return `
+      <div class="scrollable-table-container">
+        <table class="table table-bordered table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Sr. No.</th>
+              <th>Employee</th>
+              <th>Name</th>
+              <th>Date</th>
+              <th>Shift</th>
+              <th>Log In From</th>
+              <th>In Time</th>
+              <th>Log Out From</th>
+              <th>Out Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="9" class="text-center text-muted">No records yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+    }
+
+    let html = `
+    <div class="scrollable-table-container">
+      <table class="table table-bordered table-sm mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Sr. No.</th>
+            <th>Employee/Device Id</th>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Shift</th>
+            <th>Log In From</th>
+            <th>In Time</th>
+            <th>Log Out From</th>
+            <th>Out Time</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+    data.forEach((row, index) => {
+      html += `
+      <tr data-index="${index + 1}">
+        <td>${index + 1}</td>
+        <td>${row.employee_id || row.device_id || ""}</td>
+        <td>${row.employee_name || ""}</td>
+        <td>${row.attendance_date || ""}</td>
+        <td>${row.shift || ""}</td>
+        <td>${row.device || ""}</td>
+        <td>${row.in_time || ""}</td>
+        <td>${row.device || ""}</td>
+        <td>${row.out_time || ""}</td>
+      </tr>
+    `;
+    });
+
+    html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+    return html;
   }
 
   // Load Raw Data
-  $("#preview-btn").on("click", async function () {
-    if (!ensureCompanySelected()) return;
+  $("#load-raw-data-btn").on("click", async function () {
+    // if (!ensureCompanySelected()) return;
 
     const pinnacleFile = $("#pinnacle-excel-upload")[0].files[0];
     const opticodeFile = $("#opticode-excel-upload")[0].files[0];
@@ -243,7 +253,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       return frappe.msgprint("Upload at least one file.");
 
     const formData = new FormData();
-    formData.append("company", selectedCompany);
+    // formData.append("company", selectedCompany);
     formData.append("from_date", payrollFrom);
     formData.append("to_date", payrollTo);
     if (pinnacleFile) formData.append("pinnacle_file", pinnacleFile);
@@ -254,7 +264,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
     frappe.dom.freeze("Loading...");
     try {
       const res = await fetch(
-        "/api/method/pinnaclehrms.utility.attendance_formatter.preview_final_attendance_sheet",
+        "/api/method/pinnaclehrms.utility.attendance_formatter.load_raw_attendance_data",
         {
           method: "POST",
           headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
@@ -266,11 +276,44 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       const data = await res.json();
       if (!res.ok || !data.message)
         return frappe.msgprint("❌ Error loading data");
+      console.log(data.message);
+      rawData = {
+        pinnacle: data.message.pinnacle_attendance || [],
+        opticode: data.message.opticode_attendance || [],
+        mantra: data.message.mantra_attendance || [],
+        other: data.message.other_attendance || [],
+        app: data.message.app_attendance || [],
+      };
+      console.log(rawData);
+      renderRawDataByFile(rawData);
+    } catch (err) {
+      frappe.dom.unfreeze();
+      frappe.msgprint("❌ Failed to load data");
+    }
+  });
 
-      rawData = data.message.data;
-      attendanceData = [];
+  // Generate Preview Button
+  $("#generate-preview-btn").on("click", async function () {
+    if (!rawData || !Object.keys(rawData).length) {
+      return frappe.msgprint("Load raw data first.");
+    }
 
-      let tableHtml = `
+    frappe.dom.freeze("Loading...");
+    frappe.call({
+      method:
+        "pinnaclehrms.utility.attendance_formatter.preview_final_attendance_sheet",
+      args: { raw_data: rawData },
+      callback: function (data) {
+        frappe.dom.unfreeze();
+
+        if (!data.message) {
+          return frappe.msgprint("❌ Error loading data");
+        }
+
+        previewData = data.message.data;
+        attendanceData = [];
+
+        let tableHtml = `
         <div class="table-container">
           <table id="attendance-table" class="table table-bordered table-sm">
             <thead>
@@ -282,11 +325,11 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
             </thead>
             <tbody>`;
 
-      let index = 1;
-      for (const empId of Object.keys(rawData).sort()) {
-        for (const row of rawData[empId]) {
-          attendanceData.push({ ...row, index });
-          tableHtml += `<tr data-index="${index}">
+        let index = 1;
+        for (const empId of Object.keys(previewData).sort()) {
+          for (const row of previewData[empId]) {
+            attendanceData.push({ ...row, index });
+            tableHtml += `<tr data-index="${index}">
             <td>${index}</td>
             <td>${row.employee}</td>
             <td>${row.employee_name}</td>
@@ -297,16 +340,23 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
             <td>${row.custom_log_out_from || ""}</td>
             <td>${row.out_time}</td>
           </tr>`;
-          index++;
+            index++;
+          }
         }
-      }
-      tableHtml += "</tbody></table></div>";
-      $("#attendance-preview").html(tableHtml);
-      $("#raw-tab").click();
-    } catch (err) {
-      frappe.dom.unfreeze();
-      frappe.msgprint("❌ Failed to load data");
-    }
+
+        tableHtml += "</tbody></table></div>";
+        $("#attendance-preview").html(tableHtml);
+
+        // Switch to Preview tab
+        $("#preview-tab").click();
+      },
+      error: function (err) {
+        frappe.dom.unfreeze();
+        frappe.msgprint(
+          "❌ Failed to load data: " + (err?.message || "Unknown error")
+        );
+      },
+    });
   });
 
   // Validation Button
@@ -442,14 +492,36 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   );
 
   // Download Raw Data
-  $("#download-raw-btn").on("click", async () =>
-    downloadExcel(rawData, "Raw_Attendance_Sheet.xlsx")
+  $("#download-preview-btn").on("click", async () =>
+    downloadExcel(previewData, "Preview_Attendance_Sheet.xlsx")
   );
 
   // Download Validated Data
   $("#download-validated-btn").on("click", async () =>
     downloadExcel(validatedRecord, "Validated_Attendance_Sheet.xlsx")
   );
+
+  $("#download-raw-excell-btn").on("click", function () {
+    // Find active sub-tab inside Raw tab
+    const activeSubTab = $("#raw-sub-tabs .nav-link.active").data("target");
+
+    if (!activeSubTab) {
+      frappe.msgprint("No active sub-tab found.");
+      return;
+    }
+
+    dataSet = fileMapping[activeSubTab.replace("#", "")];
+    data = rawData[dataSet] || [];
+    console.log(data);
+    if (!data || !data.length) {
+      frappe.msgprint("No data available to download.");
+      return;
+    }
+
+    // Call your existing function to download table
+    // Pass the table element or id as argument
+    downloadExcel(data, `${dataSet}_Raw_Attendance_Sheet.xlsx`);
+  });
 
   // Import Validated Records
   $("#import-validated-btn").on("click", () => {

@@ -11,7 +11,6 @@ def createPaySlips(data):
 
     year = int(data.get("year"))
     month = data.get("month")
-    
 
     empRecords = getEmpRecords(data)
 
@@ -264,12 +263,16 @@ def createPaySlips(data):
                     if component != "Leave Encashment":
                         frappe.db.set_value(
                             "Recurring Salary Component",
-                            earning.get("doc_no"),{"status": "Cleared","pay_slip":paySlip.name})
+                            earning.get("doc_no"),
+                            {"status": "Cleared", "pay_slip": paySlip.name},
+                        )
                     else:
                         frappe.db.set_value(
                             "Pinnacle Leave Encashment",
-                            earning.get("doc_no"),{"status": "Paid","pay_slip":paySlip.name})
-            
+                            earning.get("doc_no"),
+                            {"status": "Paid", "pay_slip": paySlip.name},
+                        )
+
 
 def getEmpRecords(data):
 
@@ -554,7 +557,7 @@ def calculateDeduction(checkIn, checkOut, slabs):
 
 def calculateFinalAmount(perDaySalary, deductionPercentage):
 
-    return round(perDaySalary * (1 - deductionPercentage),2)
+    return round(perDaySalary * (1 - deductionPercentage), 2)
 
 
 def calculateMonthlySalary(employeeData, year, month):
@@ -600,7 +603,7 @@ def calculateMonthlySalary(employeeData, year, month):
         }
         empAttendanceRecord = []
 
-        basicSalary = round(data.get("basic_salary", 0),2)
+        basicSalary = round(data.get("basic_salary", 0), 2)
         attendanceRecords = data.get("attendance_records", [])
         isOvertime = data.get("is_overtime")
         autoCalculateLeaveEncashment = data.get("auto_calculate_leave_encashment")
@@ -1319,6 +1322,7 @@ def getEncashment(empId, year, month):
                 `tabPinnacle Leave Encashment`
             WHERE 
                 employee = %s
+                
                 AND MONTH(to_date) = %s
                 AND YEAR(to_date) = %s
             ORDER BY 
@@ -1343,7 +1347,12 @@ def getOtherEarnings(empID, year, month):
     # fetch recurring salary components
     rsc_list = frappe.get_list(
         "Recurring Salary Component",
-        filters={"due_date": due_date, "employee": empID},
+        filters={
+            "due_date": due_date,
+            "employee": empID,
+            "docstatus": 1,
+            "status": "Due",
+        },
         fields=["name"],
     )
 

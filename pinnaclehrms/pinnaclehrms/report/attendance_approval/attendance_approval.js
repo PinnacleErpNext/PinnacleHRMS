@@ -39,6 +39,11 @@ frappe.query_reports["Attendance Approval"] = {
     // ✅ Add to ACTION dropdown
     if (report.page._download_excel_hooked) return;
     report.page._download_excel_hooked = true;
+    frappe.breadcrumbs.clear();
+    frappe.breadcrumbs.set_custom_breadcrumbs({
+      label: "PinnacleHRMS",
+      route: "/app/pinnaclehrms",
+    });
 
     // Put it under the existing "..." menu to avoid duplicating the Actions button
     report.page.add_menu_item(__("Download Excel"), function () {

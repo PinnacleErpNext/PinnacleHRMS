@@ -30,13 +30,16 @@ frappe.ui.form.on("Attendance Correction", {
   },
   attendance_date(frm) {
     frappe.db
-      .get_doc("Attendance", {
-        employee: frm.doc.employee,
-        attendance_date: frm.doc.attendance_date,
-        docstatus: 1,
+      .get_list("Attendance", {
+        filters: {
+          employee: frm.doc.employee,
+          attendance_date: frm.doc.attendance_date,
+          docstatus: 1,
+        },
+        limit: 1,
       })
-      .then((doc) => {
-        if (!doc) {
+      .then((records) => {
+        if (!records.length) {
           frappe.msgprint(
             "No submitted attendance record found for the selected date."
           );
@@ -44,8 +47,12 @@ frappe.ui.form.on("Attendance Correction", {
           frm.set_value("actual_out_time", null);
           return;
         }
-        frm.set_value("actual_in_time", doc.in_time);
-        frm.set_value("actual_out_time", doc.out_time);
+
+        // Fetch the full document by name
+        frappe.db.get_doc("Attendance", records[0].name).then((doc) => {
+          frm.set_value("actual_in_time", doc.in_time);
+          frm.set_value("actual_out_time", doc.out_time);
+        });
       });
   },
   status(frm) {

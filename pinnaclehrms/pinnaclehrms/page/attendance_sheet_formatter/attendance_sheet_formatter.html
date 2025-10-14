@@ -1,0 +1,533 @@
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+/>
+
+<div
+  style="
+    font-family: Inter;
+    line-height: 1.8;
+    padding: 20px;
+    max-width: 100%;
+    margin: auto;
+  "
+>
+  <div>
+    <p class="mt-3 text-muted small">
+      💡 Upload relevant attendance files, select your company and payroll
+      dates, then click
+      <strong>Load Raw Data</strong> to start processing.
+    </p>
+
+    <!-- UNIFIED INPUT SECTION -->
+    <div class="input-section mb-4 p-4">
+      <h5 class="mb-3 text-dark fw-semibold">
+        <i class="fa fa-database me-2"></i> Data Source & Payroll Setup
+      </h5>
+
+      <!-- File Uploads -->
+      <div class="row mb-3" style="display: flex; flex-wrap: wrap; gap: 15px">
+        <div class="col" style="flex: 1; min-width: 260px">
+          <label class="form-label fw-semibold">Zicom File:</label>
+          <input
+            type="file"
+            id="pinnacle-excel-upload"
+            accept=".xlsx"
+            class="form-control form-control-sm"
+          />
+        </div>
+        <div class="col" style="flex: 1; min-width: 260px">
+          <label class="form-label fw-semibold">ESSL File:</label>
+          <input
+            type="file"
+            id="opticode-excel-upload"
+            accept=".xlsx"
+            class="form-control form-control-sm"
+          />
+        </div>
+        <div class="col" style="flex: 1; min-width: 260px">
+          <label class="form-label fw-semibold">Mantra File:</label>
+          <input
+            type="file"
+            id="mantra-excel-upload"
+            accept=".xlsx"
+            class="form-control form-control-sm"
+          />
+        </div>
+        <div class="col" style="flex: 1; min-width: 260px">
+          <label class="form-label fw-semibold">Other File:</label>
+          <div class="d-flex align-items-center gap-2">
+            <input
+              type="file"
+              id="other-excel-upload"
+              accept=".xlsx"
+              class="form-control form-control-sm"
+            />
+            <i
+              class="fa fa-file-excel excel-icon"
+              title="Download Excel Template"
+              id="download-template-btn"
+            ></i>
+          </div>
+        </div>
+      </div>
+
+      <hr style="margin: 10px 0 20px 0" />
+
+      <!-- Company & Payroll Details -->
+      <div class="row mb-3" style="display: flex; flex-wrap: wrap; gap: 15px">
+        <!-- <div class="col" style="flex: 1; min-width: 300px">
+          <label class="form-label fw-semibold">Company:</label>
+          <div id="company-link-field" style="width: 100%"></div>
+        </div> -->
+        <div class="col" style="flex: 1; min-width: 300px">
+          <label class="form-label fw-semibold">Payroll Period:</label>
+          <div class="d-flex align-items-center gap-2">
+            <div
+              id="payroll-from-field"
+              style="width: 100%; max-width: 150px"
+            ></div>
+            <span class="mx-2 fw-bold">to</span>
+            <div
+              id="payroll-to-field"
+              style="width: 100%; max-width: 150px"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Load Button -->
+      <div class="text-end mt-3">
+        <button id="load-raw-data-btn" class="btn btn-secondary">
+          <i class="fa fa-database me-2"></i> Load Raw Data
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== ACTION BUTTONS ===== -->
+    <div class="section text-center mb-4">
+      <div
+        class="d-flex flex-wrap justify-content-center gap-4"
+        style="gap: 1.5rem"
+      >
+        <!-- Step 1: Generate Preview (Primary action, blue) -->
+        <button id="generate-preview-btn" class="btn btn-info">
+          <i class="fa fa-search"></i> Generate Preview
+        </button>
+
+        <!-- Step 2: Download Preview Data (Optional, muted gray) -->
+        <button id="download-preview-btn" class="btn btn-secondary text-black">
+          <i class="fa fa-download me-2"></i> Download Preview Data
+        </button>
+
+        <!-- Step 3: Validate (Primary, mandatory, green) -->
+        <button id="validate-btn" class="btn btn-warning">
+          <i class="fa fa-check-double me-2"></i> Validate
+        </button>
+
+        <!-- Step 4: Download Validated Data (Mandatory after validation, dark green) -->
+        <button id="download-validated-btn" class="btn btn-success">
+          <i class="fa fa-download me-2"></i> Download Validated Data
+        </button>
+
+        <!-- Step 5: Import Validated Records (Final critical action, orange) -->
+        <button id="import-validated-btn" class="btn btn-primary" disabled>
+          <i class="fa fa-upload me-2"></i> Import Validated Records
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== TAB SECTION ===== -->
+    <div class="mt-4">
+      <ul class="nav nav-tabs" id="attendance-tabs" role="tablist">
+        <li class="nav-item">
+          <a
+            class="nav-link active"
+            id="raw-tab"
+            data-target="#raw-tab-pane"
+            role="tab"
+            >Raw Data</a
+          >
+        </li>
+        <li class="nav-item">
+          <a
+            class="nav-link"
+            id="preview-tab"
+            data-target="#preview-tab-pane"
+            role="tab"
+            >Preview Data</a
+          >
+        </li>
+        <li class="nav-item">
+          <a
+            class="nav-link"
+            id="non-validated-tab"
+            data-target="#non-validated-tab-pane"
+            role="tab"
+            >Non-Validated</a
+          >
+        </li>
+        <li class="nav-item">
+          <a
+            class="nav-link"
+            id="validated-tab"
+            data-target="#validated-tab-pane"
+            role="tab"
+            >Validated</a
+          >
+        </li>
+      </ul>
+
+      <div
+        class="tab-content mt-3"
+        style="border: 1px solid #dee2e6; border-top: none; padding: 0"
+      >
+        <!-- RAW DATA -->
+        <div class="tab-pane fade show active" id="raw-tab-pane">
+          <!-- Nested Tabs for Each File Type -->
+          <ul class="nav nav-pills mb-3" id="raw-sub-tabs" role="tablist">
+            <li class="nav-item">
+              <a
+                class="nav-link active"
+                data-target="#zicom-attendance"
+                role="tab"
+                >Zicom Attendance</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-target="#essl-attendance" role="tab"
+                >ESSL Attendance</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-target="#mantra-attendance" role="tab"
+                >Mantra Attendance</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-target="#app-attendance" role="tab"
+                >App Attendance</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-target="#other-attendance" role="tab"
+                >Other File Attendance</a
+              >
+            </li>
+          </ul>
+
+          <div
+            class="tab-content"
+            style="border: 1px solid #dee2e6; border-top: none; padding: 10px"
+          >
+            <div
+              class="tab-pane fade show active scrollable-table-container"
+              id="zicom-attendance"
+            >
+              <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Sr. No.</th>
+                    <th>Employee</th>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Shift</th>
+                    <th>Log In From</th>
+                    <th>In Time</th>
+                    <th>Log Out From</th>
+                    <th>Out Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="9" class="text-center text-muted">
+                      No zicom data yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              class="tab-pane fade scrollable-table-container"
+              id="essl-attendance"
+            >
+              <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Sr. No.</th>
+                    <th>Employee</th>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Shift</th>
+                    <th>Log In From</th>
+                    <th>In Time</th>
+                    <th>Log Out From</th>
+                    <th>Out Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="9" class="text-center text-muted">
+                      No ESSL data yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              class="tab-pane fade scrollable-table-container"
+              id="mantra-attendance"
+            >
+              <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Sr. No.</th>
+                    <th>Employee</th>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Shift</th>
+                    <th>Log In From</th>
+                    <th>In Time</th>
+                    <th>Log Out From</th>
+                    <th>Out Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="9" class="text-center text-muted">
+                      No Mantra data yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              class="tab-pane fade scrollable-table-container"
+              id="app-attendance"
+            >
+              <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Sr. No.</th>
+                    <th>Employee</th>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Shift</th>
+                    <th>Log In From</th>
+                    <th>In Time</th>
+                    <th>Log Out From</th>
+                    <th>Out Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="9" class="text-center text-muted">
+                      No App data yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              class="tab-pane fade scrollable-table-container"
+              id="other-attendance"
+            >
+              <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Sr. No.</th>
+                    <th>Employee</th>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Shift</th>
+                    <th>Log In From</th>
+                    <th>In Time</th>
+                    <th>Log Out From</th>
+                    <th>Out Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="9" class="text-center text-muted">
+                      No Other file data yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="text-center mt-3">
+            <button
+              id="download-raw-excell-btn"
+              class="btn btn-outline-secondary mt-3"
+            >
+              Download Excell
+            </button>
+          </div>
+        </div>
+
+        <!-- PREVIEW DATA -->
+        <div class="tab-pane fade" id="preview-tab-pane">
+          <div id="attendance-preview" class="scrollable-table-container">
+            <table class="table table-bordered table-sm mb-0">
+              <thead class="table-info">
+                <tr>
+                  <th>Sr. No.</th>
+                  <th>Employee</th>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Shift</th>
+                  <th>Log In From</th>
+                  <th>In Time</th>
+                  <th>Log Out From</th>
+                  <th>Out Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="9" class="text-center text-muted">
+                    No preview data yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- NON-VALIDATED -->
+        <div class="tab-pane fade" id="non-validated-tab-pane">
+          <div id="non-validated-section" class="scrollable-table-container">
+            <table class="table table-bordered table-sm mb-0">
+              <thead class="table-warning">
+                <tr>
+                  <th>Sr. No.</th>
+                  <th>Employee</th>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Shift</th>
+                  <th>Log In From</th>
+                  <th>In Time</th>
+                  <th>Log Out From</th>
+                  <th>Out Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="8" class="text-center text-muted">
+                    No records yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- VALIDATED -->
+        <div class="tab-pane fade" id="validated-tab-pane">
+          <div id="validated-section" class="scrollable-table-container">
+            <table class="table table-bordered table-sm mb-0">
+              <thead class="table-success">
+                <tr>
+                  <th>Sr. No.</th>
+                  <th>Employee</th>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Shift</th>
+                  <th>Log In From</th>
+                  <th>In Time</th>
+                  <th>Log Out From</th>
+                  <th>Out Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="8" class="text-center text-muted">
+                    No validated records yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Scrollable table container */
+    .scrollable-table-container {
+      max-height: 400px;
+      overflow-y: auto;
+      overflow-x: auto;
+      width: 100%;
+      display: block;
+    }
+
+    /* Sticky header */
+    .scrollable-table-container thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f8f9fa;
+    }
+
+    /* Table structure */
+    table {
+      table-layout: auto;
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    table th,
+    table td {
+      white-space: nowrap;
+      padding: 8px 10px;
+      border: 1px solid #dee2e6;
+    }
+
+    table tbody tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    /* Excel icon */
+    .excel-icon {
+      font-size: 1.2rem;
+      color: #28a745;
+      cursor: pointer;
+      transition: transform 0.2s, font-size 0.2s;
+    }
+
+    .excel-icon:hover {
+      transform: scale(1.4);
+      color: #218838;
+    }
+
+    /* Input card */
+    .input-section {
+      background: #f8f9fc;
+      border-radius: 10px;
+      border: 1px solid #e3e3e3;
+    }
+
+    .form-label {
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .btn {
+      border-radius: 6px;
+      min-width: 160px;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f8f9fa;
+      border-color: #dee2e6 #dee2e6 #fff;
+      font-weight: 600;
+    }
+  </style>
+</div>
