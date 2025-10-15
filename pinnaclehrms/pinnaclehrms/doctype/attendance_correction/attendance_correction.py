@@ -14,10 +14,16 @@ class AttendanceCorrection(Document):
             frappe.throw(
                 "You have exceeded the maximum limit of 6 attendance correction requests for this fiscal year."
             )
+
     def on_submit(self):
         new_att = correct_attendance(self)
         frappe.db.set_value(
-            "Attendance Correction", self.name, "corrected_attendance", new_att
+            "Attendance Correction",
+            self.name,
+            {
+                "corrected_attendance": new_att,
+                "status": "Approved",
+            },
         )
 
 
@@ -43,7 +49,7 @@ def check_attendance_correction_eligiblity(doc, method):
             filters={
                 "employee": doc.employee,
                 "creation": ["between", [fiscal_start, fiscal_end]],
-                "docstatus": 1,  
+                "docstatus": 1,
             },
         )
         # Eligible only if < 6 corrections
@@ -75,9 +81,9 @@ def correct_attendance(self):
         {
             "employee": self.employee,
             "attendance_date": attendance_date,
-            "docstatus": 1  # Only submitted records
+            "docstatus": 1,  # Only submitted records
         },
-        "name"
+        "name",
     )
 
     old_in_time = None
@@ -102,15 +108,17 @@ def correct_attendance(self):
     final_out_time = self.time if self.log_type.upper() == "OUT" else old_out_time
 
     # --- 4. Create a new attendance record ---
-    new_attendance = frappe.get_doc({
-        "doctype": "Attendance",
-        "employee": self.employee,
-        "attendance_date": attendance_date,
-        "status": "Present",
-        "shift": self.shift,
-        "in_time": final_in_time,
-        "out_time": final_out_time
-    })
+    new_attendance = frappe.get_doc(
+        {
+            "doctype": "Attendance",
+            "employee": self.employee,
+            "attendance_date": attendance_date,
+            "status": "Present",
+            "shift": self.shift,
+            "in_time": final_in_time,
+            "out_time": final_out_time,
+        }
+    )
 
     # Insert new record
     new_attendance.insert(ignore_permissions=True)
@@ -118,4 +126,3 @@ def correct_attendance(self):
     frappe.db.commit()
 
     return new_attendance.name
-
