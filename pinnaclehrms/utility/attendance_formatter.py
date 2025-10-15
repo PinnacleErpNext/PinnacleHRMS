@@ -69,18 +69,56 @@ def parse_date_safe(date_val):
     return None
 
 
+from datetime import datetime, time
+
+
 def parse_time_safe(value):
+    """
+    Parse various time or datetime string formats safely and return a time object.
+    Returns None if parsing fails.
+    """
     if isinstance(value, datetime):
         return value.time()
+
     if isinstance(value, time):
         return value
+
     if isinstance(value, str):
         value = value.strip()
-        for fmt in ("%H:%M:%S", "%H:%M"):
+
+        # Common formats for time and datetime strings
+        formats = [
+            # 24-hour time formats
+            "%H:%M:%S",
+            "%H:%M",
+            "%H:%M:%S.%f",
+            # 12-hour time formats
+            "%I:%M:%S %p",
+            "%I:%M %p",
+            "%I:%M:%S.%f %p",
+            # Date + time (24-hour)
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d %H:%M:%S.%f",
+            # Date + time (12-hour)
+            "%Y-%m-%d %I:%M:%S %p",
+            "%Y-%m-%d %I:%M %p",
+            "%Y-%m-%d %I:%M:%S.%f %p",
+            # Alternate separators (e.g., slashes)
+            "%Y/%m/%d %H:%M:%S",
+            "%Y/%m/%d %H:%M",
+            "%Y/%m/%d %H:%M:%S.%f",
+            "%Y/%m/%d %I:%M:%S %p",
+            "%Y/%m/%d %I:%M %p",
+            "%Y/%m/%d %I:%M:%S.%f %p",
+        ]
+
+        for fmt in formats:
             try:
                 return datetime.strptime(value, fmt).time()
-            except:
+            except ValueError:
                 continue
+
     return None
 
 
@@ -92,8 +130,14 @@ def format_time_string(t):
     return None
 
 
-def get_employee(company):
-
+def get_employee(company=None):
+    if company is None:
+        employees = frappe.get_all(
+            "Employee",
+            filters={"status": "Active"},
+            fields=["name", "employee_name"],
+        )
+        return {emp.name: emp.employee_name for emp in employees}
     employees = frappe.get_all(
         "Employee",
         filters={"company": company, "status": "Active"},
@@ -391,7 +435,13 @@ def process_other(file):
     ]
     col_index = {header: idx for idx, header in enumerate(header_row)}
 
-    required_fields = ["Employee", "Employee Name", "Attendance Date", "In Time", "Out Time"]
+    required_fields = [
+        "Employee",
+        "Employee Name",
+        "Attendance Date",
+        "In Time",
+        "Out Time",
+    ]
     for field in required_fields:
         if field not in col_index:
             frappe.throw(f"Missing required column: {field}")
@@ -464,7 +514,6 @@ def generate_final_sheet(attendance_data=None):
             shift = data.get("shift", "Regular").strip()
             in_time_raw = data.get("in_time")
             out_time_raw = data.get("out_time")
-            
             # --- Get employee from device allotment ---
             if device == "App" or device is None:
                 emp_id = emmployee
@@ -598,7 +647,6 @@ def generate_final_sheet(attendance_data=None):
             }
             for entry in summary.values()
         ]
-
     return {
         "message": "✅ Attendance extracted successfully",
         "total_employees": len(final_data),
@@ -607,25 +655,23 @@ def generate_final_sheet(attendance_data=None):
     }
 
 
-# --- Preview and Download Endpoints ---
-
-
+# --- Load Raw Data --- #
 @frappe.whitelist()
-def preview_final_attendance_sheet():
+def load_raw_attendance_data():
     pinnacle_file = frappe.request.files.get("pinnacle_file")
     opticode_file = frappe.request.files.get("opticode_file")
     mantra_file = frappe.request.files.get("mantra_file")
     other_file = frappe.request.files.get("other_file")
 
-    company = frappe.form_dict.get("company")
+    # company = frappe.form_dict.get("company") or None
     payrollFrom = frappe.form_dict.get("from_date")
     payrollTo = frappe.form_dict.get("to_date")
 
-    if not company or not payrollFrom or not payrollTo:
+    if not payrollFrom or not payrollTo:
         return Response("❌ Company and Payroll Period are required", status=400)
 
     # Fetch employees for the selected company
-    employeeList = get_employee(company)
+    employeeList = get_employee()
 
     if not employeeList:
         return Response("❌ No active employees found for this company", status=404)
@@ -638,49 +684,47 @@ def preview_final_attendance_sheet():
     # Convert app_attendance to same structure as other records
     app_records = convert_app_attendance_to_records(app_attendance)
 
-    # Combine all records
-    records = []
     if pinnacle_file:
-        records += process_pinnacle(pinnacle_file)
+        pinnacleAttendance = process_pinnacle(pinnacle_file)
     if opticode_file:
-        records += process_Opticode_final(opticode_file)
+        opticodeAttendance = process_Opticode_final(opticode_file)
     if mantra_file:
-        records += process_mantra(mantra_file)
+        mantraAttendance = process_mantra(mantra_file)
     if other_file:
-        records += process_other(other_file)
-    records += app_records
-    
+        otherFile = process_other(other_file)
+    appAttendance = app_records
+
+    return {
+        "message": "✅ Attendance files processed successfully",
+        "status_cd": 200,
+        "pinnacle_attendance": pinnacleAttendance if pinnacle_file else [],
+        "opticode_attendance": opticodeAttendance if opticode_file else [],
+        "mantra_attendance": mantraAttendance if mantra_file else [],
+        "other_attendance": otherFile if other_file else [],
+        "app_attendance": appAttendance,
+    }
+
+
+# --- Preview and Download Endpoints ---
+@frappe.whitelist()
+def preview_final_attendance_sheet(raw_data=None):
+    records = []
+    if raw_data is None:
+        return {"message": "No raw data provided", "data": {}, "html": ""}
+    raw_data = json.loads(raw_data)
+    records += raw_data.get("pinnacle", [])
+    records += raw_data.get("opticode", [])
+    records += raw_data.get("mantra", [])
+    records += raw_data.get("other", [])
+    records += raw_data.get("app", [])
     result = generate_final_sheet(records)
 
     data = result.get("data", {})
-
     # Build HTML preview
-    html = '<table class="table table-bordered"><thead><tr>'
-    html += (
-        "<th>Employee</th><th>Employee Name</th><th>Attendance Date</th>"
-        "<th>Shift</th><th>Log In From</th><th>In Time</th>"
-        "<th>Log Out From</th><th>Out Time</th></tr></thead><tbody>"
-    )
-
-    for emp_id in sorted(data):
-        for row in data[emp_id]:
-            html += (
-                f"<tr><td>{row['employee']}</td>"
-                f"<td>{row['employee_name']}</td>"
-                f"<td>{format_date_safe(row['attendance_date'])}</td>"
-                f"<td>{row['shift']}</td>"
-                f"<td>{row['custom_log_in_from']}</td>"
-                f"<td>{row['in_time']}</td>"
-                f"<td>{row['custom_log_out_from']}</td>"
-                f"<td>{row['out_time']}</td></tr>"
-            )
-
-    html += "</tbody></table>"
 
     return {
         "message": "Preview generated successfully",
         "data": data,
-        "html": html,
         "total_employees": len(data),
         "total_records": sum(len(x) for x in data.values()),
     }
@@ -688,45 +732,78 @@ def preview_final_attendance_sheet():
 
 @frappe.whitelist()
 def download_final_attendance_excel(logs):
-
     data = json.loads(logs)
-    # frappe.throw(str(data))
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Final Attendance"
-    ws.append(
-        [
-            "Employee",
-            "Employee Name",
-            "Attendance Date",
-            "Shift",
-            "Log In From",
-            "In Time",
-            "Log Out From",
-            "Out Time",
-        ]
-    )
 
-    for emp_id in sorted(data):
-        for row in data[emp_id]:
-            print(row)
+    # Check if the data has "device" key (first case)
+    if isinstance(data, list) and "device" in data[0].keys():
+        # Header for device-based logs
+        ws.append(
+            [
+                "Device Id",
+                "Device",
+                "Employee Name",
+                "Attendance Date",
+                "Shift",
+                "In Time",
+                "Out Time",
+            ]
+        )
+
+        for row in data:
             ws.append(
                 [
-                    row["employee"],
-                    row["employee_name"],
+                    row.get("device_id", ""),
+                    row.get("device", ""),
+                    row.get("employee_name", ""),
                     (
                         row["attendance_date"].strftime("%d-%b-%Y")
                         if isinstance(row["attendance_date"], datetime)
                         else str(row["attendance_date"])
                     ),
-                    row["shift"],
-                    row["custom_log_in_from"],
-                    row["in_time"],
-                    row["custom_log_out_from"],
-                    row["out_time"],
+                    row.get("shift", ""),
+                    row.get("in_time", ""),
+                    row.get("out_time", ""),
                 ]
             )
+    else:
+        # Header for employee-based logs
+        ws.append(
+            [
+                "Employee",
+                "Employee Name",
+                "Attendance Date",
+                "Shift",
+                "Log In From",
+                "In Time",
+                "Log Out From",
+                "Out Time",
+            ]
+        )
 
+        for emp_id in sorted(data):
+            for row in data[emp_id]:
+                ws.append(
+                    [
+                        row["employee"],
+                        row["employee_name"],
+                        (
+                            row["attendance_date"].strftime("%d-%b-%Y")
+                            if isinstance(row["attendance_date"], datetime)
+                            else str(row["attendance_date"])
+                        ),
+                        row["shift"],
+                        row.get("custom_log_in_from", ""),
+                        row.get("in_time", ""),
+                        row.get("custom_log_out_from", ""),
+                        row.get("out_time", ""),
+                    ]
+                )
+
+    # Write to in-memory buffer and return the response
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)

@@ -10,10 +10,30 @@ from frappe.model.document import Document
 import frappe, json, calendar
 from frappe.utils import getdate, add_months, formatdate, cint, flt, get_last_day
 from datetime import datetime
+from datetime import date
 
 
 class RecurringSalaryComponent(Document):
-    pass
+    def before_save(self):
+        if not self.due_date:
+            self.due_date = _get_last_date_of_month(self.month)
+
+
+def _get_last_date_of_month(month_name):
+    """Return the last date of the given month name for the current year."""
+    # Convert month name to month number (1–12)
+    month_number = list(calendar.month_name).index(month_name.capitalize())
+    if month_number == 0:
+        raise ValueError(f"Invalid month name: {month_name}")
+
+    # Get current year
+    current_year = date.today().year
+
+    # Get the number of days in that month
+    last_day = calendar.monthrange(current_year, month_number)[1]
+
+    # Return the last date of the month
+    return date(current_year, month_number, last_day)
 
 
 @frappe.whitelist()

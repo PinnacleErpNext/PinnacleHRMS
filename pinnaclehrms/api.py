@@ -13,7 +13,14 @@ from frappe import _
 from frappe.utils import format_datetime
 from frappe.utils.pdf import get_pdf
 import calendar
+from io import BytesIO
 from datetime import date
+import base64
+import calendar
+from datetime import date
+import frappe
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font
 
 
 # API to get pay slips in create pay slips
@@ -1179,20 +1186,14 @@ def attendance_notification(doc, method):
 
 @frappe.whitelist()
 def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
+    # --- Decode and validate company ---
     company = base64.b64decode(encodedCompany).decode("utf-8")
-    """
-    month: integer 1–12 as string or number
-    """
+    company_abbr = frappe.db.get_value("Company", company, "abbr")
 
-    report_name = ""
-    conditions = []
-    params = {}
-
+    # --- User access check ---
     curr_user = frappe.session.user
     allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
     user_roles = frappe.get_roles(curr_user)
-
-    # Allow access only if user has allowed roles or is Administrator
     if not (
         any(role in user_roles for role in allowed_roles)
         or curr_user == "Administrator"
@@ -1201,25 +1202,30 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
         frappe.local.response["location"] = "/app/home"
         return
 
-    # Validate inputs
+    # --- Validate input month & year ---
     if not month or not year:
         frappe.throw("Please specify a month and year")
 
     try:
         m = int(month)
-        if 1 <= m <= 12:
-            conditions.append("tps.month_num = %(month)s AND tps.year = %(year)s")
-            params.update({"month": m, "year": int(year)})
-            report_name = f"{company.replace(' ', '_')}_IDFC_BLKPAY_{calendar.month_name[m]}_{year}"
-        else:
+        year = int(year)
+        if not (1 <= m <= 12):
             frappe.throw("Month must be between 1 and 12")
     except ValueError:
         frappe.throw("Invalid month format")
 
+    last_day = calendar.monthrange(year, m)[1]
+    last_date = date(year, m, last_day)
+
+    formatted_date_for_display = last_date.strftime("%d/%m/%Y")
+    formatted_date_for_filename = last_date.strftime("%d_%m_%Y")
+
+    # --- Build query ---
+    conditions = ["tps.month_num = %(month)s", "tps.year = %(year)s"]
+    params = {"month": m, "year": year}
     if company:
         conditions.append("tps.company = %(company)s")
         params["company"] = company
-
     where_sql = " AND ".join(conditions) or "1=1"
 
     query = f"""
@@ -1233,18 +1239,17 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
         JOIN `tabPay Slips` AS tps ON tps.employee = te.name
         WHERE {where_sql}
     """
-
     data = frappe.db.sql(query, params, as_dict=True)
 
-    # Mapping for company debit accounts
+    # --- Debit account map ---
     company_debit_map = {
         "Opticodes Technologies Private Limited": "10238672140",
         "Pinnacle Finserv Advisors Pvt. Ltd.": "10237782223",
     }
 
-    today_str = date.today().strftime("%Y-%m-%d")  # current date
+    today = date.today()
 
-    # Define columns and rows for export
+    # --- Column configuration ---
     columns = [
         {"header": "Beneficiary Name", "key": "Beneficiary Name", "width": 30},
         {
@@ -1253,35 +1258,64 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
             "width": 25,
         },
         {"header": "IFSC", "key": "IFSC", "width": 20},
-        {"header": "Transaction Type", "key": "Transaction Type", "width": 30},
+        {"header": "Transaction Type", "key": "Transaction Type", "width": 20},
         {"header": "Debit Account Number", "key": "Debit Account Number", "width": 30},
-        {"header": "Transaction Date", "key": "Transaction Date", "width": 30},
+        {"header": "Transaction Date", "key": "Transaction Date", "width": 20},
         {"header": "Amount (₹)", "key": "Amount (₹)", "width": 15},
-        {"header": "Currency", "key": "Currency", "width": 15},
+        {"header": "Currency", "key": "Currency", "width": 10},
     ]
 
+    # --- Prepare row data ---
     rows = []
     for r in data:
         debit_account = company_debit_map.get(r["company"], "N/A")
-        row = [
-            r["Beneficiary Name"],
-            r["Beneficiary Account No"],
-            r["IFSC"],
-            "NEFT",  # assuming transaction type is NEFT
-            debit_account,
-            today_str,
-            r["Amount (₹)"],
-            "INR",  # assuming currency INR
-        ]
-        rows.append(row)
+        amount_value = r["Amount (₹)"]
+        rows.append(
+            [
+                r["Beneficiary Name"],
+                r["Beneficiary Account No"],
+                r["IFSC"],
+                "NEFT",
+                debit_account,
+                today.strftime("%d/%m/%Y"),
+                amount_value,
+                "INR",
+            ]
+        )
 
-    xlsx_file = make_xlsx(
-        [[col["header"] for col in columns]] + rows,
-        report_name,
-        column_widths=[col["width"] for col in columns],
-    )
+    # --- Build Excel file ---
+    wb = Workbook()
+    ws = wb.active
 
-    # Return file as response
-    frappe.response.filename = f"{report_name}.xlsx"
-    frappe.response.filecontent = xlsx_file.getvalue()
+    # --- Write header row (Merged cells A1:A2, B1:B2, etc.) ---
+    for col_num, col in enumerate(columns, 1):
+        col_letter = ws.cell(row=1, column=col_num).column_letter
+        ws.merge_cells(f"{col_letter}1:{col_letter}2")
+        cell = ws.cell(row=1, column=col_num, value=col["header"])
+        ws.column_dimensions[col_letter].width = col["width"]
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.font = Font(bold=True)
+
+    # --- Write data rows starting from row 3 ---
+    start_row = 3
+    for row_idx, row_data in enumerate(rows, start_row):
+        for col_idx, value in enumerate(row_data, 1):
+            header = columns[col_idx - 1]["header"]
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+
+            if header == "Amount (₹)":
+                cell.number_format = "General"
+                cell.alignment = Alignment(horizontal="right")
+            else:
+                cell.number_format = "@"
+                cell.alignment = Alignment(horizontal="left")
+
+    # --- Save workbook to memory ---
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # --- Set filename & response ---
+    frappe.response.filename = f"{company_abbr}_{formatted_date_for_filename}.xlsx"
+    frappe.response.filecontent = output.getvalue()
     frappe.response.type = "binary"

@@ -6,6 +6,7 @@ from frappe.model.document import Document
 from frappe.utils import getdate, today
 from erpnext.accounts.utils import get_fiscal_year
 from hrms.hr.doctype.attendance.attendance import Attendance
+from frappe.utils import get_datetime, getdate
 
 
 class AttendanceCorrection(Document):
@@ -14,10 +15,16 @@ class AttendanceCorrection(Document):
             frappe.throw(
                 "You have exceeded the maximum limit of 6 attendance correction requests for this fiscal year."
             )
+
     def on_submit(self):
         new_att = correct_attendance(self)
         frappe.db.set_value(
-            "Attendance Correction", self.name, "corrected_attendance", new_att
+            "Attendance Correction",
+            self.name,
+            {
+                "corrected_attendance": new_att,
+                "status": "Approved",
+            },
         )
 
 
@@ -43,7 +50,7 @@ def check_attendance_correction_eligiblity(doc, method):
             filters={
                 "employee": doc.employee,
                 "creation": ["between", [fiscal_start, fiscal_end]],
-                "docstatus": 1,  
+                "docstatus": 1,
             },
         )
         # Eligible only if < 6 corrections
@@ -56,52 +63,44 @@ def check_attendance_correction_eligiblity(doc, method):
         return False
 
 
-def correct_attendance(self):
-    """
-    Corrects the attendance record for the given employee on the specified date.
-    If an attendance record exists:
-        - Cancel it
-        - Create a new one with the same data
-        - Update either in_time or out_time based on log_type (keep the other value unchanged)
-    If no attendance record exists:
-        - Create a new record with only the provided log_type and time.
-    """
 
+def correct_attendance(self):
     attendance_date = getdate(self.attendance_date)
 
-    # --- 1. Fetch existing attendance record name ---
+    # --- 1. Fetch existing attendance record ---
     existing_attendance_name = frappe.db.get_value(
         "Attendance",
         {
             "employee": self.employee,
             "attendance_date": attendance_date,
-            "docstatus": 1  # Only submitted records
+            "docstatus": 1,
         },
-        "name"
+        "name",
     )
 
     old_in_time = None
     old_out_time = None
 
-    # --- 2. If existing record found, cancel it and store old values ---
+    # --- 2. If record exists, cancel and preserve values ---
     if existing_attendance_name:
         existing_attendance_doc = frappe.get_doc("Attendance", existing_attendance_name)
-
-        # Preserve old in_time and out_time before cancel
         old_in_time = existing_attendance_doc.in_time
         old_out_time = existing_attendance_doc.out_time
-
-        # Cancel the old attendance
         existing_attendance_doc.cancel()
         frappe.db.commit()
 
     # --- 3. Prepare new values ---
-    # If log_type is IN, update in_time; otherwise, keep old one
-    final_in_time = self.time if self.log_type.upper() == "IN" else old_in_time
-    # If log_type is OUT, update out_time; otherwise, keep old one
-    final_out_time = self.time if self.log_type.upper() == "OUT" else old_out_time
+    final_in_time = old_in_time
+    final_out_time = old_out_time
 
-    # --- 4. Create a new attendance record ---
+    if self.log_type and self.time:
+        time_value = get_datetime(self.time)
+        if self.log_type.upper() == "IN":
+            final_in_time = time_value
+        elif self.log_type.upper() == "OUT":
+            final_out_time = time_value
+
+    # --- 4. Create and submit new record ---
     new_attendance = frappe.get_doc({
         "doctype": "Attendance",
         "employee": self.employee,
@@ -109,13 +108,11 @@ def correct_attendance(self):
         "status": "Present",
         "shift": self.shift,
         "in_time": final_in_time,
-        "out_time": final_out_time
+        "out_time": final_out_time,
     })
 
-    # Insert new record
     new_attendance.insert(ignore_permissions=True)
     new_attendance.submit()
     frappe.db.commit()
 
     return new_attendance.name
-
