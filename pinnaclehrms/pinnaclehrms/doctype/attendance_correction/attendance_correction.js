@@ -3,6 +3,17 @@
 
 frappe.ui.form.on("Attendance Correction", {
   refresh(frm) {
+    if (frm.is_new() & frappe.session.user !== "Administrator") {
+      frappe.db
+        .get_value("Employee", { user_id: frappe.session.user }, "name")
+        .then((r) => {
+          if (r.message) {
+            frm.set_value("employee", r.message.name);
+            frm.set_df_property("employee","read_only",1)
+          }
+        });
+        
+    }
     if (frm.doc.status) {
       frm.page.set_indicator(
         frm.doc.status,
