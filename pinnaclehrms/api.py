@@ -1076,8 +1076,9 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     ]
 
     # Dynamically gather all unique keys for salary_info and other_earnings
-    salary_info_keys = set()
-    other_earning_keys = set()
+    salary_info_keys = sorted([k for k in salary_info_keys if k is not None])
+    other_earning_keys = sorted([k for k in other_earning_keys if k is not None])
+
 
     for r in records:
         salary_info = r.get("salary_info", {})
