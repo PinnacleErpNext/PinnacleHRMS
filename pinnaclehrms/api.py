@@ -1075,23 +1075,26 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
         "Net Payable Amount",
     ]
 
-    # Dynamically gather all unique keys for salary_info and other_earnings
-    salary_info_keys = sorted([k for k in salary_info_keys if k is not None])
-    other_earning_keys = sorted([k for k in other_earning_keys if k is not None])
+    # Initialize sets
+    salary_info_keys = set()
+    other_earning_keys = set()
 
-
+    # Gather all unique keys for salary_info and other_earnings
     for r in records:
         salary_info = r.get("salary_info", {})
         other_earnings = r.get("other_earnings", {})
 
         for key in salary_info.keys():
-            salary_info_keys.add(key)
+            if key:
+                salary_info_keys.add(key)
 
         for key in other_earnings.keys():
-            other_earning_keys.add(key)
+            if key:
+                other_earning_keys.add(key)
 
-    salary_info_keys = sorted(list(salary_info_keys))
-    other_earning_keys = sorted(list(other_earning_keys))
+    # Filter out None and sort keys
+    salary_info_keys = sorted([k for k in salary_info_keys if k is not None])
+    other_earning_keys = sorted([k for k in other_earning_keys if k is not None])
 
     # Build headers
     header_row_1 = (
@@ -1155,7 +1158,6 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     frappe.response.filename = filename
     frappe.response.filecontent = xlsx_data.getvalue()
     frappe.response.type = "binary"
-
 
 # API to send attendance notification
 def attendance_notification(doc, method):
