@@ -3,16 +3,15 @@
 
 frappe.ui.form.on("Attendance Correction", {
   refresh(frm) {
-    if (frm.is_new() & frappe.session.user !== "Administrator") {
+    if (frm.is_new() & (frappe.session.user !== "Administrator")) {
       frappe.db
         .get_value("Employee", { user_id: frappe.session.user }, "name")
         .then((r) => {
           if (r.message) {
             frm.set_value("employee", r.message.name);
-            frm.set_df_property("employee","read_only",1)
+            frm.set_df_property("employee", "read_only", 1);
           }
         });
-        
     }
     if (frm.doc.status) {
       frm.page.set_indicator(
@@ -25,32 +24,42 @@ frappe.ui.form.on("Attendance Correction", {
       );
     }
     if (frappe.user.has_role("Team Lead")) {
-      // Unlock the 'status' field
-      frm.set_df_property("status", "read_only", 0);
-      if (frappe.session.user === "Administrator") {
-        return;
-      }
-      frm.disable_save();
-      // Lock all other fields
-      Object.values(frm.fields_dict).forEach((field) => {
-        if (field.df.fieldname !== "status") {
-          frm.set_df_property(field.df.fieldname, "read_only", 1);
+      // Team Lead can save
+      frm.enable_save();
+
+      // All fields read-only except 'status'
+      Object.keys(frm.fields_dict).forEach((fieldname) => {
+        if (fieldname !== "status") {
+          frm.set_df_property(fieldname, "read_only", 1);
         }
+      });
+
+      // status editable
+      frm.set_df_property("status", "read_only", 0);
+      return;
+    }
+
+    // EMPLOYEE (but not Team Lead)
+    if (frappe.user.has_role("Employee")) {
+      // Disable save
+      frm.disable_save();
+
+      // All fields read-only
+      Object.keys(frm.fields_dict).forEach((fieldname) => {
+        frm.set_df_property(fieldname, "read_only", 1);
       });
     }
   },
   attendance_date(frm) {
-    frappe.db
-      .get_list("Attendance", {
-        filters: {
-          employee: frm.doc.employee,
-          attendance_date: frm.doc.attendance_date,
-          docstatus: 1,
-        },
-        limit: 1,
-      })
-      .then((records) => {
-        if (!records.length) {
+    frappe.call({
+      method:
+        "pinnaclehrms.pinnaclehrms.doctype.attendance_correction.attendance_correction.get_attendance",
+      args: {
+        emp: frm.doc.employee,
+        att_date: frm.doc.attendance_date,
+      },
+      callback: function (r) {
+        if (!r.message || !r.message.in_time) {
           frappe.msgprint(
             "No submitted attendance record found for the selected date."
           );
@@ -59,12 +68,10 @@ frappe.ui.form.on("Attendance Correction", {
           return;
         }
 
-        // Fetch the full document by name
-        frappe.db.get_doc("Attendance", records[0].name).then((doc) => {
-          frm.set_value("actual_in_time", doc.in_time);
-          frm.set_value("actual_out_time", doc.out_time);
-        });
-      });
+        frm.set_value("actual_in_time", r.message.in_time);
+        frm.set_value("actual_out_time", r.message.out_time);
+      },
+    });
   },
   status(frm) {
     if (frm.doc.status === "Approved") {

@@ -116,3 +116,25 @@ def correct_attendance(self):
     frappe.db.commit()
 
     return new_attendance.name
+
+@frappe.whitelist()
+def get_attendance(emp, att_date):
+    records = frappe.get_list(
+        "Attendance",
+        filters={
+            "employee": emp,
+            "attendance_date": att_date,
+            "docstatus": 1,
+        },
+        limit=1,
+        ignore_permissions=True,   # ✅ FORCE bypass permissions
+    )
+
+    if not records:
+        return {}
+
+    doc = frappe.get_doc("Attendance", records[0].name)
+    return {
+        "in_time": doc.in_time,
+        "out_time": doc.out_time,
+    }
