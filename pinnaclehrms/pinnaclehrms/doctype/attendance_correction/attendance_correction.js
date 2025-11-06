@@ -23,31 +23,33 @@ frappe.ui.form.on("Attendance Correction", {
         }[frm.doc.status]
       );
     }
-    if (frappe.user.has_role("Team Lead")) {
-      // Team Lead can save
-      frm.enable_save();
+    if (!frm.is_new()) {
+      if (frappe.user.has_role("Team Lead")) {
+        // Team Lead can save
+        frm.disable_save();
 
-      // All fields read-only except 'status'
-      Object.keys(frm.fields_dict).forEach((fieldname) => {
-        if (fieldname !== "status") {
+        // All fields read-only except 'status'
+        Object.keys(frm.fields_dict).forEach((fieldname) => {
+          if (fieldname !== "status") {
+            frm.set_df_property(fieldname, "read_only", 1);
+          }
+        });
+
+        // status editable
+        frm.set_df_property("status", "read_only", 0);
+        return;
+      }
+
+      // EMPLOYEE (but not Team Lead)
+      if (frappe.user.has_role("Employee")) {
+        // Disable save
+        frm.disable_save();
+
+        // All fields read-only
+        Object.keys(frm.fields_dict).forEach((fieldname) => {
           frm.set_df_property(fieldname, "read_only", 1);
-        }
-      });
-
-      // status editable
-      frm.set_df_property("status", "read_only", 0);
-      return;
-    }
-
-    // EMPLOYEE (but not Team Lead)
-    if (frappe.user.has_role("Employee")) {
-      // Disable save
-      frm.disable_save();
-
-      // All fields read-only
-      Object.keys(frm.fields_dict).forEach((fieldname) => {
-        frm.set_df_property(fieldname, "read_only", 1);
-      });
+        });
+      }
     }
   },
   attendance_date(frm) {
