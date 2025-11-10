@@ -16,6 +16,25 @@ from collections import defaultdict
 # --- Helpers ---
 
 
+def merge_header_cells(header_cells):
+    merged = []
+    temp = []
+    for val in header_cells:
+        if val is None:
+            continue
+        text = str(val).strip()
+        # If cell is a word and next cell continues header
+        if text.lower() in ["attendance", "device", "id", "employee", "name", "date", "shift", "in", "out", "time"]:
+            temp.append(text)
+            # If the word completes a header pair, join it
+            if text.lower() in ["id", "name", "date", "shift", "time"]:
+                merged.append(" ".join(temp))
+                temp = []
+        else:
+            merged.append(text)
+    return merged
+
+
 def format_date_safe(date_value):
     """
     Safely format a date value to 'YYYY-MM-DD'.
@@ -333,89 +352,72 @@ def process_Opticode_final(file):
 
 
 def process_mantra(file):
+    import io
     file_stream = file.stream.read()
     wb = load_workbook(filename=io.BytesIO(file_stream), data_only=True)
     sheet = wb.active
 
+    # Read first row
+    raw_header = [c.value for c in sheet[1]]
+
+    # Merge split headers like ['Attendance','Device','Id'] → 'Attendance Device Id'
+    header = merge_header_cells(raw_header)
+    header = [h.lower().strip() for h in header]
+
+    col_idx = {h: i for i, h in enumerate(header)}
+
+    required = [
+        "attendance device id",
+        "attendance device",
+        "employee name",
+        "attendance date",
+        "in time",
+        "out time",
+    ]
+
+    for col in required:
+        if col not in col_idx:
+            frappe.throw(f"Missing required column: {col}")
+
     records = []
     seen = set()
-    current_id = None
-    current_name = None
-    current_dept = None
-    day = 1
 
-    for row in sheet.iter_rows(values_only=True):
-        # Join all non-empty cells into a single string line
-        line = " ".join([str(v).strip() for v in row if v not in (None, "", " ")])
-
-        # Detect employee info line (ID, Name, Dept)
-        if "ID" in line and "Name" in line:
-            parts = line.split()
-            try:
-                id_index = parts.index("ID") + 2 if "ID" in parts else None
-                name_index = parts.index("Name") + 2 if "Name" in parts else None
-                dept_index = parts.index("Dept.") + 2 if "Dept." in parts else None
-
-                current_id = (
-                    parts[id_index] if id_index and id_index < len(parts) else None
-                )
-                current_name = (
-                    parts[name_index]
-                    if name_index and name_index < len(parts)
-                    else None
-                )
-                current_dept = (
-                    parts[dept_index]
-                    if dept_index and dept_index < len(parts)
-                    else None
-                )
-            except:
-                current_id = current_name = current_dept = None
-
-            day = 1  # reset for next employee
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        vals = [v for v in row if v not in (None, "", " ")]
+        if not vals:
             continue
 
-        # Skip if no employee context or blank line
-        if not current_id or not any(row):
+        device_id = str(row[col_idx["attendance device id"]] or "").strip()
+        device = str(row[col_idx["attendance device"]] or "").strip()
+        emp_name = str(row[col_idx["employee name"]] or "").strip()
+        date_val = row[col_idx["attendance date"]]
+        in_val = row[col_idx["in time"]]
+        out_val = row[col_idx["out time"]]
+
+        if not device_id or not emp_name or not date_val:
             continue
 
-        # Extract valid time entries (contain ":")
-        times = [str(t).strip() for t in line.split() if ":" in str(t)]
-        if not times:
+        attendance_date = date_val.strftime("%d-%b-%Y") if hasattr(date_val, "strftime") else str(date_val)
+        in_time = in_val.strftime("%H:%M") if hasattr(in_val, "strftime") else str(in_val or "")
+        out_time = out_val.strftime("%H:%M") if hasattr(out_val, "strftime") else str(out_val or "")
+
+        key = (device_id, emp_name, attendance_date, in_time, out_time)
+        if key in seen:
             continue
+        seen.add(key)
 
-        # Each cell may contain something like "10:0519:20"
-        for time_str in times:
-            time_str = time_str.replace(" ", "").strip()
-            if len(time_str) < 5:
-                continue
+        records.append({
+            "device_id": device_id,
+            "device": device,
+            "employee_name": emp_name,
+            "department": "",
+            "attendance_date": attendance_date,
+            "shift": "",
+            "in_time": in_time,
+            "out_time": out_time,
+        })
 
-            in_time = time_str[:5]  # first 5 chars (e.g., 10:05)
-            out_time = (
-                time_str[-5:] if len(time_str) >= 10 else ""
-            )  # last 5 chars (e.g., 19:31)
-            date_str = f"{day:02d}-Oct-2025"  # adjust month as needed
-
-            unique_key = (current_id, date_str, in_time, out_time)
-            if unique_key in seen:
-                continue
-            seen.add(unique_key)
-
-            records.append(
-                {
-                    "device_id": str(current_id),
-                    "device": "Mantra Moti Mohal",
-                    "employee_name": current_name,
-                    "department": current_dept,
-                    "attendance_date": date_str,
-                    "shift": "Regular",
-                    "in_time": in_time,
-                    "out_time": out_time,
-                }
-            )
-            day += 1
-
-    frappe.msgprint(f"✅ Processed {len(records)} attendance records")
+    frappe.msgprint(f"✅ Processed {len(records)} Mantra records")
     return records
 
 
