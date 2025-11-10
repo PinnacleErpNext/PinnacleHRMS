@@ -12,12 +12,13 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   validatedRecord = {};
   previewData = {};
   const fileMapping = {
-    "zaicom-attendance": "pinnacle",
+    "zicom-attendance": "pinnacle",
     "essl-attendance": "opticode",
     "mantra-attendance": "mantra",
     "app-attendance": "app",
     "other-attendance": "other",
   };
+
   let selectedCompany = null;
   // Load SheetJS if not already loaded
   if (typeof XLSX === "undefined") {
