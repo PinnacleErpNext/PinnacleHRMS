@@ -486,14 +486,18 @@ def regeneratePaySlip(data, parent=None):
         else:
             # If no Pay Slip exists, create a new one
             pay_slip = frappe.new_doc("Pay Slips")
-        if salaryInfo.get("other_earnings"):
-            otherEarnings = salaryInfo.get("other_earnings")
-            for earning in otherEarnings:
-                earning = otherEarnings.get(earning)
+        otherEarnings = _getOtherEarnings(pay_slip.employee,year,month,pay_slip.name)
+        if otherEarnings:
+            for component, earning in otherEarnings.items():
+                if not isinstance(earning, dict):
+                    continue
+                
+                amount = earning.get("amount", 0) or 0
+
                 if earning.get("type") == "Earning":
-                    otherEarningsAmount += earning.get("amount")
+                    otherEarningsAmount += amount
                 else:
-                    otherEarningsAmount -= earning.get("amount")
+                    otherEarningsAmount -= amount
 
         # Update the fields
         pay_slip.update(
@@ -516,7 +520,6 @@ def regeneratePaySlip(data, parent=None):
                 "others_days": salaryInfo.get("others"),
                 "absent": salaryInfo.get("absent"),
                 "actual_working_days": salaryInfo.get("actual_working_days"),
-                "net_payble_amount": salaryInfo.get("total_salary"),
                 "other_earnings_total": otherEarningsAmount,
                 "total": round(
                     (
@@ -531,10 +534,23 @@ def regeneratePaySlip(data, parent=None):
                     ),
                     2,
                 ),
+                "net_payble_amount": round(
+                    (
+                        fullDayWorkingAmount
+                        + quarterDayWorkingAmount
+                        + halfDayWorkingAmount
+                        + threeFourQuarterDaysWorkingAmount
+                        + latesAmount
+                        + salaryInfo.get("sundays_salary")
+                        + earlyCheckoutWorkingAmount
+                        + othersDayAmount
+                    ) + otherEarningsAmount,
+                    2,
+                ),
             }
         )
         pay_slip.attendance_record = attendanceRecord
-
+        
         sal_calculations = pay_slip.salary_calculation
         pay_slip.salary_calculation = []
         for sal_cal in sal_calculations:
@@ -626,9 +642,10 @@ def regeneratePaySlip(data, parent=None):
 
         # Update child table for "other_earnings"
         pay_slip.other_earnings = []
-
-        if salaryInfo.get("other_earnings"):
-            for component, earning in salaryInfo.get("other_earnings").items():
+        
+        
+        if otherEarnings:
+            for component, earning in otherEarnings.items():
                 if component != "Leave Encashment":
                     pay_slip.append(
                         "other_earnings",
@@ -651,7 +668,8 @@ def regeneratePaySlip(data, parent=None):
                             "reference_name": earning.get("doc_no"),
                         },
                     )
-
+                    
+        
         # Save or submit the document
         pay_slip.save()
         encashment = getEncashment(emp_id, year, month)
@@ -1322,3 +1340,39 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
     frappe.response.filename = f"{company_abbr}_{formatted_date_for_filename}.xlsx"
     frappe.response.filecontent = output.getvalue()
     frappe.response.type = "binary"
+
+
+def _getOtherEarnings(empID, year, month, pay_slip):
+    otherEarnings = {}
+    # get last day of the month
+    last_day = calendar.monthrange(year, month)[1]
+    due_date = f"{year}-{month:02d}-{last_day:02d}"
+
+    # fetch recurring salary components
+    rsc_list = frappe.get_list(
+        "Recurring Salary Component",
+        filters={
+            "due_date": due_date,
+            "employee": empID,
+            "docstatus": 1,
+            "pay_slip": pay_slip,
+            
+        },
+        fields=["name"],
+    )
+
+    for rsc in rsc_list:
+        doc = frappe.get_doc("Recurring Salary Component", rsc.name)
+        otherEarnings[doc.component] = {
+            "type": doc.type,
+            "amount": float(doc.amount) if doc.amount else 0.0,
+            "doc_no": doc.name,
+        }
+    leaveEncashmentData = getEncashment(empID, year, month)
+    if len(leaveEncashmentData) > 0:
+        otherEarnings["Leave Encashment"] = {
+            "type": "Earning",
+            "amount": float(leaveEncashmentData[0].get("amount", 0)),
+            "doc_no": leaveEncashmentData[0].get("name"),
+        }
+    return otherEarnings
