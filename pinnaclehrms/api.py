@@ -1050,7 +1050,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     company = base64.b64decode(encodedCompany).decode("utf-8")
     curr_user = frappe.session.user
-    allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
+    allowed_roles = [ "System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
     if (
