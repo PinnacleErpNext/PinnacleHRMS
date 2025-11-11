@@ -24,6 +24,13 @@ frappe.ui.form.on("Attendance Correction", {
       );
     }
     if (!frm.is_new()) {
+      if (frappe.session.user === "Administrator") {
+        // HR Manager can edit all fields
+        Object.keys(frm.fields_dict).forEach((fieldname) => {
+          frm.set_df_property(fieldname, "read_only", 0);
+        });
+        return;
+      }
       if (frappe.user.has_role("Team Lead")) {
         // Team Lead can save
         frm.disable_save();
