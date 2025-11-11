@@ -52,7 +52,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
           <tr>
             <th>Salary Component</th>
             <th>Component Type</th>
-            <th>Total Amount</th>
+            <th>Amount</th>
             <th>Number of Months</th>
             <th>Start Date</th>
           </tr>
@@ -303,13 +303,14 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
         const existingMonths = res.message || [];
 
         for (let i = 0; i < numMonths; i++) {
-          const nextDate = new Date(startDate);
-          nextDate.setMonth(nextDate.getMonth() + i);
+          const nextDateStr = frappe.datetime.add_months(startDate, i);
+          const nextDate = new Date(nextDateStr);
 
           const monthName = nextDate.toLocaleString("default", {
             month: "long",
           });
           const year = nextDate.getFullYear();
+
           const periodLabel = `${monthName}-${year}`;
 
           const status = existingMonths.includes(periodLabel)
@@ -318,17 +319,16 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
           const isDisabled = status === "New" ? "disabled" : "";
 
           const rowHtml = `
-            <tr>
-              <td>${periodLabel}</td>
-              <td>
-                <input type="number" value="${totalAmount}" class="amount-input form-control form-control-sm" />
-              </td>
-              <td>${formatStatusBadge(status)}</td>
-              <td class="text-center">
-                <input type="checkbox" class="form-check-input override-checkbox" data-month="${periodLabel}" ${isDisabled} />
-              </td>
-            </tr>
-          `;
+                <tr>
+                  <td>${periodLabel}</td>
+                  <td><input type="number" value="${totalAmount}" class="amount-input form-control form-control-sm" /></td>
+                  <td>${formatStatusBadge(status)}</td>
+                  <td class="text-center">
+                    <input type="checkbox" class="form-check-input override-checkbox" ${isDisabled} />
+                  </td>
+                </tr>
+              `;
+
           $("#preview-rows").append(rowHtml);
         }
 
