@@ -90,6 +90,15 @@ frappe.ui.form.on("Attendance Correction", {
       frm.save("Cancel");
     }
   },
+  view_corrected_attendance: function (frm) {
+    if (frm.doc.corrected_attendance) {
+      frappe.set_route(
+        "Form",
+        "Attendance",
+        frm.doc.corrected_attendance
+      );
+    }
+  },
   before_save: function (frm) {
     let reason_field;
     let label;
