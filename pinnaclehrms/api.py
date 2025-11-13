@@ -62,21 +62,27 @@ def get_pay_slip_list(parent_docname, month, year, company=None, employee=None):
         if not any(item["pay_slip"] == pay_slip["name"] for item in created_pay_slips):
             frappe.db.sql(
                 """
-                INSERT INTO `tabCreated Pay Slips` (
-                    `name`, `pay_slip`, `employee`, `employee_id`, `salary`,
-                    `parent`, `parenttype`, `parentfield`, `idx`
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
+                            INSERT INTO `tabCreated Pay Slips` (
+                                `name`, `creation`, `modified`, `modified_by`, `owner`,
+                                `pay_slip`, `employee`, `employee_id`, `salary`,
+                                `parent`, `parenttype`, `parentfield`, `idx`
+                            )
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            """,
                 (
                     generated_name,  # name
+                    frappe.utils.now(),  # creation
+                    frappe.utils.now(),  # modified
+                    frappe.session.user,  # modified_by
+                    frappe.session.user,  # owner
                     pay_slip["name"],  # pay_slip
-                    pay_slip["employee_name"],  # employee (Employee Name)
+                    pay_slip["employee_name"],  # employee
                     pay_slip["employee"],  # employee_id
                     pay_slip["net_payble_amount"],  # salary
                     parent_docname,  # parent
                     "Create Pay Slips",  # parenttype
                     "created_pay_slips",  # parentfield
-                    idx,  # ✅ ensures sorted order in child table
+                    idx,  # idx
                 ),
             )
 
