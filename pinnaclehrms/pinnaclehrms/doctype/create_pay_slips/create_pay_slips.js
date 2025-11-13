@@ -311,6 +311,10 @@ function add_email_btn(frm) {
 }
 
 function createPaySlipList(frm) {
+  if (frm.doc.created_pay_slips.length > 0) {
+    frappe.msgprint("Pay Slips have already been created for this record.");
+    return;
+  }
   frappe.call({
     method: "pinnaclehrms.api.get_pay_slip_list",
     args: {
