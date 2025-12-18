@@ -16,24 +16,26 @@ from datetime import date
 class RecurringSalaryComponent(Document):
     def before_save(self):
         if not self.due_date:
-            self.due_date = _get_last_date_of_month(self.month)
+            self.due_date = _get_last_date_of_month(self.month, self.year)
 
 
-def _get_last_date_of_month(month_name):
-    """Return the last date of the given month name for the current year."""
+def _get_last_date_of_month(month_name, year):
+    """Return the last date of the given month name for the specified year."""
+
     # Convert month name to month number (1–12)
-    month_number = list(calendar.month_name).index(month_name.capitalize())
+    try:
+        month_number = list(calendar.month_name).index(month_name.strip().capitalize())
+    except ValueError:
+        raise ValueError(f"Invalid month name: {month_name}")
+
     if month_number == 0:
         raise ValueError(f"Invalid month name: {month_name}")
 
-    # Get current year
-    current_year = date.today().year
-
-    # Get the number of days in that month
-    last_day = calendar.monthrange(current_year, month_number)[1]
+    # Get the number of days in the given month and year
+    last_day = calendar.monthrange(year, month_number)[1]
 
     # Return the last date of the month
-    return date(current_year, month_number, last_day)
+    return date(year, month_number, last_day)
 
 
 @frappe.whitelist()
