@@ -551,7 +551,7 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
 
     LOGIC 1 (default / new):
       - Group by employee + date
-      - Club ALL punches (device + app)
+      - Club ALL device punches
       - Sort punches
       - First punch  -> IN
       - Last punch   -> OUT
@@ -560,7 +560,10 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
       - Earliest IN, Latest OUT (direction-based)
 
     EXTRA FIX:
-      - If IN == OUT → fetch App punches, re-mix & recalc
+      - Fetch App attendance when:
+          - IN is missing
+          - OUT is missing
+          - OR IN == OUT (single punch case)
     """
 
     def get_app_punches(emp_id, d):
@@ -636,11 +639,10 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
 
         for d in sorted(by_date.keys()):
             day_rows = by_date[d]
-
             punches = []
 
             # ===============================
-            # 🔥 NEW LOGIC (Club punches)
+            # 🔥 NEW LOGIC (Device punches)
             # ===============================
             if use_clubbed_punch_logic:
                 for r in day_rows:
@@ -650,7 +652,7 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
                         punches.append({"time": r["out_time"], "src": r["src_out"]})
 
             # ===============================
-            # 🟡 OLD LOGIC (Direction-based)
+            # 🟡 OLD LOGIC
             # ===============================
             else:
                 in_time = None
@@ -667,17 +669,15 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
                         out_time = r["out_time"]
                         src_out = r["src_out"]
 
-                if in_time or out_time:
+                if in_time:
                     punches.append({"time": in_time, "src": src_in})
+                if out_time:
                     punches.append({"time": out_time, "src": src_out})
 
             # --------------------------------------------------
-            # 3. Fix SAME IN & OUT → Mix App punches
+            # 3. Calculate IN / OUT from DEVICE punches
             # --------------------------------------------------
-            punches.extend(get_app_punches(emp_id, d))
-
             punches = [p for p in punches if p.get("time")]
-
             punches.sort(key=lambda x: x["time"])
 
             in_time = punches[0]["time"] if punches else None
@@ -686,7 +686,29 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
             src_out = punches[-1]["src"] if punches else ""
 
             # --------------------------------------------------
-            # 4. Final Row
+            # 4. Fetch App attendance IF NEEDED
+            # --------------------------------------------------
+            needs_app_attendance = (
+                not in_time
+                or not out_time
+                or (in_time and out_time and in_time == out_time)
+            )
+
+            if needs_app_attendance:
+                mixed_punches = punches[:]
+                mixed_punches.extend(get_app_punches(emp_id, d))
+
+                mixed_punches = [p for p in mixed_punches if p.get("time")]
+                mixed_punches.sort(key=lambda x: x["time"])
+
+                if mixed_punches:
+                    in_time = mixed_punches[0]["time"]
+                    out_time = mixed_punches[-1]["time"]
+                    src_in = mixed_punches[0]["src"]
+                    src_out = mixed_punches[-1]["src"]
+
+            # --------------------------------------------------
+            # 5. Final Row
             # --------------------------------------------------
             result_rows.append(
                 {
