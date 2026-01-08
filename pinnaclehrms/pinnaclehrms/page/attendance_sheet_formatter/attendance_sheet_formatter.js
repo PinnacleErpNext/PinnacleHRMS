@@ -7,10 +7,13 @@ frappe.pages["attendance-sheet-formatter"].on_page_load = function (wrapper) {
 };
 
 frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
-  let attendanceData = [];
-  rawData = {};
-  validatedRecord = {};
-  previewData = {};
+  // ========= GLOBAL DATA STORES ========= //
+  let attendanceData = []; // preview rows
+  let rawData = {};
+  let previewData = {};
+  let validatedRecord = {};
+  let nonValidatedRecord = [];
+
   const fileMapping = {
     "zicom-attendance": "pinnacle",
     "essl-attendance": "opticode",
@@ -19,19 +22,17 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
     "other-attendance": "other",
   };
 
-  let selectedCompany = null;
-  // Load SheetJS if not already loaded
+  // Load XLSX if not present
   if (typeof XLSX === "undefined") {
     const script = document.createElement("script");
     script.src =
       "https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js";
-    script.onload = () => {
-      setupDownloadButton(); // Call function after XLSX is ready
-    };
+    script.onload = setupDownloadButton;
     document.head.appendChild(script);
   } else {
-    setupDownloadButton(); // Already loaded
+    setupDownloadButton();
   }
+
   function setupDownloadButton() {
     document
       .getElementById("download-template-btn")
@@ -46,7 +47,6 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
             "Out Time",
           ],
         ];
-
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(data);
         XLSX.utils.book_append_sheet(wb, ws, "Attendance Template");
@@ -54,24 +54,11 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       });
   }
 
+  // Render HTML
   const html = frappe.render_template("attendance_sheet_formatter", {});
-
   $(wrapper).find(".page-body").html(html);
 
-  // Create Company Link Field
-  // const companyControl = frappe.ui.form.make_control({
-  //   df: {
-  //     label: "Company",
-  //     fieldtype: "Link",
-  //     options: "Company",
-  //     reqd: 1,
-  //     onchange: () => (selectedCompany = companyControl.get_value()),
-  //   },
-  //   parent: $("#company-link-field"),
-  //   render_input: true,
-  // });
-
-  // Payroll Period Date Fields
+  // ========== PAYROLL DATE CONTROLS ========== //
   let payrollFromField = frappe.ui.form.make_control({
     df: {
       label: "From",
@@ -81,14 +68,12 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
         let from_date = payrollFromField.get_value();
         if (from_date) {
           let date = new Date(from_date);
-          // Get last day of the month
           let lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-          // Format as yyyy-mm-dd in local time
-          const yyyy = lastDay.getFullYear();
-          const mm = String(lastDay.getMonth() + 1).padStart(2, "0");
-          const dd = String(lastDay.getDate()).padStart(2, "0");
-          const formatted = `${yyyy}-${mm}-${dd}`;
+          let yyyy = lastDay.getFullYear();
+          let mm = String(lastDay.getMonth() + 1).padStart(2, "0");
+          let dd = String(lastDay.getDate()).padStart(2, "0");
+          let formatted = `${yyyy}-${mm}-${dd}`;
           payrollToField.set_value(formatted);
         }
       },
@@ -103,142 +88,25 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
     render_input: true,
   });
 
-  // Nested Raw Data Tabs
+  // ============== TAB EVENTS ============== //
   $("#raw-sub-tabs .nav-link").on("click", function () {
     const target = $(this).data("target");
-
-    // Activate clicked sub-tab
     $("#raw-sub-tabs .nav-link").removeClass("active");
     $(this).addClass("active");
-
-    // Show corresponding table
     $("#raw-tab-pane .tab-pane").removeClass("show active");
     $(target).addClass("show active");
   });
 
-  // Handle Main Tabs
   $("#attendance-tabs .nav-link").on("click", function () {
     const target = $(this).data("target");
-
-    // Activate main tab
     $("#attendance-tabs .nav-link").removeClass("active");
     $(this).addClass("active");
-
-    // Show target tab content
     $(".tab-pane").removeClass("show active");
     $(target).addClass("show active");
-
-    // Reset Raw sub-tabs only if leaving Raw
-    if (target !== "#raw-tab-pane") {
-      $("#raw-sub-tabs .nav-link").removeClass("active");
-      // Do NOT force show a specific raw sub-tab
-      $("#raw-tab-pane .tab-pane").removeClass("show active");
-    } else {
-      // Show the previously active sub-tab or default to first
-      const activeSub = $("#raw-sub-tabs .nav-link.active").data("target");
-      if (activeSub) {
-        $("#raw-tab-pane .tab-pane").removeClass("show active");
-        $(activeSub).addClass("show active");
-      } else {
-        $("#raw-sub-tabs .nav-link").first().addClass("active");
-        $("#raw-tab-pane .tab-pane").removeClass("show active");
-        $("#raw-tab-pane .tab-pane").first().addClass("show active");
-      }
-    }
   });
 
-  // function ensureCompanySelected() {
-  //   if (!selectedCompany) {
-  //     frappe.msgprint("❌ Please select a company.");
-  //     return false;
-  //   }
-  //   return true;
-  // }
-
-  // render Raw Data in Tables
-  function renderRawDataByFile(rawData) {
-    for (const tabId in fileMapping) {
-      const key = fileMapping[tabId];
-      const data = rawData[key] || [];
-      const html = generateTableHtml(data);
-      $("#" + tabId).html(html);
-    }
-  }
-
-  function generateTableHtml(data) {
-    if (!data || !data.length) {
-      return `
-      <div class="scrollable-table-container">
-        <table class="table table-bordered table-sm mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Sr. No.</th>
-              <th>Employee</th>
-              <th>Name</th>
-              <th>Date</th>
-              <th>Shift</th>
-              <th>Log In From</th>
-              <th>In Time</th>
-              <th>Log Out From</th>
-              <th>Out Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td colspan="9" class="text-center text-muted">No records yet.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    `;
-    }
-
-    let html = `
-    <div class="scrollable-table-container">
-      <table class="table table-bordered table-sm mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Sr. No.</th>
-            <th>Employee/Device Id</th>
-            <th>Name</th>
-            <th>Date</th>
-            <th>Shift</th>
-            <th>Log In From</th>
-            <th>In Time</th>
-            <th>Log Out From</th>
-            <th>Out Time</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
-
-    data.forEach((row, index) => {
-      html += `
-      <tr data-index="${index + 1}">
-        <td>${index + 1}</td>
-        <td>${row.employee_id || row.device_id || ""}</td>
-        <td>${row.employee_name || ""}</td>
-        <td>${row.attendance_date || ""}</td>
-        <td>${row.shift || ""}</td>
-        <td>${row.device || ""}</td>
-        <td>${row.in_time || ""}</td>
-        <td>${row.device || ""}</td>
-        <td>${row.out_time || ""}</td>
-      </tr>
-    `;
-    });
-
-    html += `
-        </tbody>
-      </table>
-    </div>
-  `;
-
-    return html;
-  }
-
-  // Load Raw Data
+  // ============= LOAD RAW DATA ============= //
   $("#load-raw-data-btn").on("click", async function () {
-    // if (!ensureCompanySelected()) return;
-
     const pinnacleFile = $("#pinnacle-excel-upload")[0].files[0];
     const opticodeFile = $("#opticode-excel-upload")[0].files[0];
     const mantraFile = $("#mantra-excel-upload")[0].files[0];
@@ -248,13 +116,14 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
     if (!payrollFrom || !payrollTo)
       return frappe.msgprint("Select Payroll Period.");
+
     if (new Date(payrollFrom) > new Date(payrollTo))
       return frappe.msgprint("Invalid Date Range.");
+
     if (!pinnacleFile && !opticodeFile && !mantraFile && !otherFile)
       return frappe.msgprint("Upload at least one file.");
 
     const formData = new FormData();
-    // formData.append("company", selectedCompany);
     formData.append("from_date", payrollFrom);
     formData.append("to_date", payrollTo);
     if (pinnacleFile) formData.append("pinnacle_file", pinnacleFile);
@@ -272,12 +141,12 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
           body: formData,
         }
       );
-      frappe.dom.unfreeze();
 
+      frappe.dom.unfreeze();
       const data = await res.json();
       if (!res.ok || !data.message)
         return frappe.msgprint("❌ Error loading data");
-      console.log(data.message);
+
       rawData = {
         pinnacle: data.message.pinnacle_attendance || [],
         opticode: data.message.opticode_attendance || [],
@@ -285,256 +154,349 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
         other: data.message.other_attendance || [],
         app: data.message.app_attendance || [],
       };
-      console.log(rawData);
+
       renderRawDataByFile(rawData);
+      frappe.show_alert("✅ Raw data loaded");
     } catch (err) {
       frappe.dom.unfreeze();
       frappe.msgprint("❌ Failed to load data");
     }
   });
 
-  // Generate Preview Button
-  $("#generate-preview-btn").on("click", async function () {
+  function renderRawDataByFile(data) {
+    for (const tabId in fileMapping) {
+      const key = fileMapping[tabId];
+      $("#" + tabId).html(generateTableHtml(data[key] || []));
+    }
+  }
+
+  function generateTableHtml(data) {
+    if (!data || !data.length) {
+      return `<div class="scrollable-table-container">
+                <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                <tr><th>Sr. No.</th><th>Employee</th><th>Name</th><th>Date</th><th>Shift</th>
+                <th>Log In From</th><th>In</th><th>Log Out From</th><th>Out</th></tr>
+                </thead><tbody><tr><td colspan="9" class="text-center text-muted">No records</td></tr></tbody></table></div>`;
+    }
+
+    let html = `<div class="scrollable-table-container">
+        <table class="table table-bordered table-sm mb-0">
+        <thead class="table-light">
+        <tr><th>Sr. No.</th><th>Employee/Device</th><th>Name</th><th>Date</th><th>Shift</th>
+        <th>Log In</th><th>In</th><th>Log Out</th><th>Out</th></tr></thead><tbody>`;
+
+    data.forEach((row, idx) => {
+      html += `<tr>
+            <td>${idx + 1}</td>
+            <td>${row.employee_id || row.device_id || ""}</td>
+            <td>${row.employee_name || ""}</td>
+            <td>${row.attendance_date || ""}</td>
+            <td>${row.shift || ""}</td>
+            <td>${row.device || ""}</td>
+            <td>${row.in_time || ""}</td>
+            <td>${row.device || ""}</td>
+            <td>${row.out_time || ""}</td></tr>`;
+    });
+
+    return html + "</tbody></table></div>";
+  }
+
+  // ============= PREVIEW ============= //
+  $("#generate-preview-btn").on("click", function () {
     if (!rawData || !Object.keys(rawData).length) {
       return frappe.msgprint("Load raw data first.");
     }
 
-    frappe.dom.freeze("Loading...");
+    frappe.dom.freeze("Generating Preview...");
     frappe.call({
       method:
         "pinnaclehrms.utility.attendance_formatter.preview_final_attendance_sheet",
       args: { raw_data: rawData },
-      callback: function (data) {
+      callback: function (r) {
         frappe.dom.unfreeze();
+        if (!r.message) return frappe.msgprint("❌ Error generating preview");
 
-        if (!data.message) {
-          return frappe.msgprint("❌ Error loading data");
-        }
-
-        previewData = data.message.data;
+        previewData = r.message.data;
         attendanceData = [];
 
-        let tableHtml = `
-        <div class="table-container">
-          <table id="attendance-table" class="table table-bordered table-sm">
-            <thead>
-              <tr>
-                <th>Sr. No.</th><th>Employee</th><th>Name</th><th>Date</th>
-                <th>Shift</th><th>Log In From</th><th>In Time</th>
-                <th>Log Out From</th><th>Out Time</th>
-              </tr>
-            </thead>
-            <tbody>`;
+        let html = `<table id="attendance-table" class="table table-bordered table-sm">
+                <thead><tr>
+                <th>Sr.</th><th>Employee</th><th>Name</th><th>Date</th>
+                <th>Shift</th><th>Log In</th><th>In</th>
+                <th>Log Out</th><th>Out</th></tr></thead><tbody>`;
 
-        let index = 1;
+        let i = 1;
         for (const empId of Object.keys(previewData).sort()) {
-          for (const row of previewData[empId]) {
-            attendanceData.push({ ...row, index });
-            tableHtml += `<tr data-index="${index}">
-            <td>${index}</td>
-            <td>${row.employee}</td>
-            <td>${row.employee_name}</td>
-            <td>${row.attendance_date}</td>
-            <td>${row.shift}</td>
-            <td>${row.custom_log_in_from || ""}</td>
-            <td>${row.in_time}</td>
-            <td>${row.custom_log_out_from || ""}</td>
-            <td>${row.out_time}</td>
-          </tr>`;
-            index++;
-          }
+          previewData[empId].forEach((row) => {
+            attendanceData.push({ ...row, index: i });
+            html += `<tr data-index="${i}">
+                        <td>${i}</td><td>${row.employee}</td><td>${
+              row.employee_name
+            }</td>
+                        <td>${row.attendance_date}</td><td>${row.shift}</td>
+                        <td>${row.custom_log_in_from || ""}</td><td>${
+              row.in_time
+            }</td>
+                        <td>${row.custom_log_out_from || ""}</td><td>${
+              row.out_time
+            }</td></tr>`;
+            i++;
+          });
         }
+        html += "</tbody></table>";
 
-        tableHtml += "</tbody></table></div>";
-        $("#attendance-preview").html(tableHtml);
-
-        // Switch to Preview tab
+        $("#attendance-preview").html(html);
         $("#preview-tab").click();
+        frappe.show_alert("✅ Preview generated");
       },
-      error: function (err) {
+    });
+  });
+
+  // ============= NEW VALIDATION (BACKEND) ============= //
+  $("#validate-btn").on("click", function () {
+    if (!attendanceData.length)
+      return frappe.msgprint("Generate preview first");
+
+    frappe.dom.freeze("Validating...");
+    frappe.call({
+      method:
+        "pinnaclehrms.utility.attendance_formatter.validate_attendance_data",
+      args: { attendance_data: attendanceData },
+      callback: function (r) {
         frappe.dom.unfreeze();
-        frappe.msgprint(
-          "❌ Failed to load data: " + (err?.message || "Unknown error")
+        if (!r.message) return frappe.msgprint("Validation failed");
+
+        validatedRecord = r.message.validated || {};
+        nonValidatedRecord = r.message.non_validated || [];
+
+        renderValidatedTable();
+        renderNonValidatedTable();
+
+        $("#validated-tab").click();
+
+        $("#import-validated-btn").prop(
+          "disabled",
+          Object.keys(validatedRecord).length === 0
+        );
+
+        frappe.show_alert(
+          `✅ Validation complete — Valid: ${r.message.total_valid}, Invalid: ${r.message.total_invalid}`
         );
       },
     });
   });
 
-  // Validation Button
-  $(document).on("click", "#validate-btn", () =>
-    validateFromTable("#attendance-table tbody tr")
-  );
+  function renderValidatedTable() {
+    let html = `<table class="table table-bordered table-success table-sm">
+        <thead><tr><th>#</th><th>Employee</th><th>Name</th><th>Date</th>
+        <th>Shift</th><th>Log In</th><th>In</th><th>Log Out</th><th>Out</th></tr></thead><tbody>`;
 
-  // Validation Rules
-  function validatePresence(row) {
-    return !row.in_time || !row.out_time ? { valid: false } : { valid: true };
-  }
-
-  function validateDifferentTimes(row) {
-    return row.in_time === row.out_time ? { valid: false } : { valid: true };
-  }
-
-  function validateRow(row) {
-    for (let c of [validatePresence, validateDifferentTimes]) {
-      let r = c(row);
-      if (!r.valid) return r;
-    }
-    return { valid: true };
-  }
-
-  // Main Validation Function
-  function validateFromTable(selector) {
-    let invalidRows = [],
-      validRows = [];
-
-    $(selector).each(function () {
-      const hasInputs = $(this).find("input").length > 0;
-
-      const row = {
-        index: $(this).data("index"),
-        employee: $(this).find("td:eq(1)").text(),
-        employee_name: $(this).find("td:eq(2)").text(),
-        attendance_date: $(this).find("td:eq(3)").text(),
-        shift: $(this).find("td:eq(4)").text(),
-        custom_log_in_from: hasInputs
-          ? $(this).find("td:eq(5) input").val()
-          : $(this).find("td:eq(5)").text(),
-        in_time: hasInputs
-          ? $(this).find("td:eq(6) input").val()
-          : $(this).find("td:eq(6)").text(),
-        custom_log_out_from: hasInputs
-          ? $(this).find("td:eq(7) input").val()
-          : $(this).find("td:eq(7)").text(),
-        out_time: hasInputs
-          ? $(this).find("td:eq(8) input").val()
-          : $(this).find("td:eq(8)").text(),
-      };
-
-      validateRow(row).valid ? validRows.push(row) : invalidRows.push(row);
-    });
-
-    // Non-Validated Table
-    if (invalidRows.length) {
-      let html = `
-        <div class="table-container">
-          <table class="table table-bordered table-danger">
-            <thead>
-              <tr>
-                <th>Sr. No.</th><th>Employee</th><th>Name</th><th>Date</th><th>Shift</th>
-                <th>Log In From</th><th>In Time</th><th>Log Out From</th><th>Out Time</th>
-              </tr>
-            </thead>
-            <tbody>`;
-
-      invalidRows.forEach((r) => {
-        html += `<tr data-index="${r.index}">
-          <td>${r.index}</td>
-          <td>${r.employee}</td>
-          <td>${r.employee_name}</td>
-          <td>${r.attendance_date}</td>
-          <td>${r.shift}</td>
-          <td><input type="text" value="${r.custom_log_in_from}" class="form-control log-in-from"></td>
-          <td><input type="time" value="${r.in_time}" class="form-control in-time"></td>
-          <td><input type="text" value="${r.custom_log_out_from}" class="form-control log-out-from"></td>
-          <td><input type="time" value="${r.out_time}" class="form-control out-time"></td>
-        </tr>`;
+    let i = 1;
+    Object.keys(validatedRecord)
+      .sort()
+      .forEach((emp) => {
+        validatedRecord[emp].forEach((row) => {
+          html += `<tr><td>${i++}</td><td>${row.employee}</td><td>${
+            row.employee_name
+          }</td>
+                <td>${row.attendance_date}</td><td>${row.shift}</td>
+                <td>${row.custom_log_in_from}</td><td>${row.in_time}</td>
+                <td>${row.custom_log_out_from}</td><td>${
+            row.out_time
+          }</td></tr>`;
+        });
       });
 
-      html += `</tbody></table></div>
-      <div class="text-center mt-2">
-        <button id="revalidate-btn" class="btn btn-warning">Validate Again</button>
-      </div>`;
+    html += "</tbody></table>";
+    $("#validated-section").html(html);
+  }
 
-      $("#non-validated-section").html(html);
-    } else {
-      $("#non-validated-section").html(
-        `<div class="alert alert-success">No invalid rows!</div>`
+  function renderNonValidatedTable() {
+    if (!nonValidatedRecord.length) {
+      return $("#non-validated-section").html(
+        `<div class="alert alert-success mt-3">✅ No invalid rows!</div>`
       );
     }
 
-    // Validated Table
-    if (validRows.length) {
-      if (!$("#validated-section table").length) {
-        $("#validated-section").html(`
-          <div class="table-container">
-            <table class="table table-bordered table-success">
-              <thead>
-                <tr>
-                  <th>Sr. No.</th><th>Employee</th><th>Name</th><th>Date</th>
-                  <th>Shift</th><th>Log In From</th><th>In Time</th>
-                  <th>Log Out From</th><th>Out Time</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>`);
-      }
+    let html = `
+    <table class="table table-bordered table-danger table-sm">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Emp</th>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Shift</th>
+                <th>In</th>
+                <th>Out</th>
+                <th>Errors</th>
+                <th class="text-center">Skip Validation</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
 
-      validRows.forEach((r) => {
-        if (!validatedRecord[r.employee]) validatedRecord[r.employee] = [];
-        validatedRecord[r.employee].push(r);
+    nonValidatedRecord.forEach((r, i) => {
+      html += `
+        <tr data-index="${i}">
+            <td>${i + 1}</td>
+            <td>${r.employee || ""}</td>
+            <td>${r.employee_name || ""}</td>
+            <td>${r.attendance_date || ""}</td>
+            <td>${r.shift || ""}</td>
 
-        $("#validated-section table tbody").append(`
-          <tr>
-            <td>${r.index}</td><td>${r.employee}</td><td>${r.employee_name}</td>
-            <td>${r.attendance_date}</td><td>${r.shift}</td>
-            <td>${r.custom_log_in_from}</td><td>${r.in_time}</td>
-            <td>${r.custom_log_out_from}</td><td>${r.out_time}</td>
-          </tr>`);
-      });
-    }
+            <td>
+                <input type="time"
+                    value="${r.in_time || ""}"
+                    class="form-control form-control-sm in-time" />
+            </td>
 
-    $("#validated-tab").click();
+            <td>
+                <input type="time"
+                    value="${r.out_time || ""}"
+                    class="form-control form-control-sm out-time" />
+            </td>
+
+            <td class="text-danger small">
+                ${(r.errors || []).join(", ")}
+            </td>
+
+            <td class="text-center">
+                <input type="checkbox"
+                    class="form-check-input skip-validation"
+                    ${r.skip_validation ? "checked" : ""} />
+            </td>
+        </tr>`;
+    });
+
+    html += `
+        </tbody>
+    </table>
+
+    <div class="text-center mt-2">
+        <button id="revalidate-btn" class="btn btn-warning">
+            Re-Validate
+        </button>
+    </div>
+    `;
+
+    $("#non-validated-section").html(html);
   }
 
-  // Re-Validate Button
-  $(document).on("click", "#revalidate-btn", () =>
-    validateFromTable("#non-validated-section tbody tr")
-  );
+  // ✅ Re-Validate Corrected Invalid Rows
+  $(document).on("click", "#revalidate-btn", function () {
+    let attendance_data = []; // needs validation
+    let corrected_attendance = []; // skip validation → auto-validated
 
-  // Download Raw Data
-  $("#download-preview-btn").on("click", async () =>
-    downloadExcel(previewData, "Preview_Attendance_Sheet.xlsx")
-  );
+    $("#non-validated-section tbody tr").each(function () {
+      const $row = $(this);
 
-  // Download Validated Data
-  $("#download-validated-btn").on("click", async () =>
-    downloadExcel(validatedRecord, "Validated_Attendance_Sheet.xlsx")
+      const rowData = {
+        employee: $row.find("td:eq(1)").text().trim(),
+        employee_name: $row.find("td:eq(2)").text().trim(),
+        attendance_date: $row.find("td:eq(3)").text().trim(),
+        shift: $row.find("td:eq(4)").text().trim(),
+
+        custom_log_in_from: $row.data("log-in-from") || "Manual",
+        custom_log_out_from: $row.data("log-out-from") || "Manual",
+
+        in_time: $row.find("td:eq(5) input").val(),
+        out_time: $row.find("td:eq(6) input").val(),
+      };
+
+      const skipValidation = $row.find(".skip-validation").is(":checked");
+
+      if (skipValidation) {
+        // ✅ Directly move to validated
+        corrected_attendance.push(rowData);
+      } else {
+        // ❌ Needs validation
+        attendance_data.push(rowData);
+      }
+    });
+
+    // ---------------------------------------
+    // 1️⃣ Add skipped records directly
+    // ---------------------------------------
+    corrected_attendance.forEach((r) => {
+      if (!validatedRecord[r.employee]) {
+        validatedRecord[r.employee] = [];
+      }
+      validatedRecord[r.employee].push(r);
+    });
+
+    // ---------------------------------------
+    // 2️⃣ Validate remaining records (if any)
+    // ---------------------------------------
+    if (!attendance_data.length) {
+      nonValidatedRecord = [];
+      renderValidatedTable();
+      renderNonValidatedTable();
+      $("#validated-tab").click();
+      $("#import-validated-btn").prop("disabled", false);
+      return;
+    }
+
+    frappe.call({
+      method:
+        "pinnaclehrms.utility.attendance_formatter.validate_attendance_data",
+      args: {
+        attendance_data: attendance_data,
+      },
+      callback: function (r) {
+        // merge validated
+        Object.keys(r.message.validated || {}).forEach((emp) => {
+          if (!validatedRecord[emp]) validatedRecord[emp] = [];
+          validatedRecord[emp] = validatedRecord[emp].concat(
+            r.message.validated[emp]
+          );
+        });
+
+        // update remaining non-validated
+        nonValidatedRecord = r.message.non_validated || [];
+
+        renderValidatedTable();
+        renderNonValidatedTable();
+
+        $("#validated-tab").click();
+
+        if (nonValidatedRecord.length === 0) {
+          $("#import-validated-btn").prop("disabled", false);
+        }
+      },
+    });
+  });
+
+  // ============= DOWNLOAD BUTTONS ============= //
+  $("#download-preview-btn").on("click", () =>
+    downloadExcel(previewData, "Preview_Attendance.xlsx")
+  );
+  $("#download-validated-btn").on("click", () =>
+    downloadExcel(validatedRecord, "Validated_Attendance.xlsx")
   );
 
   $("#download-raw-excell-btn").on("click", function () {
-    // Find active sub-tab inside Raw tab
     const activeSubTab = $("#raw-sub-tabs .nav-link.active").data("target");
+    if (!activeSubTab) return frappe.msgprint("No active sub-tab");
 
-    if (!activeSubTab) {
-      frappe.msgprint("No active sub-tab found.");
-      return;
-    }
+    let key = fileMapping[activeSubTab.replace("#", "")];
+    let data = rawData[key] || [];
+    if (!data.length) return frappe.msgprint("No data to download");
 
-    dataSet = fileMapping[activeSubTab.replace("#", "")];
-    data = rawData[dataSet] || [];
-    console.log(data);
-    if (!data || !data.length) {
-      frappe.msgprint("No data available to download.");
-      return;
-    }
-
-    // Call your existing function to download table
-    // Pass the table element or id as argument
-    downloadExcel(data, `${dataSet}_Raw_Attendance_Sheet.xlsx`);
+    downloadExcel(data, `${key}_Raw.xlsx`);
   });
 
-  // Import Validated Records
-  $("#import-validated-btn").on("click", () => {
+  // ============= IMPORT BUTTON ============= //
+  $("#import-validated-btn").on("click", function () {
     frappe.call({
       method:
         "pinnaclehrms.utility.attendance_formatter.create_data_import_for_attendance",
       args: { attendance_data: validatedRecord },
-      callback: (r) => {
-        if (!r.exc)
-          frappe.msgprint(
-            `Data Import created: <a href="/app/data-import/${r.message}">${r.message}</a>`
-          );
+      callback: function (r) {
+        frappe.msgprint(
+          `✅ Data Import created: <a href="/app/data-import/${r.message}">${r.message}</a>`
+        );
       },
     });
   });

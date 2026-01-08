@@ -492,12 +492,12 @@ def regeneratePaySlip(data, parent=None):
         else:
             # If no Pay Slip exists, create a new one
             pay_slip = frappe.new_doc("Pay Slips")
-        otherEarnings = _getOtherEarnings(pay_slip.employee,year,month,pay_slip.name)
+        otherEarnings = _getOtherEarnings(pay_slip.employee, year, month, pay_slip.name)
         if otherEarnings:
             for component, earning in otherEarnings.items():
                 if not isinstance(earning, dict):
                     continue
-                
+
                 amount = earning.get("amount", 0) or 0
 
                 if earning.get("type") == "Earning":
@@ -550,13 +550,14 @@ def regeneratePaySlip(data, parent=None):
                         + salaryInfo.get("sundays_salary")
                         + earlyCheckoutWorkingAmount
                         + othersDayAmount
-                    ) + otherEarningsAmount,
+                    )
+                    + otherEarningsAmount,
                     2,
                 ),
             }
         )
         pay_slip.attendance_record = attendanceRecord
-        
+
         sal_calculations = pay_slip.salary_calculation
         pay_slip.salary_calculation = []
         for sal_cal in sal_calculations:
@@ -648,8 +649,7 @@ def regeneratePaySlip(data, parent=None):
 
         # Update child table for "other_earnings"
         pay_slip.other_earnings = []
-        
-        
+
         if otherEarnings:
             for component, earning in otherEarnings.items():
                 if component != "Leave Encashment":
@@ -674,8 +674,7 @@ def regeneratePaySlip(data, parent=None):
                             "reference_name": earning.get("doc_no"),
                         },
                     )
-                    
-        
+
         # Save or submit the document
         pay_slip.save()
         encashment = getEncashment(emp_id, year, month)
@@ -716,6 +715,7 @@ def regeneratePaySlip(data, parent=None):
                     pay_slip.employee,
                 ),
             )
+
         else:
             frappe.db.sql(
                 """
@@ -1056,7 +1056,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
 def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     company = base64.b64decode(encodedCompany).decode("utf-8")
     curr_user = frappe.session.user
-    allowed_roles = [ "System Manager"]
+    allowed_roles = ["System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
     if (
@@ -1182,6 +1182,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     frappe.response.filename = filename
     frappe.response.filecontent = xlsx_data.getvalue()
     frappe.response.type = "binary"
+
 
 # API to send attendance notification
 def attendance_notification(doc, method):
@@ -1362,7 +1363,6 @@ def _getOtherEarnings(empID, year, month, pay_slip):
             "employee": empID,
             "docstatus": 1,
             "pay_slip": pay_slip,
-            
         },
         fields=["name"],
     )
