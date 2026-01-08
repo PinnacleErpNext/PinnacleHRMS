@@ -551,7 +551,7 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
 
     LOGIC 1 (default / new):
       - Group by employee + date
-      - Club ALL punches (in_time + out_time)
+      - Club ALL punches (device + app)
       - Sort punches
       - First punch  -> IN
       - Last punch   -> OUT
@@ -559,9 +559,30 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
     LOGIC 2 (old):
       - Earliest IN, Latest OUT (direction-based)
 
-    Switch using:
-      use_clubbed_punch_logic = True / False
+    EXTRA FIX:
+      - If IN == OUT → fetch App punches, re-mix & recalc
     """
+
+    def get_app_punches(emp_id, d):
+        punches = []
+        rows = frappe.get_all(
+            "Employee Checkin",
+            filters={
+                "employee": emp_id,
+                "time": ["between", [f"{d} 00:00:00", f"{d} 23:59:59"]],
+            },
+            fields=["time"],
+            order_by="time asc",
+        )
+
+        for r in rows:
+            punches.append(
+                {
+                    "time": r.time.time(),
+                    "src": "App",
+                }
+            )
+        return punches
 
     attendance_by_emp = defaultdict(list)
     emp_name_cache = {}
@@ -608,7 +629,6 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
         emp_name = emp_name_cache.get(emp_id)
         by_date = defaultdict(list)
 
-        # Group by date
         for r in rows:
             by_date[r["date"]].append(r)
 
@@ -617,24 +637,17 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
         for d in sorted(by_date.keys()):
             day_rows = by_date[d]
 
+            punches = []
+
             # ===============================
             # 🔥 NEW LOGIC (Club punches)
             # ===============================
             if use_clubbed_punch_logic:
-                punches = []
-
                 for r in day_rows:
                     if r["in_time"]:
                         punches.append({"time": r["in_time"], "src": r["src_in"]})
                     if r["out_time"]:
                         punches.append({"time": r["out_time"], "src": r["src_out"]})
-
-                punches.sort(key=lambda x: x["time"])
-
-                in_time = punches[0]["time"] if punches else None
-                out_time = punches[-1]["time"] if punches else None
-                src_in = punches[0]["src"] if punches else ""
-                src_out = punches[-1]["src"] if punches else ""
 
             # ===============================
             # 🟡 OLD LOGIC (Direction-based)
@@ -654,29 +667,27 @@ def generate_final_sheet(attendance_data=None, use_clubbed_punch_logic=True):
                         out_time = r["out_time"]
                         src_out = r["src_out"]
 
-            # --------------------------------------------------
-            # 3. Fill missing punches from App
-            # --------------------------------------------------
-            if not in_time:
-                app_in = frappe.db.get_value(
-                    "Employee Checkin",
-                    {"employee": emp_id, "log_type": "IN", "time": ["like", f"{d}%"]},
-                    "time",
-                )
-                if app_in:
-                    in_time = app_in.time()
-                    src_in = "App"
+                if in_time or out_time:
+                    punches.append({"time": in_time, "src": src_in})
+                    punches.append({"time": out_time, "src": src_out})
 
-            if not out_time:
-                app_out = frappe.db.get_value(
-                    "Employee Checkin",
-                    {"employee": emp_id, "log_type": "OUT", "time": ["like", f"{d}%"]},
-                    "time",
-                )
-                if app_out:
-                    out_time = app_out.time()
-                    src_out = "App"
+            # --------------------------------------------------
+            # 3. Fix SAME IN & OUT → Mix App punches
+            # --------------------------------------------------
+            punches.extend(get_app_punches(emp_id, d))
 
+            punches = [p for p in punches if p.get("time")]
+
+            punches.sort(key=lambda x: x["time"])
+
+            in_time = punches[0]["time"] if punches else None
+            out_time = punches[-1]["time"] if punches else None
+            src_in = punches[0]["src"] if punches else ""
+            src_out = punches[-1]["src"] if punches else ""
+
+            # --------------------------------------------------
+            # 4. Final Row
+            # --------------------------------------------------
             result_rows.append(
                 {
                     "employee": emp_id,
