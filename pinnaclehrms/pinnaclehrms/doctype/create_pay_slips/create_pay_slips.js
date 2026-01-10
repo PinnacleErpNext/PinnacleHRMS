@@ -118,7 +118,7 @@ frappe.ui.form.on("Create Pay Slips", {
             // Call the server-side method
             frappe.call({
               method: "pinnaclehrms.api.regeneratePaySlip",
-              args: { data: values, parent:frm.docname },
+              args: { data: values, parent: frm.docname },
               callback: function (res) {
                 console.log(res.message.message);
                 if (res.message.message === "Success") {
@@ -166,6 +166,12 @@ frappe.ui.form.on("Create Pay Slips", {
 
   select_month(frm) {
     const monthName = frm.doc.select_month;
+    const year = frm.doc.year;
+
+    if (!monthName || !year) {
+      return;
+    }
+
     const months = {
       January: 1,
       February: 2,
@@ -181,19 +187,25 @@ frappe.ui.form.on("Create Pay Slips", {
       December: 12,
     };
 
-    let monthNum = months[monthName];
+    const monthNum = months[monthName];
 
     if (!monthNum) {
       frappe.msgprint("Invalid month name.");
       return;
     }
 
+    // Set numeric month field
     frm.set_value("month", monthNum);
 
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
+    // Create date using selected year & month (1st day of month)
+    const selectedDate = new Date(year, monthNum - 1, 1);
 
-    if (monthNum && currentMonth < monthNum) {
+    // Current month (1st day)
+    const today = new Date();
+    const currentMonthDate = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    // 🚫 Block future months
+    if (selectedDate > currentMonthDate) {
       frappe.validated = false;
       frappe.throw({
         message: "Pay Slips cannot be generated for future months!",
@@ -202,7 +214,6 @@ frappe.ui.form.on("Create Pay Slips", {
       });
     }
   },
-
   validate: function (frm) {
     if (preventSubmission) {
       frappe.validate = false;
