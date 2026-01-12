@@ -493,6 +493,7 @@ def regeneratePaySlip(data, parent=None):
             # If no Pay Slip exists, create a new one
             pay_slip = frappe.new_doc("Pay Slips")
         otherEarnings = _getOtherEarnings(pay_slip.employee, year, month, pay_slip.name)
+        print(otherEarnings)
         if otherEarnings:
             for component, earning in otherEarnings.items():
                 if not isinstance(earning, dict):
@@ -649,7 +650,7 @@ def regeneratePaySlip(data, parent=None):
 
         # Update child table for "other_earnings"
         pay_slip.other_earnings = []
-
+        print(otherEarnings)
         if otherEarnings:
             for component, earning in otherEarnings.items():
                 if component != "Leave Encashment":
@@ -1359,14 +1360,15 @@ def _getOtherEarnings(empID, year, month, pay_slip):
     rsc_list = frappe.get_list(
         "Recurring Salary Component",
         filters={
-            "due_date": due_date,
             "employee": empID,
             "docstatus": 1,
-            "pay_slip": pay_slip,
         },
+        or_filters=[
+            {"pay_slip": pay_slip},
+            {"due_date": due_date, "pay_slip": ["in", ["", None]]},
+        ],
         fields=["name"],
     )
-
     for rsc in rsc_list:
         doc = frappe.get_doc("Recurring Salary Component", rsc.name)
         otherEarnings[doc.component] = {
