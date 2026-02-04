@@ -49,7 +49,7 @@
   },
   {
    "fieldname": "time",
-   "fieldtype": "Datetime",
+   "fieldtype": "Time",
    "in_list_view": 1,
    "label": "Time",
    "reqd": 1
@@ -138,7 +138,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-12 19:01:13.967837",
+ "modified": "2026-02-04 14:48:17.748821",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Attendance Correction",

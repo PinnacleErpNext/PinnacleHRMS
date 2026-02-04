@@ -63,7 +63,6 @@ def check_attendance_correction_eligiblity(doc, method):
         return False
 
 
-
 def correct_attendance(self):
     attendance_date = getdate(self.attendance_date)
 
@@ -87,35 +86,65 @@ def correct_attendance(self):
         old_in_time = existing_attendance_doc.in_time
         old_out_time = existing_attendance_doc.out_time
         existing_attendance_doc.cancel()
+        existing_attendance_doc.add_comment(
+            "Info",
+            (
+                f"Cancelled via Attendance Correction ({self.name}) | "
+                f"Log: {self.log_type} | "
+                f"Old: {old_in_time if self.log_type.upper() == 'IN' else old_out_time} | "
+                f"New: {self.time} | "
+                f"Reason: {self.reason_for_correction}"
+            ),
+        )
         frappe.db.commit()
 
     # --- 3. Prepare new values ---
     final_in_time = old_in_time
     final_out_time = old_out_time
+    log_in_from = existing_attendance_doc.custom_log_in_from
+    log_out_from = existing_attendance_doc.custom_log_out_from
 
     if self.log_type and self.time:
-        time_value = get_datetime(self.time)
+        time_value = get_datetime(self.time + " " + str(self.attendance_date))
         if self.log_type.upper() == "IN":
             final_in_time = time_value
         elif self.log_type.upper() == "OUT":
             final_out_time = time_value
 
     # --- 4. Create and submit new record ---
-    new_attendance = frappe.get_doc({
-        "doctype": "Attendance",
-        "employee": self.employee,
-        "attendance_date": attendance_date,
-        "status": "Present",
-        "shift": self.shift,
-        "in_time": final_in_time,
-        "out_time": final_out_time,
-    })
+    new_attendance = frappe.get_doc(
+        {
+            "doctype": "Attendance",
+            "employee": self.employee,
+            "attendance_date": attendance_date,
+            "status": "Present",
+            "shift": self.shift,
+            "in_time": final_in_time,
+            "custom_log_in_from": log_in_from,
+            "out_time": final_out_time,
+            "custom_log_out_from": log_out_from,
+        }
+    )
 
     new_attendance.insert(ignore_permissions=True)
     new_attendance.submit()
     frappe.db.commit()
+    old_time = old_in_time if self.log_type.upper() == "IN" else old_out_time
+
+    new_attendance.add_comment(
+        "Info",
+        (
+            f"Created via Attendance Correction ({self.name}) | "
+            f"Log: {self.log_type} | "
+            f"Old: {old_time} | "
+            f"New: {self.time} | "
+            f"Reason: {self.reason_for_correction} | "
+            f"Attendance: {existing_attendance_name or 'New Attendance Record'}"
+        ),
+    )
 
     return new_attendance.name
+
 
 @frappe.whitelist()
 def get_attendance(emp, att_date):
@@ -127,7 +156,7 @@ def get_attendance(emp, att_date):
             "docstatus": 1,
         },
         limit=1,
-        ignore_permissions=True,   # ✅ FORCE bypass permissions
+        ignore_permissions=True,  # ✅ FORCE bypass permissions
     )
 
     if not records:
