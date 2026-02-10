@@ -775,7 +775,7 @@ def download_bank_upld_bulk_report(year=None, month=None, encodedCompany=None):
         if 1 <= m <= 12:
             conditions.append("tps.month_num = %(month)s AND tps.year = %(year)s")
             params.update({"month": m, "year": int(year)})
-            report_name = f"{company.replace(' ', '_')}_ICICI_SFTP_{calendar.month_name[m]}_{year}"
+            report_name = f"{company.replace(' ', '_')}_ICICI_SFTP_{calendar.month_name[m]}{year}"
         else:
             frappe.throw("Month must be between 1 and 12")
     except ValueError:
@@ -1247,7 +1247,7 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
     last_date = date(year, m, last_day)
 
     formatted_date_for_display = last_date.strftime("%d/%m/%Y")
-    formatted_date_for_filename = last_date.strftime("%d_%m_%Y")
+    formatted_date_for_filename = last_date.strftime("%d%m%Y")
 
     # --- Build query ---
     conditions = ["tps.month_num = %(month)s", "tps.year = %(year)s"]
@@ -1345,7 +1345,7 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
     output.seek(0)
 
     # --- Set filename & response ---
-    frappe.response.filename = f"{company_abbr}_{formatted_date_for_filename}.xlsx"
+    frappe.response.filename = f"{company_abbr}{formatted_date_for_filename}.xlsx"
     frappe.response.filecontent = output.getvalue()
     frappe.response.type = "binary"
 
