@@ -10,6 +10,7 @@ from werkzeug.wrappers import Response
 
 import openpyxl
 from openpyxl import load_workbook, Workbook
+from datetime import datetime
 
 
 # ============================================================
@@ -30,6 +31,28 @@ MISSING_TIME_STRINGS = {
     "0:00",
     "00:0",
 }
+
+
+def format_date(val):
+    if isinstance(val, datetime):
+        return val.strftime("%d/%m/%Y")
+    elif val:
+        try:
+            return datetime.strptime(str(val), "%Y-%m-%d").strftime("%d/%m/%Y")
+        except:
+            return str(val)
+    return ""
+
+
+def format_time(val):
+    if isinstance(val, datetime):
+        return val.strftime("%H:%M:%S")
+    elif val:
+        try:
+            return datetime.strptime(str(val), "%H:%M:%S").strftime("%H:%M:%S")
+        except:
+            return str(val)
+    return ""
 
 
 def is_missing_time(val) -> bool:
@@ -866,13 +889,13 @@ def download_final_attendance_excel(logs):
     ws = wb.active
     ws.title = "Final Attendance"
 
+    # ---------------- DEVICE DATA ----------------
     if (
         isinstance(data, list)
         and data
         and isinstance(data[0], dict)
         and "device" in data[0]
     ):
-        # Device feed header
         ws.append(
             [
                 "Device Id",
@@ -884,28 +907,22 @@ def download_final_attendance_excel(logs):
                 "Out Time",
             ]
         )
+
         for row in data:
             ws.append(
                 [
                     row.get("device_id", ""),
                     row.get("device", ""),
                     row.get("employee_name", ""),
-                    (
-                        row.get("attendance_date")
-                        if isinstance(row.get("attendance_date"), str)
-                        else (
-                            row.get("attendance_date").strftime("%d-%b-%Y")
-                            if row.get("attendance_date")
-                            else ""
-                        )
-                    ),
+                    format_date(row.get("attendance_date")),  # ✅ unified date
                     row.get("shift", ""),
-                    row.get("in_time", ""),
-                    row.get("out_time", ""),
+                    format_time(row.get("in_time")),  # ✅ unified time
+                    format_time(row.get("out_time")),  # ✅ unified time
                 ]
             )
+
+    # ---------------- AGGREGATED DATA ----------------
     else:
-        # Aggregated employee dict
         ws.append(
             [
                 "Employee",
@@ -918,6 +935,7 @@ def download_final_attendance_excel(logs):
                 "Out Time",
             ]
         )
+
         if isinstance(data, dict):
             for emp_id in sorted(data):
                 for row in data[emp_id]:
@@ -925,22 +943,20 @@ def download_final_attendance_excel(logs):
                         [
                             row.get("employee", ""),
                             row.get("employee_name", ""),
-                            (
-                                row.get("attendance_date").strftime("%d-%b-%Y")
-                                if isinstance(row.get("attendance_date"), datetime)
-                                else str(row.get("attendance_date") or "")
-                            ),
+                            format_date(row.get("attendance_date")),  # ✅ unified date
                             row.get("shift", ""),
                             row.get("custom_log_in_from", ""),
-                            row.get("in_time", ""),
+                            format_time(row.get("in_time")),  # ✅ unified time
                             row.get("custom_log_out_from", ""),
-                            row.get("out_time", ""),
+                            format_time(row.get("out_time")),  # ✅ unified time
                         ]
                     )
 
+    # ---------------- SAVE FILE ----------------
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
+
     return Response(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
