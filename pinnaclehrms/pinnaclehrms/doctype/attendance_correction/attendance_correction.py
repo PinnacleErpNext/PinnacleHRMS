@@ -79,7 +79,7 @@ def correct_attendance(self):
 
     old_in_time = None
     old_out_time = None
-
+    existing_attendance_doc = None
     # --- 2. If record exists, cancel and preserve values ---
     if existing_attendance_name:
         existing_attendance_doc = frappe.get_doc("Attendance", existing_attendance_name)
@@ -101,8 +101,13 @@ def correct_attendance(self):
     # --- 3. Prepare new values ---
     final_in_time = old_in_time
     final_out_time = old_out_time
-    log_in_from = existing_attendance_doc.custom_log_in_from
-    log_out_from = existing_attendance_doc.custom_log_out_from
+    log_in_from = (
+        existing_attendance_doc.custom_log_in_from if existing_attendance_doc else None
+    )
+
+    log_out_from = (
+        existing_attendance_doc.custom_log_out_from if existing_attendance_doc else None
+    )
 
     if self.log_type and self.time:
         time_value = get_datetime(self.time + " " + str(self.attendance_date))

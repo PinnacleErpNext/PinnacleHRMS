@@ -1,6 +1,7 @@
 {
+ "app": "pinnaclehrms",
  "charts": [],
- "content": "[{\"id\":\"1cUrv4tZAp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">PinnacleHRMS</span>\",\"col\":12}},{\"id\":\"QLjja6HTdm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"1. Add Employee\",\"col\":6}},{\"id\":\"lPEojI8no_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"2. Assign Salary\",\"col\":6}},{\"id\":\"cwdsZ1q4YR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Pay Slips\",\"col\":3}},{\"id\":\"os4pytHpPV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slip Records\",\"col\":3}},{\"id\":\"we4cr3yl4p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shift Variation\",\"col\":3}},{\"id\":\"IjCYcWcR0w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pay Slips\",\"col\":3}},{\"id\":\"xwMn3QAI_t\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Attendance Sheet Formatter\",\"col\":3}},{\"id\":\"06ufMf15t7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Leave Encashment Tool\",\"col\":3}},{\"id\":\"T4YSw9L_WC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Leave Encashment\",\"col\":3}},{\"id\":\"lYhjsUM_pV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Recurring Salary Component Tool\",\"col\":3}},{\"id\":\"1gO3NGQv_h\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Recurring Salary Component\",\"col\":3}},{\"id\":\"6jncT0OePI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Attendance Approval Tool\",\"col\":3}},{\"id\":\"IdNyEh0dV4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Attendance Corrections\",\"col\":3}}]",
+ "content": "[{\"id\":\"1cUrv4tZAp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">PinnacleHRMS</span>\",\"col\":12}},{\"id\":\"5_rIMmuA3Q\",\"type\":\"card\",\"data\":{\"card_name\":\"MASTERS\",\"col\":5}},{\"id\":\"89HmXTUTHj\",\"type\":\"card\",\"data\":{\"card_name\":\"REPORTS\",\"col\":5}},{\"id\":\"m97fhCmZZg\",\"type\":\"card\",\"data\":{\"card_name\":\"TOOLS\",\"col\":5}},{\"id\":\"3duVIXgNT_\",\"type\":\"card\",\"data\":{\"card_name\":\"TRANSACTIONS\",\"col\":5}}]",
  "creation": "2025-01-24 17:29:48.785624",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,121 +13,189 @@
  "indicator_color": "green",
  "is_hidden": 0,
  "label": "PinnacleHRMS",
- "links": [],
- "modified": "2025-09-22 12:24:10.743772",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MASTERS",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add Employee",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Assign Salary",
+   "link_count": 0,
+   "link_to": "Assign Salary",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "REPORTS",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Salary Register",
+   "link_count": 0,
+   "link_to": "pay-slip-report",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Pay Slips",
+   "link_count": 0,
+   "link_to": "Pay Slips",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Biometric Attendance Approval Report",
+   "link_count": 0,
+   "link_to": "Attendance Approval",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Employee Checkin",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "TOOLS",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Create Pay Slips",
+   "link_count": 0,
+   "link_to": "Create Pay Slips",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Attendance Sheet Formatter",
+   "link_count": 0,
+   "link_to": "attendance-sheet-formatter",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave Encashment Tool",
+   "link_count": 0,
+   "link_to": "Leave Encashment Tool",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Pinnacle Leave Encashment",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recurring Salary Tool",
+   "link_count": 0,
+   "link_to": "recurring-salary-com",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Biometric Attendance Approval",
+   "link_count": 0,
+   "link_to": "Attendance Approval",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Employee Checkin",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "TRANSACTIONS",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shift Variation",
+   "link_count": 0,
+   "link_to": "Shift Variation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add Leave Encashment",
+   "link_count": 0,
+   "link_to": "Pinnacle Leave Encashment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add Recurring Salary",
+   "link_count": 0,
+   "link_to": "recurring-salary-com",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-07 16:19:58.588298",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "PinnacleHRMS",
  "number_cards": [],
  "owner": "Administrator",
- "parent_page": "HR",
+ "parent_page": "",
  "public": 1,
  "quick_lists": [],
  "roles": [],
  "sequence_id": 39.0,
- "shortcuts": [
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Attendance Approval Tool",
-   "link_to": "Attendance Approval",
-   "report_ref_doctype": "Employee Checkin",
-   "type": "Report"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Recurring Salary Component Tool",
-   "link_to": "recurring-salary-com",
-   "type": "Page"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Attendance Sheet Formatter",
-   "link_to": "attendance-sheet-formatter",
-   "type": "Page"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Recurring Salary Component",
-   "link_to": "Recurring Salary Component",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Attendance Corrections",
-   "link_to": "Attendance Correction",
-   "report_ref_doctype": "Attendance Correction",
-   "type": "Report"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Create Pay Slips",
-   "link_to": "Create Pay Slips",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Leave Encashment Tool",
-   "link_to": "Leave Encashment Tool",
-   "report_ref_doctype": "Pinnacle Leave Encashment",
-   "type": "Report"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Pay Slip Records",
-   "link_to": "pay-slip-report",
-   "stats_filter": "[]",
-   "type": "Page"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Leave Encashment",
-   "link_to": "Pinnacle Leave Encashment",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "New",
-   "label": "1. Add Employee",
-   "link_to": "Employee",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Pay Slips",
-   "link_to": "Pay Slips",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "New",
-   "label": "2. Assign Salary",
-   "link_to": "Assign Salary",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Shift Variation",
-   "link_to": "Shift Variation",
-   "stats_filter": "[]",
-   "type": "DocType"
-  }
- ],
- "title": "PinnacleHRMS"
+ "shortcuts": [],
+ "title": "PinnacleHRMS",
+ "type": "Workspace"
 }
