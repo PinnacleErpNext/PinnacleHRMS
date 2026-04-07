@@ -139,7 +139,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
           method: "POST",
           headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
           body: formData,
-        }
+        },
       );
 
       frappe.dom.unfreeze();
@@ -232,15 +232,15 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
             attendanceData.push({ ...row, index: i });
             html += `<tr data-index="${i}">
                         <td>${i}</td><td>${row.employee}</td><td>${
-              row.employee_name
-            }</td>
+                          row.employee_name
+                        }</td>
                         <td>${row.attendance_date}</td><td>${row.shift}</td>
                         <td>${row.custom_log_in_from || ""}</td><td>${
-              row.in_time
-            }</td>
+                          row.in_time
+                        }</td>
                         <td>${row.custom_log_out_from || ""}</td><td>${
-              row.out_time
-            }</td></tr>`;
+                          row.out_time
+                        }</td></tr>`;
             i++;
           });
         }
@@ -277,11 +277,11 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
         $("#import-validated-btn").prop(
           "disabled",
-          Object.keys(validatedRecord).length === 0
+          Object.keys(validatedRecord).length === 0,
         );
 
         frappe.show_alert(
-          `✅ Validation complete — Valid: ${r.message.total_valid}, Invalid: ${r.message.total_invalid}`
+          `✅ Validation complete — Valid: ${r.message.total_valid}, Invalid: ${r.message.total_invalid}`,
         );
       },
     });
@@ -303,8 +303,8 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
                 <td>${row.attendance_date}</td><td>${row.shift}</td>
                 <td>${row.custom_log_in_from}</td><td>${row.in_time}</td>
                 <td>${row.custom_log_out_from}</td><td>${
-            row.out_time
-          }</td></tr>`;
+                  row.out_time
+                }</td></tr>`;
         });
       });
 
@@ -315,7 +315,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   function renderNonValidatedTable() {
     if (!nonValidatedRecord.length) {
       return $("#non-validated-section").html(
-        `<div class="alert alert-success mt-3">✅ No invalid rows!</div>`
+        `<div class="alert alert-success mt-3">✅ No invalid rows!</div>`,
       );
     }
 
@@ -328,7 +328,9 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
                 <th>Name</th>
                 <th>Date</th>
                 <th>Shift</th>
+                <th>Log In From</th>
                 <th>In</th>
+                <th>Log Out From</th>
                 <th>Out</th>
                 <th>Errors</th>
                 <th class="text-center">Skip Validation</th>
@@ -339,19 +341,20 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
     nonValidatedRecord.forEach((r, i) => {
       html += `
-        <tr data-index="${i}">
+        <tr data-index="${i}" data-log-in-from="${r.custom_log_in_from || "Manual"}"
+            data-log-out-from="${r.custom_log_out_from || "Manual"}">
             <td>${i + 1}</td>
             <td>${r.employee || ""}</td>
             <td>${r.employee_name || ""}</td>
             <td>${r.attendance_date || ""}</td>
             <td>${r.shift || ""}</td>
-
+            <td>${r.custom_log_in_from || ""}</td>
             <td>
                 <input type="time"
                     value="${r.in_time || ""}"
                     class="form-control form-control-sm in-time" />
             </td>
-
+            <td>${r.custom_log_out_from || ""}</td>
             <td>
                 <input type="time"
                     value="${r.out_time || ""}"
@@ -401,8 +404,8 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
         custom_log_in_from: $row.data("log-in-from") || "Manual",
         custom_log_out_from: $row.data("log-out-from") || "Manual",
 
-        in_time: $row.find("td:eq(5) input").val(),
-        out_time: $row.find("td:eq(6) input").val(),
+        in_time: $row.find("input.in-time").val(),
+        out_time: $row.find("input.out-time").val(),
       };
 
       const skipValidation = $row.find(".skip-validation").is(":checked");
@@ -445,11 +448,12 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
         attendance_data: attendance_data,
       },
       callback: function (r) {
+        console.log("Re-validation result:", r.message);
         // merge validated
         Object.keys(r.message.validated || {}).forEach((emp) => {
           if (!validatedRecord[emp]) validatedRecord[emp] = [];
           validatedRecord[emp] = validatedRecord[emp].concat(
-            r.message.validated[emp]
+            r.message.validated[emp],
           );
         });
 
@@ -470,10 +474,10 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
   // ============= DOWNLOAD BUTTONS ============= //
   $("#download-preview-btn").on("click", () =>
-    downloadExcel(previewData, "Preview_Attendance.xlsx")
+    downloadExcel(previewData, "Preview_Attendance.xlsx"),
   );
   $("#download-validated-btn").on("click", () =>
-    downloadExcel(validatedRecord, "Validated_Attendance.xlsx")
+    downloadExcel(validatedRecord, "Validated_Attendance.xlsx"),
   );
 
   $("#download-raw-excell-btn").on("click", function () {
@@ -495,7 +499,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       args: { attendance_data: validatedRecord },
       callback: function (r) {
         frappe.msgprint(
-          `✅ Data Import created: <a href="/app/data-import/${r.message}">${r.message}</a>`
+          `✅ Data Import created: <a href="/app/data-import/${r.message}">${r.message}</a>`,
         );
       },
     });
@@ -513,7 +517,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
           method: "POST",
           headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
           body: formData,
-        }
+        },
       );
 
       const contentType = res.headers.get("Content-Type");
