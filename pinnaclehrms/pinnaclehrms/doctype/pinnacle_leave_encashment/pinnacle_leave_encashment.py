@@ -29,6 +29,7 @@ class PinnacleLeaveEncashment(Document):
             data = {
                 "from_date": self.from_date,
                 "to_date": self.to_date or self.encashment_date,
+                "next_encashment_date": self.next_encashment_date,
                 "employee": self.employee,
             }
 
