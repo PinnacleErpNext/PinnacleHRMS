@@ -1,7 +1,7 @@
-frappe.pages["Employee Attendance Summary"].on_page_load = function (wrapper) {
-  let page = frappe.ui.make_app_page({
+frappe.pages["attendance-logs"].on_page_load = function (wrapper) {
+  var page = frappe.ui.make_app_page({
     parent: wrapper,
-    title: "Employee Attendance Summary",
+    title: "Attendance Logs",
     single_column: true,
   });
 
@@ -43,8 +43,8 @@ frappe.pages["Employee Attendance Summary"].on_page_load = function (wrapper) {
     fieldtype: "Button",
     fieldname: "download_report",
   });
-	get_btn.$input.removeClass("btn-default").addClass("btn-dark");
-	download_btn.$input.removeClass("btn-default").addClass("btn-success");
+  get_btn.$input.removeClass("btn-default").addClass("btn-dark");
+  download_btn.$input.removeClass("btn-default").addClass("btn-success");
 
   let result_area = $('<div class="mt-4"></div>').appendTo(page.body);
 
@@ -56,7 +56,7 @@ frappe.pages["Employee Attendance Summary"].on_page_load = function (wrapper) {
 
     frappe.call({
       method:
-        "pinnaclehrms.pinnaclehrms.page.employee_attendance_summary.employee_attendance_summary.get_data",
+        "pinnaclehrms.pinnacle_hr.page.attendance_logs.attendance_logs.get_data",
       args: {
         company: company.get_value(),
         employee: employee.get_value(),
@@ -131,33 +131,29 @@ frappe.pages["Employee Attendance Summary"].on_page_load = function (wrapper) {
   });
 
   download_btn.$input.on("click", function () {
+    if (!from_date.get_value() || !to_date.get_value()) {
+      frappe.msgprint("Please select From Date and To Date");
+      return;
+    }
 
-	if (!from_date.get_value() || !to_date.get_value()) {
-		frappe.msgprint("Please select From Date and To Date");
-		return;
-	}
+    frappe.call({
+      method:
+        "pinnaclehrms.pinnacle_hr.page.attendance_logs.attendance_logs.download_excel",
 
-	frappe.call({
-		method:
-		"pinnaclehrms.pinnaclehrms.page.employee_attendance_summary.employee_attendance_summary.download_excel",
+      args: {
+        company: company.get_value(),
+        employee: employee.get_value(),
+        from_date: from_date.get_value(),
+        to_date: to_date.get_value(),
+      },
 
-		args: {
-			company: company.get_value(),
-			employee: employee.get_value(),
-			from_date: from_date.get_value(),
-			to_date: to_date.get_value(),
-		},
-
-		callback: function (r) {
-
-			if (r.message) {
-				window.open(r.message);
-			}
-
-		}
-	});
-
-});
+      callback: function (r) {
+        if (r.message) {
+          window.open(r.message);
+        }
+      },
+    });
+  });
 
   function attach_expand_events() {
     $(".expand-row").click(function () {
@@ -177,7 +173,7 @@ frappe.pages["Employee Attendance Summary"].on_page_load = function (wrapper) {
 
       frappe.call({
         method:
-          "pinnaclehrms.pinnaclehrms.page.employee_attendance_summary.employee_attendance_summary.get_employee_month_breakdown",
+          "pinnaclehrms.pinnacle_hr.page.attendance_logs.attendance_logs.get_employee_month_breakdown",
         args: {
           employee: emp,
           company: company.get_value(),

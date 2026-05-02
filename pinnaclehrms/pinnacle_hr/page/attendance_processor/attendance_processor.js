@@ -1,12 +1,12 @@
-frappe.pages["attendance-sheet-formatter"].on_page_load = function (wrapper) {
-  frappe.ui.make_app_page({
+frappe.pages["attendance-processor"].on_page_load = function (wrapper) {
+  var page = frappe.ui.make_app_page({
     parent: wrapper,
-    title: "Attendance Sheet Formatter (Old)",
+    title: "Attendance Processor",
     single_column: true,
   });
 };
 
-frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
+frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
   // ========= GLOBAL DATA STORES ========= //
   let attendanceData = []; // preview rows
   let rawData = {};
@@ -55,7 +55,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   }
 
   // Render HTML
-  const html = frappe.render_template("attendance_sheet_formatter", {});
+  const html = frappe.render_template("attendance_processor", {});
   $(wrapper).find(".page-body").html(html);
 
   // ========== PAYROLL DATE CONTROLS ========== //
@@ -134,7 +134,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
     frappe.dom.freeze("Loading...");
     try {
       const res = await fetch(
-        "/api/method/pinnaclehrms.utility.attendance_formatter.load_raw_attendance_data",
+        "/api/method/pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.load_raw_attendance_data",
         {
           method: "POST",
           headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
@@ -144,6 +144,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
       frappe.dom.unfreeze();
       const data = await res.json();
+      console.log(data);
       if (!res.ok || !data.message)
         return frappe.msgprint("❌ Error loading data");
 
@@ -172,34 +173,66 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
   function generateTableHtml(data) {
     if (!data || !data.length) {
-      return `<div class="scrollable-table-container">
-                <table class="table table-bordered table-sm mb-0">
+      return `
+        <div class="scrollable-table-container">
+            <table class="table table-bordered table-sm mb-0">
                 <thead class="table-light">
-                <tr><th>Sr. No.</th><th>Employee</th><th>Name</th><th>Date</th><th>Shift</th>
-                <th>Log In From</th><th>In</th><th>Log Out From</th><th>Out</th></tr>
-                </thead><tbody><tr><td colspan="9" class="text-center text-muted">No records</td></tr></tbody></table></div>`;
+                    <tr>
+                        <th>Sr. No.</th>
+                        <th>Employee / Device ID</th>
+                        <th>Name</th>
+                        <th>Attendance Date</th>
+                        <th>Log Type</th>
+                        <th>Time</th>
+                        <th>Device</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">No records</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>`;
     }
 
-    let html = `<div class="scrollable-table-container">
+    let html = `
+    <div class="scrollable-table-container">
         <table class="table table-bordered table-sm mb-0">
-        <thead class="table-light">
-        <tr><th>Sr. No.</th><th>Employee/Device</th><th>Name</th><th>Date</th><th>Shift</th>
-        <th>Log In</th><th>In</th><th>Log Out</th><th>Out</th></tr></thead><tbody>`;
+            <thead class="table-light">
+                <tr>
+                    <th>Sr. No.</th>
+                    <th>Employee / Device ID</th>
+                    <th>Name</th>
+                    <th>Attendance Date</th>
+                    <th>Log Type</th>
+                    <th>Time</th>
+                    <th>Device</th>
+                </tr>
+            </thead>
+            <tbody>`;
 
     data.forEach((row, idx) => {
-      html += `<tr>
+      html += `
+        <tr>
             <td>${idx + 1}</td>
             <td>${row.employee_id || row.device_id || ""}</td>
-            <td>${row.employee_name || ""}</td>
+            <td>${row.employee_name || row.name || ""}</td>
             <td>${row.attendance_date || ""}</td>
-            <td>${row.shift || ""}</td>
-            <td>${row.device || ""}</td>
-            <td>${row.in_time || ""}</td>
-            <td>${row.device || ""}</td>
-            <td>${row.out_time || ""}</td></tr>`;
+            <td>
+                <span class="badge bg-secondary">PUNCH</span>
+            </td>
+            <td>${row.time || ""}</td>
+            <td>${row.device_name || row.device || ""}</td>
+        </tr>`;
     });
 
-    return html + "</tbody></table></div>";
+    html += `
+            </tbody>
+        </table>
+    </div>`;
+
+    return html;
   }
 
   // ============= PREVIEW ============= //
@@ -211,39 +244,55 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
     frappe.dom.freeze("Generating Preview...");
     frappe.call({
       method:
-        "pinnaclehrms.utility.attendance_formatter.preview_final_attendance_sheet",
-      args: { raw_data: rawData },
+        "pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.preview_final_attendance_sheet",
+      args: {
+        raw_data: JSON.stringify(rawData), // IMPORTANT
+      },
       callback: function (r) {
         frappe.dom.unfreeze();
-        if (!r.message) return frappe.msgprint("❌ Error generating preview");
 
-        previewData = r.message.data;
-        attendanceData = [];
-
-        let html = `<table id="attendance-table" class="table table-bordered table-sm">
-                <thead><tr>
-                <th>Sr.</th><th>Employee</th><th>Name</th><th>Date</th>
-                <th>Shift</th><th>Log In</th><th>In</th>
-                <th>Log Out</th><th>Out</th></tr></thead><tbody>`;
-
-        let i = 1;
-        for (const empId of Object.keys(previewData).sort()) {
-          previewData[empId].forEach((row) => {
-            attendanceData.push({ ...row, index: i });
-            html += `<tr data-index="${i}">
-                        <td>${i}</td><td>${row.employee}</td><td>${
-                          row.employee_name
-                        }</td>
-                        <td>${row.attendance_date}</td><td>${row.shift}</td>
-                        <td>${row.custom_log_in_from || ""}</td><td>${
-                          row.in_time
-                        }</td>
-                        <td>${row.custom_log_out_from || ""}</td><td>${
-                          row.out_time
-                        }</td></tr>`;
-            i++;
-          });
+        if (!r.message || !Array.isArray(r.message.data)) {
+          return frappe.msgprint("❌ Error generating preview");
         }
+
+        // 🔹 Backend now returns FLAT LIST
+        previewData = r.message.data;
+        attendanceData = previewData;
+
+        let html = `
+            <table id="attendance-table" class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Sr.</th>
+                        <th>Employee</th>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Shift</th>
+                        <th>Log Type</th>
+                        <th>Time</th>
+                        <th>Punch From</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        previewData.forEach((row, i) => {
+          html += `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${row.employee || ""}</td>
+                    <td>${row.employee_name || ""}</td>
+                    <td>${row.attendance_date || ""}</td>
+                    <td>${row.shift || ""}</td>
+                    <td>
+                        <span class="badge ${row.log_type === "IN" ? "bg-success" : "bg-danger"}">
+                            ${row.log_type}
+                        </span>
+                    </td>
+                    <td>${row.time || ""}</td>
+                    <td>${row.punch_from || ""}</td>
+                </tr>`;
+        });
+
         html += "</tbody></table>";
 
         $("#attendance-preview").html(html);
@@ -259,9 +308,10 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       return frappe.msgprint("Generate preview first");
 
     frappe.dom.freeze("Validating...");
+
     frappe.call({
       method:
-        "pinnaclehrms.utility.attendance_formatter.validate_attendance_data",
+        "pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.validate_attendance_data",
       args: { attendance_data: attendanceData },
       callback: function (r) {
         frappe.dom.unfreeze();
@@ -289,8 +339,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
 
   function renderValidatedTable() {
     let html = `<table class="table table-bordered table-success table-sm">
-        <thead><tr><th>#</th><th>Employee</th><th>Name</th><th>Date</th>
-        <th>Shift</th><th>Log In</th><th>In</th><th>Log Out</th><th>Out</th></tr></thead><tbody>`;
+        <thead><tr><th>#</th><th>Employee</th><th>Name</th><th>Date</th><th>Shift</th><th>Log Type</th><th>Time</th><th>Punch From</th></tr></thead><tbody>`;
 
     let i = 1;
     Object.keys(validatedRecord)
@@ -301,10 +350,8 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
             row.employee_name
           }</td>
                 <td>${row.attendance_date}</td><td>${row.shift}</td>
-                <td>${row.custom_log_in_from}</td><td>${row.in_time}</td>
-                <td>${row.custom_log_out_from}</td><td>${
-                  row.out_time
-                }</td></tr>`;
+                <td>${row.log_type}</td><td>${row.time}</td>
+                <td>${row.punch_from}</td></tr>`;
         });
       });
 
@@ -319,137 +366,49 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       );
     }
 
-    let html = `
-    <table class="table table-bordered table-danger table-sm">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Emp</th>
-                <th>Name</th>
-                <th>Date</th>
-                <th>Shift</th>
-                <th>Log In From</th>
-                <th>In</th>
-                <th>Log Out From</th>
-                <th>Out</th>
-                <th>Errors</th>
-                <th class="text-center">Skip Validation</th>
-            </tr>
-        </thead>
-        <tbody>
-    `;
+    let html = `<table class="table table-bordered table-danger table-sm">
+        <thead><tr><th>#</th><th>Emp</th><th>Name</th><th>Date</th><th>Shift</th>
+        <th>Time</th><th>Errors</th></tr></thead><tbody>`;
 
     nonValidatedRecord.forEach((r, i) => {
-      html += `
-        <tr data-index="${i}" data-log-in-from="${r.custom_log_in_from || "Manual"}"
-            data-log-out-from="${r.custom_log_out_from || "Manual"}">
+      html += `<tr data-index="${i}">
             <td>${i + 1}</td>
             <td>${r.employee || ""}</td>
             <td>${r.employee_name || ""}</td>
             <td>${r.attendance_date || ""}</td>
             <td>${r.shift || ""}</td>
-            <td>${r.custom_log_in_from || ""}</td>
-            <td>
-                <input type="time"
-                    value="${r.in_time || ""}"
-                    class="form-control form-control-sm in-time" />
-            </td>
-            <td>${r.custom_log_out_from || ""}</td>
-            <td>
-                <input type="time"
-                    value="${r.out_time || ""}"
-                    class="form-control form-control-sm out-time" />
-            </td>
-
-            <td class="text-danger small">
-                ${(r.errors || []).join(", ")}
-            </td>
-
-            <td class="text-center">
-                <input type="checkbox"
-                    class="form-check-input skip-validation"
-                    ${r.skip_validation ? "checked" : ""} />
-            </td>
-        </tr>`;
+            <td><input type="time" value="${r.time || ""}" class="form-control in-time"/></td>
+            <td class="text-danger small">${(r.errors || []).join(", ")}</td></tr>`;
     });
 
-    html += `
-        </tbody>
-    </table>
-
-    <div class="text-center mt-2">
-        <button id="revalidate-btn" class="btn btn-warning">
-            Re-Validate
-        </button>
-    </div>
-    `;
+    html += `</tbody></table>
+        <div class="text-center mt-2">
+        <button id="revalidate-btn" class="btn btn-warning">Re-Validate</button>
+        </div>`;
 
     $("#non-validated-section").html(html);
   }
 
   // ✅ Re-Validate Corrected Invalid Rows
   $(document).on("click", "#revalidate-btn", function () {
-    let attendance_data = []; // needs validation
-    let corrected_attendance = []; // skip validation → auto-validated
-
+    let corrected = [];
     $("#non-validated-section tbody tr").each(function () {
-      const $row = $(this);
-
-      const rowData = {
-        employee: $row.find("td:eq(1)").text().trim(),
-        employee_name: $row.find("td:eq(2)").text().trim(),
-        attendance_date: $row.find("td:eq(3)").text().trim(),
-        shift: $row.find("td:eq(4)").text().trim(),
-
-        custom_log_in_from: $row.data("log-in-from") || "Manual",
-        custom_log_out_from: $row.data("log-out-from") || "Manual",
-
-        in_time: $row.find("input.in-time").val(),
-        out_time: $row.find("input.out-time").val(),
-      };
-
-      const skipValidation = $row.find(".skip-validation").is(":checked");
-
-      if (skipValidation) {
-        // ✅ Directly move to validated
-        corrected_attendance.push(rowData);
-      } else {
-        // ❌ Needs validation
-        attendance_data.push(rowData);
-      }
+      corrected.push({
+        employee: $(this).find("td:eq(1)").text(),
+        employee_name: $(this).find("td:eq(2)").text(),
+        attendance_date: $(this).find("td:eq(3)").text(),
+        shift: $(this).find("td:eq(4)").text(),
+        in_time: $(this).find("td:eq(5) input").val(),
+        out_time: $(this).find("td:eq(6) input").val(),
+      });
     });
-
-    // ---------------------------------------
-    // 1️⃣ Add skipped records directly
-    // ---------------------------------------
-    corrected_attendance.forEach((r) => {
-      if (!validatedRecord[r.employee]) {
-        validatedRecord[r.employee] = [];
-      }
-      validatedRecord[r.employee].push(r);
-    });
-
-    // ---------------------------------------
-    // 2️⃣ Validate remaining records (if any)
-    // ---------------------------------------
-    if (!attendance_data.length) {
-      nonValidatedRecord = [];
-      renderValidatedTable();
-      renderNonValidatedTable();
-      $("#validated-tab").click();
-      $("#import-validated-btn").prop("disabled", false);
-      return;
-    }
 
     frappe.call({
       method:
-        "pinnaclehrms.utility.attendance_formatter.validate_attendance_data",
-      args: {
-        attendance_data: attendance_data,
-      },
+        "pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.validate_attendance_data",
+      args: { attendance_data: corrected },
       callback: function (r) {
-        console.log("Re-validation result:", r.message);
-        // merge validated
+        // merge newly validated into validatedRecord
         Object.keys(r.message.validated || {}).forEach((emp) => {
           if (!validatedRecord[emp]) validatedRecord[emp] = [];
           validatedRecord[emp] = validatedRecord[emp].concat(
@@ -457,9 +416,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
           );
         });
 
-        // update remaining non-validated
         nonValidatedRecord = r.message.non_validated || [];
-
         renderValidatedTable();
         renderNonValidatedTable();
 
@@ -495,7 +452,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
   $("#import-validated-btn").on("click", function () {
     frappe.call({
       method:
-        "pinnaclehrms.utility.attendance_formatter.create_data_import_for_attendance",
+        "pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.create_data_import_for_attendance",
       args: { attendance_data: validatedRecord },
       callback: function (r) {
         frappe.msgprint(
@@ -512,7 +469,7 @@ frappe.pages["attendance-sheet-formatter"].on_page_show = function (wrapper) {
       formData.append("logs", JSON.stringify(data));
 
       const res = await fetch(
-        "/api/method/pinnaclehrms.utility.attendance_formatter.download_final_attendance_excel",
+        "/api/method/pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.download_final_attendance_excel",
         {
           method: "POST",
           headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
