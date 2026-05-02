@@ -7,13 +7,13 @@
  "modified": "2025-07-10 18:34:36.774305",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
- "name": "attendance-sheet-formatter",
+ "name": "attendance-sheet-formatter-old",
  "owner": "Administrator",
- "page_name": "attendance-sheet-formatter",
+ "page_name": "attendance-sheet-formatter-old",
  "roles": [],
  "script": null,
  "standard": "Yes",
  "style": null,
  "system_page": 0,
- "title": "Attendance Sheet Formatter"
+ "title": "Attendance Sheet Formatter (Old)"
 }

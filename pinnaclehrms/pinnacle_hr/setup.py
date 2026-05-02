@@ -28,7 +28,7 @@ def remove_custom_attendance_statuses():
         "DocField",
         {"parent": "Attendance", "fieldname": "status"},
     )
-    print(field)
+
     existing = field.options.split("\n")
     updated = [x for x in existing if x not in CUSTOM_ATTENDANCE_STATUSES]
 
@@ -47,7 +47,7 @@ def add_salary_breakup_field_to_salary_slip():
     """
 
     # 1) Section Break (after deductions)
-    if not frappe.db.exists("Custom Field", "Salary Slip-salary_breakup_section"):
+    if not frappe.db.exists("Custom Field", {"dt": "Salary Slip", "fieldname": "salary_breakup_section"}):
         section = frappe.get_doc({
             "doctype": "Custom Field",
             "dt": "Salary Slip",
@@ -59,21 +59,21 @@ def add_salary_breakup_field_to_salary_slip():
         section.insert(ignore_permissions=True)
 
     # 2) Table field (after section)
-    if not frappe.db.exists("Custom Field", "Salary Slip-salary_breakup"):
+    if not frappe.db.exists("Custom Field", {"dt": "Salary Slip", "fieldname": "salary_breakup"}):
         table_field = frappe.get_doc({
             "doctype": "Custom Field",
             "dt": "Salary Slip",
             "label": "Salary Breakup Details",
             "fieldname": "salary_breakup",
             "fieldtype": "Table",
-            "options": "Salary Breakdown",    # <-- make sure this matches your child DocType name
+            "options": "Salary Breakdown",
             "insert_after": "salary_breakup_section",
             "read_only": 1,
         })
         table_field.insert(ignore_permissions=True)
 
     # 3) NEW FIELD: Particulars (Select)
-    if not frappe.db.exists("Custom Field", "Salary Slip-particulars"):
+    if not frappe.db.exists("Custom Field", {"dt": "Attendance", "fieldname": "particulars"}):
         particulars_field = frappe.get_doc({
             "doctype": "Custom Field",
             "dt": "Attendance",
@@ -87,8 +87,8 @@ def add_salary_breakup_field_to_salary_slip():
                 "Late/Early",
                 "Late & Early",
                 "3/4 Day",
-                "Half Day"
-                "Quarter Day",
+                "Half Day",
+                "Quarter Day", 
                 "Absent",
             ]),
             "reqd": 0,

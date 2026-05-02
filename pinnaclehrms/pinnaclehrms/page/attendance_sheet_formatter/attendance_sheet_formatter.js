@@ -1,7 +1,7 @@
 frappe.pages["attendance-sheet-formatter"].on_page_load = function (wrapper) {
   frappe.ui.make_app_page({
     parent: wrapper,
-    title: "Attendance Sheet Formatter",
+    title: "Attendance Sheet Formatter (Old)",
     single_column: true,
   });
 };
