@@ -46,107 +46,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "REPORTS",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Salary Register",
-   "link_count": 0,
-   "link_to": "pay-slip-report",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Pay Slips",
-   "link_count": 0,
-   "link_to": "Pay Slips",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Biometric Attendance Approval Report",
-   "link_count": 0,
-   "link_to": "Attendance Approval",
-   "link_type": "Report",
-   "onboard": 0,
-   "report_ref_doctype": "Employee Checkin",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "TOOLS",
-   "link_count": 5,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Create Pay Slips",
-   "link_count": 0,
-   "link_to": "Create Pay Slips",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Attendance Sheet Formatter",
-   "link_count": 0,
-   "link_to": "attendance-sheet-formatter",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Leave Encashment Tool",
-   "link_count": 0,
-   "link_to": "Leave Encashment Tool",
-   "link_type": "Report",
-   "onboard": 0,
-   "report_ref_doctype": "Pinnacle Leave Encashment",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Recurring Salary Tool",
-   "link_count": 0,
-   "link_to": "recurring-salary-com",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Biometric Attendance Approval",
-   "link_count": 0,
-   "link_to": "Attendance Approval",
-   "link_type": "Report",
-   "onboard": 0,
-   "report_ref_doctype": "Employee Checkin",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "TRANSACTIONS",
    "link_count": 3,
    "link_type": "DocType",
@@ -182,9 +81,117 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "TOOLS",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Create Pay Slips",
+   "link_count": 0,
+   "link_to": "Create Pay Slips",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Attendance Processor",
+   "link_count": 0,
+   "link_to": "attendance-processor",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Leave Encashment Tool",
+   "link_count": 0,
+   "link_to": "Leave Encashment Tool",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recurring Salary Tool",
+   "link_count": 0,
+   "link_to": "recurring-salary-com",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Biometric Attendance Approval",
+   "link_count": 0,
+   "link_to": "Attendance Approval",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "REPORTS",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Salary Register",
+   "link_count": 0,
+   "link_to": "pay-slip-report",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Pay Slips",
+   "link_count": 0,
+   "link_to": "Pay Slips",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Biometric Attendance Approval Report",
+   "link_count": 0,
+   "link_to": "Attendance Approval",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Attendance Logs",
+   "link_count": 0,
+   "link_to": "attendance-logs",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-04-07 16:19:58.588298",
+ "modified": "2026-05-03 00:41:31.275145",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "PinnacleHRMS",
