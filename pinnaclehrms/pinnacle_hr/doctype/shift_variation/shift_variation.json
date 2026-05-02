@@ -1,0 +1,199 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:shift_name",
+ "creation": "2024-11-06 12:06:50.075962",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "shift_name",
+  "shift_date",
+  "start_time",
+  "end_time",
+  "column_break_byxw",
+  "company",
+  "department",
+  "designation",
+  "employee_list",
+  "shift_variation_section",
+  "month_num",
+  "year",
+  "shift_start",
+  "shift_end",
+  "month",
+  "shift_variations",
+  "shift_applied_to_employee",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "shift_name",
+   "fieldtype": "Data",
+   "label": "Shift Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shift_date",
+   "fieldtype": "Date",
+   "label": "Shift Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Time",
+   "label": "Start Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Time",
+   "label": "End Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_byxw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "shift_variation_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "month_num",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Month Num"
+  },
+  {
+   "fieldname": "year",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Year"
+  },
+  {
+   "fieldname": "shift_start",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Shift Start",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shift_end",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Shift End",
+   "read_only": 1
+  },
+  {
+   "fieldname": "month",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Month",
+   "options": "Select\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"
+  },
+  {
+   "fieldname": "shift_variations",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Shift Variations",
+   "options": "Shift variation history",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shift_applied_to_employee",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Shift Applied to Employee",
+   "options": "Shift for employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Shift Variation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee_list",
+   "fieldtype": "Table",
+   "label": "Shift Variation For Employee",
+   "options": "Shift Variation Employee"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-05-02 12:55:37.345980",
+ "modified_by": "Administrator",
+ "module": "Pinnacle HR",
+ "name": "Shift Variation",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -8,9 +8,10 @@ app_license = "mit"
 # Apps
 # ------------------
 
-fixtures = [
-    {"dt": "Workspace", "filters": [["name", "=", "Employee Dashboard"]]}
-]
+# fixtures = [
+#     {"dt": "Workspace", "filters": [["name", "=", "Employee Dashboard"]]}
+# ]
+import pinnaclehrms.pinnacle_payroll.overrides.custom_salary_slip
 
 # required_apps = []
 
@@ -48,7 +49,7 @@ fixtures = [
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
-doctype_list_js = {"Employee Checkin": "public/customizations/employee_checkin.js"}
+doctype_list_js = {"Attendance": "public/js/custom_attendance_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -87,12 +88,12 @@ doctype_list_js = {"Employee Checkin": "public/customizations/employee_checkin.j
 # ------------
 
 # before_install = "pinnaclehrms.install.before_install"
-# after_install = "pinnaclehrms.install.after_install"
+after_install = "pinnaclehrms.install.after_install"
 
 # Uninstallation
 # ------------
 
-# before_uninstall = "pinnaclehrms.uninstall.before_uninstall"
+before_uninstall = "pinnaclehrms.uninstall.before_uninstall"
 # after_uninstall = "pinnaclehrms.uninstall.after_uninstall"
 
 # Integration Setup
@@ -121,9 +122,9 @@ doctype_list_js = {"Employee Checkin": "public/customizations/employee_checkin.j
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
+permission_query_conditions = {
+    "Attendance Correction": "pinnaclehrms.pinnacle_hr.doctype.attendance_correction.attendance_correction.get_permission_query_conditions",
+}
 #
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
@@ -148,11 +149,9 @@ doc_events = {
     # 	"on_trash": "method"
     # }
     "Attendance": {
-        "before_save": "pinnaclehrms.utility.custom_attendance.custom_before_save"
+        "before_submit": "pinnaclehrms.pinnacle_hr.helpers.set_particulars.before_save_set_particulars"
     },
-    "Employee Checkin":{
-        "after_insert":"pinnaclehrms.api.attendance_notification"
-    }
+    "Employee Checkin": {"after_insert": "pinnaclehrms.api.attendance_notification"},
 }
 
 # Scheduled Tasks
