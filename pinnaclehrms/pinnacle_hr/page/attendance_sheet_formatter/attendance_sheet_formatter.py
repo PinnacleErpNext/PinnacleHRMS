@@ -364,7 +364,7 @@ def process_pinnacle(file):
                         {
                             "device_id": device_id,
                             "name": emp_name,
-                            "device_name": "Zaicom",
+                            "device_name": "Zicom Regal",
                             "attendance_date": attendance_date,
                             "time": t,
                         }
