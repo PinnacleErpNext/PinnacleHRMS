@@ -84,6 +84,8 @@ doctype_list_js = {"Attendance": "public/js/custom_attendance_list.js"}
 # 	"filters": "pinnaclehrms.utils.jinja_filters"
 # }
 
+after_migrate = "pinnaclehrms.pinnacle_hr.setup.setup_salary_breakup_feature"
+
 # Installation
 # ------------
 

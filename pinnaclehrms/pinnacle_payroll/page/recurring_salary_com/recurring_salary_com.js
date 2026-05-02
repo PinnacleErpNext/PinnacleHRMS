@@ -381,7 +381,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
 		};
 
 		frappe.call({
-			method: "pinnaclehrmsv.pinnacle_payroll.page.recurring_salary_com.recurring_salary_com.create_additional_salary_components",
+			method: "pinnaclehrms.pinnacle_payroll.page.recurring_salary_com.recurring_salary_com.create_additional_salary_components",
 			args: { data: JSON.stringify(payload) },
 			callback: function (res) {
 				if (!res.exc) {
