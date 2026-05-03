@@ -18,9 +18,10 @@ def get_custom_attendance_context(employee, start_date, end_date):
         },
         fields=["attendance_date","status", "in_time", "out_time", "shift", "particulars"],
     )
-    print(len(attendance))
-    for d in attendance:
-        print(f"attendance={d.attendance_date}, particulars={d.particulars}, in_time={d.in_time}, out_time={d.out_time}, shift={d.shift}")
+    # print(len(attendance))
+    # for d in attendance:
+    #     print(f"attendance={d.attendance_date}, particulars={d.particulars}, in_time={d.in_time}, out_time={d.out_time}, shift={d.shift}")
+
     full = sum(1 for d in attendance if d.particulars == "Full Day")
     half = sum(1 for d in attendance if d.particulars == "Half Day")
     three_fourth = sum(1 for d in attendance if d.particulars == "3/4 Day")
@@ -30,8 +31,35 @@ def get_custom_attendance_context(employee, start_date, end_date):
     late = sum(1 for d in attendance if d.particulars == "Late")
     late_early = sum(1 for d in attendance if d.particulars == "Late/Early")
     late_and_early = sum(1 for d in attendance if d.particulars == "Late & Early")
-    print(f"full={full}, half={half}, three_fourth={three_fourth}, quarter={quarter}, absent={absent}, late={late}, late_early={late_early}, late_and_early={late_and_early}")
+
+    # print(f"full={full}, half={half}, three_fourth={three_fourth}, quarter={quarter}, absent={absent}, late={late}, late_early={late_early}, late_and_early={late_and_early}")
+
     present = full + half + three_fourth + quarter
+
+    # -------------------------------------------------------
+    # 🔥 POINT-BASED LATE GRACE LOGIC (UPDATED)
+    # -------------------------------------------------------
+    hr_settings = frappe.get_single("HR Settings")
+    allowed_points = hr_settings.allowed_lates or 0
+
+    remaining_points = allowed_points
+
+    adjusted_late_early = 0
+    adjusted_late_and_early = 0
+
+    # Consume points for Late & Early (cost = 2)
+    for _ in range(late_and_early):
+        if remaining_points >= 2:
+            remaining_points -= 2
+        else:
+            adjusted_late_and_early += 1
+
+    # Consume points for Late/Early (cost = 1)
+    for _ in range(late_early):
+        if remaining_points >= 1:
+            remaining_points -= 1
+        else:
+            adjusted_late_early += 1
 
     # -------------------------------------------------------
     # 🔥 Correct Overtime Calculation
@@ -71,15 +99,14 @@ def get_custom_attendance_context(employee, start_date, end_date):
         "half_day_count": half,
         "quarter_day_count": quarter,
         "absent_day_count": absent,
-        "late_day_count": late,
-        "late_early_count": late_early,
-        "late_and_early_count": late_and_early,
+        "late_day_count": late,  # unchanged
+        "late_early_count": adjusted_late_early,   # UPDATED
+        "late_and_early_count": adjusted_late_and_early,  # UPDATED
         "present_day_count": present,
         "fractional_total_days": fraction_total,
         "total_attendance_records": len(attendance),
         "overtime_hours": total_overtime,
     }
-
 
 # -------------------------------------------------------
 # 🔥 FUNCTION 2: Push Variables into Salary Slip Context
