@@ -134,7 +134,7 @@ frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
     frappe.dom.freeze("Loading...");
     try {
       const res = await fetch(
-        "/api/method/pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.load_raw_attendance_data",
+        "/api/method/pinnaclehrms.pinnacle_hr.page.attendance_processor.attendance_processor.load_raw_attendance_data",
         {
           method: "POST",
           headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
@@ -244,7 +244,7 @@ frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
     frappe.dom.freeze("Generating Preview...");
     frappe.call({
       method:
-        "pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.preview_final_attendance_sheet",
+        "pinnaclehrms.pinnacle_hr.page.attendance_processor.attendance_processor.preview_final_attendance_sheet",
       args: {
         raw_data: JSON.stringify(rawData), // IMPORTANT
       },
@@ -311,7 +311,7 @@ frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
 
     frappe.call({
       method:
-        "pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.validate_attendance_data",
+        "pinnaclehrms.pinnacle_hr.page.attendance_processor.attendance_processor.validate_attendance_data",
       args: { attendance_data: attendanceData },
       callback: function (r) {
         frappe.dom.unfreeze();
@@ -405,7 +405,7 @@ frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
 
     frappe.call({
       method:
-        "pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.validate_attendance_data",
+        "pinnaclehrms.pinnacle_hr.page.attendance_processor.attendance_processor.validate_attendance_data",
       args: { attendance_data: corrected },
       callback: function (r) {
         // merge newly validated into validatedRecord
@@ -452,7 +452,7 @@ frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
   $("#import-validated-btn").on("click", function () {
     frappe.call({
       method:
-        "pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.create_data_import_for_attendance",
+        "pinnaclehrms.pinnacle_hr.page.attendance_processor.attendance_processor.create_data_import_for_attendance",
       args: { attendance_data: validatedRecord },
       callback: function (r) {
         frappe.msgprint(
@@ -469,7 +469,7 @@ frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
       formData.append("logs", JSON.stringify(data));
 
       const res = await fetch(
-        "/api/method/pinnaclehrmsv2.pinnacle_hr.page.attendance_sheet_formatter.attendance_sheet_formatter.download_final_attendance_excel",
+        "/api/method/pinnaclehrms.pinnacle_hr.page.attendance_processor.attendance_processor.download_final_attendance_excel",
         {
           method: "POST",
           headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
