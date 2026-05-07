@@ -145,7 +145,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "REPORTS",
-   "link_count": 4,
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -179,19 +179,9 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Attendance Logs",
-   "link_count": 0,
-   "link_to": "attendance-logs",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
   }
  ],
- "modified": "2026-05-03 00:41:31.275145",
+ "modified": "2026-04-09 18:08:46.774757",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "PinnacleHRMS",

@@ -152,6 +152,7 @@ frappe.query_reports["Leave Encashment Tool"] = {
                 employee: data.emp,
                 from_date: values.from_date,
                 to_date: values.to_date,
+                next_encashment_date: values.next_encashment_date,
               },
             },
             callback: function (res) {
