@@ -237,7 +237,7 @@ def custom_process_auto_attendance(self):
         frappe.logger().info("Auto attendance disabled; skipping.")
         return
 
-    frappe.logger().info("🔍 custom_process_auto_attendance executed")
+    frappe.logger().info("Custom_process_auto_attendance executed")
 
     logs = self.get_employee_checkins()
     group_key = lambda x: (x["employee"], x["shift_start"])

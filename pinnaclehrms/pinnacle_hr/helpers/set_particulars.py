@@ -8,7 +8,10 @@ def before_save_set_particulars(doc, method=None):
     if not doc.in_time or not doc.out_time:
         doc.particulars = "Absent"
         return
-
+    att_dt = get_datetime(doc.attendance_date)
+    if att_dt.weekday() == 6:  # Weekend
+        doc.particulars = "Sunday Working"
+        return
     #----- Step 2: Fetch shift timings from Shift Master -----
     if not doc.shift:
         # No shift -> cannot calculate slabs -> default Full Day

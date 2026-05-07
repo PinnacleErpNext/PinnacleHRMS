@@ -78,6 +78,7 @@ def add_salary_breakup_field_to_salary_slip():
             "options": "\n".join([
                 "",
                 "Full Day",
+                "Sunday Working",
                 "Late/Early",
                 "Late & Early",
                 "3/4 Day",

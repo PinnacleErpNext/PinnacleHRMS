@@ -16,13 +16,38 @@ def get_custom_attendance_context(employee, start_date, end_date):
             "attendance_date": ["between", [start_date, end_date]],
             "docstatus": 1,
         },
-        fields=["attendance_date","status", "in_time", "out_time", "shift", "particulars"],
+        fields=[
+            "attendance_date",
+            "status",
+            "in_time",
+            "out_time",
+            "shift",
+            "particulars",
+        ],
     )
-    # print(len(attendance))
-    # for d in attendance:
-    #     print(f"attendance={d.attendance_date}, particulars={d.particulars}, in_time={d.in_time}, out_time={d.out_time}, shift={d.shift}")
+    print(len(attendance))
+    for d in attendance:
+        print(
+            f"attendance={d.attendance_date}, particulars={d.particulars}, in_time={d.in_time}, out_time={d.out_time}, shift={d.shift}"
+        )
+
+    holiday_list = frappe.get_value("Employee", employee, "holiday_list")
+
+    holidays = frappe.db.sql(
+        """
+        SELECT COUNT(holiday_date) as total_holidays
+        FROM `tabHoliday`
+        WHERE holiday_date BETWEEN %s AND %s
+        AND parent = %s
+    """,
+        (start_date, end_date, holiday_list),
+        as_dict=True,
+    )
+
+    holiday_count = holidays[0].total_holidays if holidays else 0
 
     full = sum(1 for d in attendance if d.particulars == "Full Day")
+    sunday_working = sum(1 for d in attendance if d.particulars == "Sunday Working")
     half = sum(1 for d in attendance if d.particulars == "Half Day")
     three_fourth = sum(1 for d in attendance if d.particulars == "3/4 Day")
     quarter = sum(1 for d in attendance if d.particulars == "Quarter Day")
@@ -32,9 +57,9 @@ def get_custom_attendance_context(employee, start_date, end_date):
     late_early = sum(1 for d in attendance if d.particulars == "Late/Early")
     late_and_early = sum(1 for d in attendance if d.particulars == "Late & Early")
 
-    # print(f"full={full}, half={half}, three_fourth={three_fourth}, quarter={quarter}, absent={absent}, late={late}, late_early={late_early}, late_and_early={late_and_early}")
-
-    present = full + half + three_fourth + quarter
+    print(
+        f"full={full}, holiday_count={holiday_count}, sunday_working={sunday_working}, half={half}, three_fourth={three_fourth}, quarter={quarter}, absent={absent}, late={late}, late_early={late_early}, late_and_early={late_and_early}"
+    )
 
     # -------------------------------------------------------
     # 🔥 POINT-BASED LATE GRACE LOGIC (UPDATED)
@@ -47,10 +72,13 @@ def get_custom_attendance_context(employee, start_date, end_date):
     adjusted_late_early = 0
     adjusted_late_and_early = 0
 
+    grace_full_days = 0
+
     # Consume points for Late & Early (cost = 2)
     for _ in range(late_and_early):
         if remaining_points >= 2:
             remaining_points -= 2
+            grace_full_days += 1
         else:
             adjusted_late_and_early += 1
 
@@ -58,6 +86,7 @@ def get_custom_attendance_context(employee, start_date, end_date):
     for _ in range(late_early):
         if remaining_points >= 1:
             remaining_points -= 1
+            grace_full_days += 1
         else:
             adjusted_late_early += 1
 
@@ -84,29 +113,49 @@ def get_custom_attendance_context(employee, start_date, end_date):
 
         except Exception:
             pass
-
+    present = (
+        full
+        + holiday_count
+        + sunday_working
+        + grace_full_days
+        + adjusted_late_early
+        + adjusted_late_and_early
+        + half
+        + three_fourth
+        + quarter
+    )
     # -------------------------------------------------------
     # 🔥 Fraction-based present day calculation
     # -------------------------------------------------------
-    fraction_total = full * 1 + three_fourth * 0.75 + half * 0.50 + quarter * 0.25
+    fraction_total = (
+        (full + holiday_count + grace_full_days) * 1
+        + sunday_working * 1
+        + three_fourth * 0.75
+        + half * 0.50
+        + quarter * 0.25
+        + adjusted_late_early * 0.90
+        + adjusted_late_and_early * 0.80
+    )
 
     # -------------------------------------------------------
     # RETURN ALL VARIABLES
     # -------------------------------------------------------
     return {
-        "full_day_count": full,
+        "full_day_count": full + holiday_count + grace_full_days,
+        "sunday_working_count": sunday_working,
         "three_fourth_day_count": three_fourth,
         "half_day_count": half,
         "quarter_day_count": quarter,
         "absent_day_count": absent,
         "late_day_count": late,  # unchanged
-        "late_early_count": adjusted_late_early,   # UPDATED
+        "late_early_count": adjusted_late_early,  # UPDATED
         "late_and_early_count": adjusted_late_and_early,  # UPDATED
         "present_day_count": present,
         "fractional_total_days": fraction_total,
         "total_attendance_records": len(attendance),
         "overtime_hours": total_overtime,
     }
+
 
 # -------------------------------------------------------
 # 🔥 FUNCTION 2: Push Variables into Salary Slip Context
@@ -148,6 +197,7 @@ def populate_salary_breakup_table(self, ctx):
     # Define breakup rows: (Label, Count, Percentage)
     rows = [
         ("Full Day", ctx["full_day_count"], 100),
+        ("Sunday Working", ctx["sunday_working_count"], 100),
         ("3/4 Day", ctx["three_fourth_day_count"], 75),
         ("Half Day", ctx["half_day_count"], 50),
         ("Quarter Day", ctx["quarter_day_count"], 25),
@@ -156,7 +206,7 @@ def populate_salary_breakup_table(self, ctx):
         ("Late & Early", ctx["late_and_early_count"], 20),
         ("Overtime Hours", ctx["overtime_hours"], 0),
     ]
-    
+
     for label, days, percentage in rows:
         if not days:
             continue
