@@ -1,0 +1,181 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:LEV-{#}",
+ "creation": "2025-03-18 12:48:13.115088",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "column_break_txqo",
+  "employee_name",
+  "section_break_amrl",
+  "from_date",
+  "column_break_tacb",
+  "to_date",
+  "section_break_3ki5",
+  "days_in_above",
+  "salary_structure",
+  "average_salary",
+  "eligible_days",
+  "amount",
+  "encashment_date",
+  "next_encashment_date",
+  "status",
+  "pay_slip"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "column_break_txqo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_amrl",
+   "fieldtype": "Section Break",
+   "label": "Leave Encashment Period"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "From"
+  },
+  {
+   "fieldname": "column_break_tacb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Upto"
+  },
+  {
+   "fieldname": "section_break_3ki5",
+   "fieldtype": "Section Break",
+   "label": "Calculation"
+  },
+  {
+   "fieldname": "days_in_above",
+   "fieldtype": "Int",
+   "label": "Days In Above",
+   "read_only": 1
+  },
+  {
+   "fieldname": "salary_structure",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "average_salary",
+   "fieldtype": "Float",
+   "label": "Average Salary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "eligible_days",
+   "fieldtype": "Float",
+   "label": "Eligible Days",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "encashment_date",
+   "fieldtype": "Date",
+   "label": "Encashment Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "next_encashment_date",
+   "fieldtype": "Date",
+   "label": "Next Encashment Date"
+  },
+  {
+   "default": "Unpaid",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "Unpaid\nPaid"
+  },
+  {
+   "fieldname": "pay_slip",
+   "fieldtype": "Link",
+   "label": "Pay Slip",
+   "options": "Pay Slips",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-02 12:27:01.624993",
+ "modified_by": "Administrator",
+ "module": "Pinnacle HR",
+ "name": "Pinnacle Leave Encashment",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Red",
+   "title": "Unpaid"
+  },
+  {
+   "color": "Green",
+   "title": "Paid"
+  }
+ ],
+ "title_field": "employee_name"
+}
