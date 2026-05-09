@@ -448,16 +448,122 @@ frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
     downloadExcel(data, `${key}_Raw.xlsx`);
   });
 
-  // ============= IMPORT BUTTON ============= //
+  let attendance_import_running = false;
+
+  // ------------------------------------------
+  // REALTIME LISTENER
+  // ------------------------------------------
+
+  frappe.realtime.on("checkin_backup_progress", (data) => {
+    console.log("Realtime Progress", data);
+
+    let indicator = "blue";
+
+    if (data.status === "deleting" || data.status === "deleting_started") {
+      indicator = "orange";
+    }
+
+    if (data.status === "completed") {
+      indicator = "green";
+    }
+
+    // ------------------------------------------
+    // FREEZE HANDLING
+    // ------------------------------------------
+
+    if (
+      data.status === "started" ||
+      data.status === "processing" ||
+      data.status === "deleting_started" ||
+      data.status === "deleting"
+    ) {
+      if (!attendance_import_running) {
+        attendance_import_running = true;
+      }
+
+      // frappe.dom.freeze(`
+      //       ${data.message || "Processing..."}
+      //       <br>
+      //       Processed: ${data.processed || 0}/${data.total || 0}
+      //   `);
+    }
+
+    // ------------------------------------------
+    // PROCESS COMPLETED
+    // ------------------------------------------
+
+    if (data.status === "completed" || data.status === "deleted") {
+      attendance_import_running = false;
+
+      // frappe.dom.unfreeze();
+    }
+
+    // ------------------------------------------
+    // ALERT
+    // ------------------------------------------
+
+    frappe.show_alert(
+      {
+        message: `
+                ${data.message || ""}
+                <br>
+                Processed: ${data.processed || 0}/${data.total || 0}
+            `,
+        indicator: indicator,
+      },
+      5,
+    );
+  });
+
+  // ------------------------------------------
+  // IMPORT BUTTON
+  // ------------------------------------------
+
   $("#import-validated-btn").on("click", function () {
+    if (attendance_import_running) {
+      frappe.msgprint("Attendance Import already running.");
+      return;
+    }
+
+    attendance_import_running = true;
+
+    // frappe.dom.freeze("Preparing Attendance Import...");
+
     frappe.call({
       method:
         "pinnaclehrms.pinnacle_hr.page.attendance_processor.attendance_processor.create_data_import_for_attendance",
-      args: { attendance_data: validatedRecord },
+
+      args: {
+        attendance_data: validatedRecord,
+        payroll_from: payrollFromField.get_value(),
+        payroll_to: payrollToField.get_value(),
+      },
+
       callback: function (r) {
-        frappe.msgprint(
-          `✅ Data Import created: <a href="/app/data-import/${r.message}">${r.message}</a>`,
-        );
+        frappe.dom.unfreeze();
+
+        attendance_import_running = false;
+
+        if (r.message) {
+          frappe.show_alert({
+            message: __("Data Import Created Successfully"),
+            indicator: "green",
+          });
+
+          window.open(`/app/data-import/${r.message}`, "_blank");
+        }
+      },
+
+      error: function () {
+        attendance_import_running = false;
+
+        frappe.dom.unfreeze();
+
+        frappe.msgprint({
+          title: __("Error"),
+          message: __("Failed to create Data Import"),
+          indicator: "red",
+        });
       },
     });
   });

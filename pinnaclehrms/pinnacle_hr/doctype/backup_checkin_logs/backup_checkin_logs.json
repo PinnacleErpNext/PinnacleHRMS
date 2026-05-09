@@ -1,0 +1,144 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "creation": "2026-05-08 15:05:51.414313",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "shift",
+  "shift_actual_start",
+  "shift_end",
+  "shift_actual_end",
+  "shift_start",
+  "column_break_4",
+  "employee_name",
+  "log_type",
+  "time",
+  "section_break_ksbo",
+  "offshift",
+  "overtime_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "log_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Log Type",
+   "options": "\nIN\nOUT"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Shift",
+   "options": "Shift Type",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Time",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "shift_start",
+   "fieldtype": "Datetime",
+   "label": "Shift Start",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shift_end",
+   "fieldtype": "Datetime",
+   "label": "Shift End",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shift_actual_start",
+   "fieldtype": "Datetime",
+   "label": "Shift Actual Start",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shift_actual_end",
+   "fieldtype": "Datetime",
+   "label": "Shift Actual End",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_ksbo",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "offshift",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Off-shift",
+   "read_only": 1
+  },
+  {
+   "fieldname": "overtime_type",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Overtime Type",
+   "options": "Overtime Type"
+  }
+ ],
+ "grid_page_length": 50,
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-09 15:43:04.339435",
+ "modified_by": "Administrator",
+ "module": "Pinnacle HR",
+ "name": "Backup Checkin Logs",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "employee_name"
+}
