@@ -16,6 +16,7 @@
   "employee_name",
   "log_type",
   "time",
+  "unique_key",
   "section_break_ksbo",
   "offshift",
   "overtime_type"
@@ -110,13 +111,20 @@
    "hidden": 1,
    "label": "Overtime Type",
    "options": "Overtime Type"
+  },
+  {
+   "fieldname": "unique_key",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Unique Key",
+   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-09 15:43:04.339435",
+ "modified": "2026-05-09 16:26:51.571615",
  "modified_by": "Administrator",
  "module": "Pinnacle HR",
  "name": "Backup Checkin Logs",

@@ -969,20 +969,28 @@ def download_final_attendance_excel(logs):
 
 
 @frappe.whitelist()
-def create_data_import_for_attendance(attendance_data=None, payroll_from=None, payroll_to=None):
+@frappe.whitelist()
+def create_data_import_for_attendance(
+    attendance_data=None,
+    payroll_from=None,
+    payroll_to=None,
+):
 
-    validated_data = json.loads(attendance_data or "[]")
+    validated_data = json.loads(attendance_data or "{}")
 
     if not validated_data:
         frappe.throw("No validated records found.")
+
     if not payroll_from or not payroll_to:
         frappe.throw("Payroll period (from and to dates) are required.")
-    # ------------------------------------------
-    # PREPARE EMPLOYEE + DATE RANGE
-    # ------------------------------------------
+
+    # ---------------------------------------------------------
+    # PREPARE EMPLOYEE LIST
+    # ---------------------------------------------------------
 
     employees = set()
-    all_datetimes = []
+
+    total_import_records = 0
 
     for emp_id in validated_data:
 
@@ -990,19 +998,39 @@ def create_data_import_for_attendance(attendance_data=None, payroll_from=None, p
 
             employees.add(row["employee"])
 
-            dt = get_datetime(f"{row.get('attendance_date')} {row.get('time')}")
-
-            all_datetimes.append(dt)
+            total_import_records += 1
 
     from_time = payroll_from
     to_time = payroll_to
 
-    # ------------------------------------------
+    # ---------------------------------------------------------
+    # BACKUP EXISTING CHECKINS
+    # ---------------------------------------------------------
+
+    backup_stats = sync_employee_checkin_to_backup(
+        employees=list(employees),
+        from_time=from_time,
+        to_time=to_time,
+    )
+
+    # ---------------------------------------------------------
+    # DELETE EXISTING CHECKINS
+    # ---------------------------------------------------------
+
+    deleted_count = delete_existing_employee_checkins(
+        employees=list(employees),
+        from_time=from_time,
+        to_time=to_time,
+    )
+
+    # ---------------------------------------------------------
     # CREATE EXCEL
-    # ------------------------------------------
+    # ---------------------------------------------------------
 
     wb = openpyxl.Workbook()
+
     ws = wb.active
+
     ws.title = "Attendance List"
 
     headers = [
@@ -1032,18 +1060,20 @@ def create_data_import_for_attendance(attendance_data=None, payroll_from=None, p
             )
 
     output = BytesIO()
+
     wb.save(output)
+
     output.seek(0)
 
-    # ------------------------------------------
-    # CREATE DATA IMPORT DOC
-    # ------------------------------------------
+    # ---------------------------------------------------------
+    # CREATE DATA IMPORT
+    # ---------------------------------------------------------
 
     data_import = frappe.get_doc(
         {
             "doctype": "Data Import",
-            "import_type": "Insert New Records",
             "reference_doctype": "Employee Checkin",
+            "import_type": "Insert New Records",
             "submit_after_import": 0,
             "mute_emails": 1,
         }
@@ -1060,40 +1090,28 @@ def create_data_import_for_attendance(attendance_data=None, payroll_from=None, p
     )
 
     data_import.import_file = file_doc.file_url
+
     data_import.save(ignore_permissions=True)
 
-    # ------------------------------------------
-    # BACKUP EXISTING CHECKINS
-    # ------------------------------------------
+    # ---------------------------------------------------------
+    # START IMPORT
+    # ---------------------------------------------------------
 
-    backup_log = sync_employee_checkin_to_backup(
-        employees=list(employees),
-        from_time=from_time,
-        to_time=to_time,
-    )
+    # data_import.start_import()
 
-    # ------------------------------------------
-    # DELETE EXISTING CHECKINS
-    # ------------------------------------------
+    frappe.db.commit()
 
-    delete_existing_employee_checkins(
-        employees=list(employees),
-        from_time=from_time,
-        to_time=to_time,
-    )
+    # ---------------------------------------------------------
+    # FINAL RESPONSE
+    # ---------------------------------------------------------
 
-    frappe.publish_realtime(
-        "checkin_backup_progress",
-        {
-            "status": "completed",
-            "message": "Backup & Cleanup Completed",
-            "data_import": data_import.name,
-            "backup_log": backup_log,
-        },
-        user=frappe.session.user,
-    )
-
-    return data_import.name
+    return {
+        "data_import": data_import.name,
+        "backup_inserted": backup_stats.get("inserted", 0),
+        "backup_skipped": backup_stats.get("skipped", 0),
+        "deleted_checkins": deleted_count,
+        "total_import_records": total_import_records,
+    }
 
 
 def sync_employee_checkin_to_backup(
@@ -1101,9 +1119,6 @@ def sync_employee_checkin_to_backup(
     from_time=None,
     to_time=None,
 ):
-    """
-    Fetch Employee Checkin logs and sync them into Backup Checkin Logs.
-    """
 
     filters = {}
 
@@ -1111,19 +1126,16 @@ def sync_employee_checkin_to_backup(
         filters["employee"] = ["in", employees]
 
     if from_time and to_time:
-        filters["time"] = ["between", [from_time, to_time]]
 
-    elif from_time:
-        filters["time"] = [">=", from_time]
-
-    elif to_time:
-        filters["time"] = ["<=", to_time]
+        filters["time"] = [
+            "between",
+            [from_time, f"{to_time} 23:59:59"],
+        ]
 
     checkins = frappe.get_all(
         "Employee Checkin",
         filters=filters,
         fields=[
-            "name",
             "employee",
             "employee_name",
             "log_type",
@@ -1142,44 +1154,14 @@ def sync_employee_checkin_to_backup(
             "offshift",
             "overtime_type",
         ],
-        order_by="time asc",
-    )
-
-    total_records = len(checkins)
-
-    frappe.publish_realtime(
-        "checkin_backup_progress",
-        {
-            "status": "started",
-            "total": total_records,
-            "processed": 0,
-            "message": _("Backup Process Started"),
-        },
-        user=frappe.session.user,
     )
 
     inserted = 0
     skipped = 0
 
-    for index, row in enumerate(checkins, start=1):
+    for row in checkins:
 
-        # ------------------------------------------
-        # PREVENT DUPLICATE BACKUP
-        # ------------------------------------------
-
-        already_exists = frappe.db.exists(
-            "Backup Checkin Logs",
-            {
-                "employee": row.employee,
-                "time": row.time,
-                "log_type": row.log_type,
-            },
-        )
-
-        if already_exists:
-            skipped += 1
-
-        else:
+        try:
 
             doc = frappe.new_doc("Backup Checkin Logs")
 
@@ -1205,75 +1187,19 @@ def sync_employee_checkin_to_backup(
 
             inserted += 1
 
-        # ------------------------------------------
-        # REALTIME PROGRESS
-        # ------------------------------------------
+        except (
+            frappe.DuplicateEntryError,
+            frappe.UniqueValidationError,
+        ):
 
-        frappe.publish_realtime(
-            "checkin_backup_progress",
-            {
-                "status": "processing",
-                "total": total_records,
-                "processed": index,
-                "inserted": inserted,
-                "skipped": skipped,
-                "current_employee": row.employee,
-                "current_time": row.time,
-                "message": _("Processing Checkin Logs"),
-            },
-            user=frappe.session.user,
-        )
-
-        if index % 100 == 0:
-            frappe.db.commit()
+            skipped += 1
 
     frappe.db.commit()
 
-    # ------------------------------------------
-    # CREATE LOGGER ENTRY
-    # ------------------------------------------
-
-    logger = frappe.get_doc(
-        {
-            "doctype": "Error Log",
-            "method": "Employee Checkin Backup",
-            "error": frappe.as_json(
-                {
-                    "employees": employees,
-                    "from_time": str(from_time),
-                    "to_time": str(to_time),
-                    "total_records": total_records,
-                    "inserted": inserted,
-                    "skipped": skipped,
-                },
-                indent=4,
-            ),
-        }
-    )
-
-    logger.insert(ignore_permissions=True)
-
-    frappe.db.commit()
-
-    # ------------------------------------------
-    # REALTIME COMPLETE
-    # ------------------------------------------
-
-    frappe.publish_realtime(
-        "checkin_backup_progress",
-        {
-            "status": "completed",
-            "total": total_records,
-            "processed": total_records,
-            "inserted": inserted,
-            "skipped": skipped,
-            "message": _("Backup Completed Successfully"),
-            "log": logger.name,
-        },
-        user=frappe.session.user,
-    )
-
-    return logger.name
+    return {
+        "inserted": inserted,
+        "skipped": skipped,
+    }
 
 
 def delete_existing_employee_checkins(
@@ -1282,63 +1208,27 @@ def delete_existing_employee_checkins(
     to_time,
 ):
 
-    checkins = frappe.get_all(
+    filters = {
+        "employee": ["in", employees],
+        "time": [
+            "between",
+            [from_time, f"{to_time} 23:59:59"],
+        ],
+    }
+
+    total = frappe.db.count(
         "Employee Checkin",
-        filters={
-            "employee": ["in", employees],
-            "time": ["between", [from_time, to_time]],
-        },
-        pluck="name",
+        filters,
     )
 
-    total = len(checkins)
-
-    frappe.publish_realtime(
-        "checkin_backup_progress",
-        {
-            "status": "deleting_started",
-            "processed": 0,
-            "total": total,
-            "message": _("Deleting Existing Employee Checkins"),
-        },
-        user=frappe.session.user,
+    frappe.db.delete(
+        "Employee Checkin",
+        filters,
     )
-
-    for idx, docname in enumerate(checkins, start=1):
-
-        frappe.delete_doc(
-            "Employee Checkin",
-            docname,
-            ignore_permissions=True,
-            force=1,
-        )
-
-        frappe.publish_realtime(
-            "checkin_backup_progress",
-            {
-                "status": "deleting",
-                "processed": idx,
-                "total": total,
-                "message": f"Deleting Existing Logs {idx}/{total}",
-            },
-            user=frappe.session.user,
-        )
-
-        if idx % 100 == 0:
-            frappe.db.commit()
 
     frappe.db.commit()
 
-    frappe.publish_realtime(
-        "checkin_backup_progress",
-        {
-            "status": "deleted",
-            "processed": total,
-            "total": total,
-            "message": _("Existing Employee Checkins Deleted"),
-        },
-        user=frappe.session.user,
-    )
+    return total
 
 
 # ============================================================
