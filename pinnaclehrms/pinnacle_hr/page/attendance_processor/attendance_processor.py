@@ -11,7 +11,9 @@ import openpyxl
 from io import BytesIO
 from frappe.utils.file_manager import save_file
 from collections import defaultdict
-from frappe.utils.data import getdate
+from frappe.utils.data import get_datetime, getdate
+from frappe.utils import cint
+from frappe import _
 
 
 # --- Helpers ---
@@ -262,7 +264,6 @@ import re
 from datetime import datetime
 from openpyxl import load_workbook
 import frappe
-
 
 TIME_PATTERN = re.compile(r"\d{2}:\d{2}")  # matches 09:55, 19:04 etc
 
@@ -968,19 +969,68 @@ def download_final_attendance_excel(logs):
 
 
 @frappe.whitelist()
-def create_data_import_for_attendance(attendance_data=None):
-    """
-    Creates a Data Import record with an Excel file for Attendance List
-    and starts the import process.
-    """
-    # 1. Fetch validated records
-    validated_data = json.loads(attendance_data or "[]")
+@frappe.whitelist()
+def create_data_import_for_attendance(
+    attendance_data=None,
+    payroll_from=None,
+    payroll_to=None,
+):
+
+    validated_data = json.loads(attendance_data or "{}")
+
     if not validated_data:
         frappe.throw("No validated records found.")
 
-    # 2. Create Excel file in memory
+    if not payroll_from or not payroll_to:
+        frappe.throw("Payroll period (from and to dates) are required.")
+
+    # ---------------------------------------------------------
+    # PREPARE EMPLOYEE LIST
+    # ---------------------------------------------------------
+
+    employees = set()
+
+    total_import_records = 0
+
+    for emp_id in validated_data:
+
+        for row in validated_data[emp_id]:
+
+            employees.add(row["employee"])
+
+            total_import_records += 1
+
+    from_time = payroll_from
+    to_time = payroll_to
+
+    # ---------------------------------------------------------
+    # BACKUP EXISTING CHECKINS
+    # ---------------------------------------------------------
+
+    backup_stats = sync_employee_checkin_to_backup(
+        employees=list(employees),
+        from_time=from_time,
+        to_time=to_time,
+    )
+
+    # ---------------------------------------------------------
+    # DELETE EXISTING CHECKINS
+    # ---------------------------------------------------------
+
+    deleted_count = delete_existing_employee_checkins(
+        employees=list(employees),
+        from_time=from_time,
+        to_time=to_time,
+    )
+
+    # ---------------------------------------------------------
+    # CREATE EXCEL
+    # ---------------------------------------------------------
+
     wb = openpyxl.Workbook()
+
     ws = wb.active
+
     ws.title = "Attendance List"
 
     headers = [
@@ -991,10 +1041,13 @@ def create_data_import_for_attendance(attendance_data=None):
         "Time",
         "Punch From",
     ]
+
     ws.append(headers)
 
     for emp_id in sorted(validated_data):
+
         for row in validated_data[emp_id]:
+
             ws.append(
                 [
                     row["employee"],
@@ -1006,24 +1059,28 @@ def create_data_import_for_attendance(attendance_data=None):
                 ]
             )
 
-    # Save to bytes
     output = BytesIO()
+
     wb.save(output)
+
     output.seek(0)
 
-    # 3. Create Data Import record first
+    # ---------------------------------------------------------
+    # CREATE DATA IMPORT
+    # ---------------------------------------------------------
+
     data_import = frappe.get_doc(
         {
             "doctype": "Data Import",
-            "import_type": "Insert New Records",
             "reference_doctype": "Employee Checkin",
+            "import_type": "Insert New Records",
             "submit_after_import": 0,
             "mute_emails": 1,
         }
     )
+
     data_import.insert(ignore_permissions=True)
 
-    # 4. Attach the Excel file to Data Import
     file_doc = save_file(
         "attendance_import.xlsx",
         output.getvalue(),
@@ -1031,17 +1088,147 @@ def create_data_import_for_attendance(attendance_data=None):
         data_import.name,
         is_private=1,
     )
+
     data_import.import_file = file_doc.file_url
+
     data_import.save(ignore_permissions=True)
 
-    # 5. Start the import
-    frappe.enqueue(
-        "frappe.core.doctype.data_import.data_import.start_import",
-        data_import=data_import.name,
-        import_type="Insert New Records",
+    # ---------------------------------------------------------
+    # START IMPORT
+    # ---------------------------------------------------------
+
+    # data_import.start_import()
+
+    frappe.db.commit()
+
+    # ---------------------------------------------------------
+    # FINAL RESPONSE
+    # ---------------------------------------------------------
+
+    return {
+        "data_import": data_import.name,
+        "backup_inserted": backup_stats.get("inserted", 0),
+        "backup_skipped": backup_stats.get("skipped", 0),
+        "deleted_checkins": deleted_count,
+        "total_import_records": total_import_records,
+    }
+
+
+def sync_employee_checkin_to_backup(
+    employees=None,
+    from_time=None,
+    to_time=None,
+):
+
+    filters = {}
+
+    if employees:
+        filters["employee"] = ["in", employees]
+
+    if from_time and to_time:
+
+        filters["time"] = [
+            "between",
+            [from_time, f"{to_time} 23:59:59"],
+        ]
+
+    checkins = frappe.get_all(
+        "Employee Checkin",
+        filters=filters,
+        fields=[
+            "employee",
+            "employee_name",
+            "log_type",
+            "shift",
+            "time",
+            "device_id",
+            "skip_auto_attendance",
+            "attendance",
+            "shift_start",
+            "shift_end",
+            "shift_actual_start",
+            "shift_actual_end",
+            "geolocation",
+            "latitude",
+            "longitude",
+            "offshift",
+            "overtime_type",
+        ],
     )
 
-    return data_import.name
+    inserted = 0
+    skipped = 0
+
+    for row in checkins:
+
+        try:
+
+            doc = frappe.new_doc("Backup Checkin Logs")
+
+            doc.employee = row.employee
+            doc.employee_name = row.employee_name
+            doc.log_type = row.log_type
+            doc.shift = row.shift
+            doc.time = row.time
+            doc.device_id = row.device_id
+            doc.skip_auto_attendance = cint(row.skip_auto_attendance)
+            doc.attendance = row.attendance
+            doc.shift_start = row.shift_start
+            doc.shift_end = row.shift_end
+            doc.shift_actual_start = row.shift_actual_start
+            doc.shift_actual_end = row.shift_actual_end
+            doc.geolocation = row.geolocation
+            doc.latitude = row.latitude
+            doc.longitude = row.longitude
+            doc.offshift = cint(row.offshift)
+            doc.overtime_type = row.overtime_type
+
+            doc.insert(ignore_permissions=True)
+
+            inserted += 1
+
+        except (
+            frappe.DuplicateEntryError,
+            frappe.UniqueValidationError,
+        ):
+
+            skipped += 1
+
+    frappe.db.commit()
+
+    return {
+        "inserted": inserted,
+        "skipped": skipped,
+    }
+
+
+def delete_existing_employee_checkins(
+    employees,
+    from_time,
+    to_time,
+):
+
+    filters = {
+        "employee": ["in", employees],
+        "time": [
+            "between",
+            [from_time, f"{to_time} 23:59:59"],
+        ],
+    }
+
+    total = frappe.db.count(
+        "Employee Checkin",
+        filters,
+    )
+
+    frappe.db.delete(
+        "Employee Checkin",
+        filters,
+    )
+
+    frappe.db.commit()
+
+    return total
 
 
 # ============================================================

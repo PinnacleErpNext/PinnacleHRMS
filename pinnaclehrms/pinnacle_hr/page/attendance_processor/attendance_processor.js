@@ -448,16 +448,89 @@ frappe.pages["attendance-processor"].on_page_show = function (wrapper) {
     downloadExcel(data, `${key}_Raw.xlsx`);
   });
 
-  // ============= IMPORT BUTTON ============= //
+  let attendance_import_running = false;
+
+  // ------------------------------------------
+  // IMPORT BUTTON
+  // ------------------------------------------
+
   $("#import-validated-btn").on("click", function () {
+    if (attendance_import_running) {
+      frappe.msgprint("Attendance Import already running.");
+
+      return;
+    }
+
+    attendance_import_running = true;
+
+    frappe.dom.freeze(__("Creating Attendance Import..."));
+
     frappe.call({
       method:
         "pinnaclehrms.pinnacle_hr.page.attendance_processor.attendance_processor.create_data_import_for_attendance",
-      args: { attendance_data: validatedRecord },
+
+      freeze: false,
+
+      args: {
+        attendance_data: validatedRecord,
+        payroll_from: payrollFromField.get_value(),
+        payroll_to: payrollToField.get_value(),
+      },
+
       callback: function (r) {
-        frappe.msgprint(
-          `✅ Data Import created: <a href="/app/data-import/${r.message}">${r.message}</a>`,
-        );
+        attendance_import_running = false;
+
+        frappe.dom.unfreeze();
+
+        if (r.message) {
+          let data = r.message;
+
+          frappe.msgprint({
+            title: __("Attendance Import Created"),
+            indicator: "green",
+            message: `
+                        <div style="line-height: 2;">
+                            <b>Data Import:</b>
+                            <a href="/app/data-import/${data.data_import}"
+                               target="_blank">
+                               ${data.data_import}
+                            </a>
+
+                            <hr>
+
+                            <b>Total Import Records:</b>
+                            ${data.total_import_records}
+
+                            <br>
+
+                            <b>Backup Inserted:</b>
+                            ${data.backup_inserted}
+
+                            <br>
+
+                            <b>Backup Skipped:</b>
+                            ${data.backup_skipped}
+
+                            <br>
+
+                            <b>Deleted Existing Checkins:</b>
+                            ${data.deleted_checkins}
+                        </div>
+                    `,
+          });
+        }
+      },
+
+      error: function () {
+        attendance_import_running = false;
+
+        frappe.dom.unfreeze();
+
+        frappe.msgprint({
+          title: __("Error"),
+          message: __("Failed to create Attendance Import"),
+          indicator: "red",
+        });
       },
     });
   });
