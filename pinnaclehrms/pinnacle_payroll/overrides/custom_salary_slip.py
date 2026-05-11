@@ -1,6 +1,7 @@
 import frappe
 from datetime import datetime
 from functools import wraps
+from frappe.utils import flt
 
 
 # -------------------------------------------------------
@@ -136,7 +137,9 @@ def get_custom_attendance_context(employee, start_date, end_date):
         + adjusted_late_early * 0.90
         + adjusted_late_and_early * 0.80
     )
-
+    print(
+        f"present={present}, fraction_total={fraction_total}, total_overtime={total_overtime}"
+    )
     # -------------------------------------------------------
     # RETURN ALL VARIABLES
     # -------------------------------------------------------
@@ -183,18 +186,70 @@ def apply_custom_attendance_to_context(self, data, default_data):
 def populate_salary_breakup_table(self, ctx):
     """Populate Salary Slip 'salary_breakup' child table with new structure."""
 
+    print("Populating salary breakup table with attendance context...")
+
     # Clear existing table
     self.set("salary_breakup", [])
 
-    # Get per-day salary from salary slip
-    rate = 0
-    try:
-        if self.gross_pay and ctx["fractional_total_days"]:
-            rate = self.gross_pay / ctx["fractional_total_days"]
-    except Exception:
-        pass
+    # ------------------------------------------
+    # GET BASE FROM SALARY STRUCTURE ASSIGNMENT
+    # ------------------------------------------
+    base = 0
 
-    # Define breakup rows: (Label, Count, Percentage)
+    try:
+        # Fetch Salary Structure Assignment using
+        # employee + salary structure
+        salary_structure_assignment_name = frappe.db.get_value(
+            "Salary Structure Assignment",
+            {
+                "employee": self.employee,
+                "salary_structure": self.salary_structure,
+                "docstatus": 1,
+            },
+            "name",
+            order_by="from_date desc",
+        )
+
+        if salary_structure_assignment_name:
+
+            salary_structure_assignment = frappe.get_doc(
+                "Salary Structure Assignment",
+                salary_structure_assignment_name,
+            )
+
+            print(f"Salary Structure Assignment: {salary_structure_assignment.name}")
+
+            # Fetch base salary
+            base = flt(salary_structure_assignment.base)
+
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Failed to fetch Salary Structure Assignment Base",
+        )
+
+    print(f"Base Salary: {base}")
+    print(f"Total Working Days: {self.total_working_days}")
+
+    # ------------------------------------------
+    # CALCULATE PER DAY RATE
+    # ------------------------------------------
+    rate = 0
+
+    try:
+        if base and self.total_working_days:
+            rate = base / self.total_working_days
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Failed to calculate per day rate",
+        )
+
+    print(f"Per Day Rate: {rate}")
+
+    # ------------------------------------------
+    # BREAKUP ROWS
+    # ------------------------------------------
     rows = [
         ("Full Day", ctx["full_day_count"], 100),
         ("Sunday Working", ctx["sunday_working_count"], 100),
@@ -202,17 +257,21 @@ def populate_salary_breakup_table(self, ctx):
         ("Half Day", ctx["half_day_count"], 50),
         ("Quarter Day", ctx["quarter_day_count"], 25),
         ("Absent", ctx["absent_day_count"], 0),
-        ("Late/Early", ctx["late_early_count"], 10),
-        ("Late & Early", ctx["late_and_early_count"], 20),
+        ("Late/Early", ctx["late_early_count"], 90),
+        ("Late & Early", ctx["late_and_early_count"], 80),
         ("Overtime Hours", ctx["overtime_hours"], 0),
     ]
 
+    # ------------------------------------------
+    # APPEND ROWS
+    # ------------------------------------------
     for label, days, percentage in rows:
+
         if not days:
             continue
 
-        # Amount calculation
         amount = 0
+
         if percentage > 0:
             amount = days * rate * (percentage / 100)
 
