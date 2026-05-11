@@ -12,6 +12,7 @@ from frappe.utils.xlsxutils import make_xlsx
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
+from frappe.utils import flt
 
 
 @frappe.whitelist()
