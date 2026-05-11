@@ -9,13 +9,16 @@ def before_save_set_particulars(doc, method=None):
         doc.particulars = "Absent"
         return
     att_dt = get_datetime(doc.attendance_date)
+    if doc.working_hours<3:
+        doc.particulars = "Absent"
+        return
     if att_dt.weekday() == 6:  # Weekend
         doc.particulars = "Sunday Working"
         return
     #----- Step 2: Fetch shift timings from Shift Master -----
     if not doc.shift:
         # No shift -> cannot calculate slabs -> default Full Day
-        doc.particulars = "Full Day"
+
         return
 
     shift_doc = frappe.get_doc("Shift Type", doc.shift)
