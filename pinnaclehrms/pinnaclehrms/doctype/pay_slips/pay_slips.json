@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:pay-slip-{month_num}-{employee}",
+ "autoname": "format:pay-slip-{month_num}-{year}-{employee}",
  "creation": "2024-10-26 16:42:18.428127",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -224,11 +224,11 @@
    "link_fieldname": "Name"
   }
  ],
- "modified": "2025-08-25 12:49:49.084058",
+ "modified": "2026-05-11 18:40:49.683044",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "Pay Slips",
- "naming_rule": "Expression",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -296,6 +296,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": []
