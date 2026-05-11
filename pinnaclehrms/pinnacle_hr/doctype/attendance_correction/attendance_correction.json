@@ -52,6 +52,7 @@
    "in_list_view": 1,
    "label": "Employee",
    "options": "Employee",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -135,11 +136,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-04 18:51:41.640558",
+ "modified": "2026-05-11 13:47:51.713742",
  "modified_by": "Administrator",
  "module": "Pinnacle HR",
  "name": "Attendance Correction",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

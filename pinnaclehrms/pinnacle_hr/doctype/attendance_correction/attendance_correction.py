@@ -10,6 +10,7 @@ from erpnext.accounts.utils import get_fiscal_year
 class AttendanceCorrection(Document):
 
     def validate(self):
+        check_attendance_correction_eligibility(self)
         if not check_attendance_correction_eligibility(self):
             frappe.throw(
                 "You have exceeded the maximum limit of attendance correction requests for this fiscal year."
@@ -27,21 +28,28 @@ class AttendanceCorrection(Document):
         )
 
 
+from frappe.utils import getdate
+from erpnext.accounts.utils import get_fiscal_year
+
+
 def check_attendance_correction_eligibility(doc):
     """
-    Checks if the employee has made fewer than 6 attendance
-    corrections in the current fiscal year.
+    Checks if the employee has made fewer than the allowed
+    attendance corrections in the current fiscal year.
     """
+
     allowed_corrections = frappe.db.get_single_value(
         "HR Settings",
         "max_attendance_corrections_per_fiscal_year",
     )
+
     try:
         if frappe.session.user == "Administrator":
             return True
 
-        # Get current fiscal year date range
-        fiscal_year = get_fiscal_year()
+        # Get fiscal year details
+        fiscal_year = get_fiscal_year(getdate())
+
         fiscal_start = fiscal_year[1]
         fiscal_end = fiscal_year[2]
 
@@ -49,7 +57,7 @@ def check_attendance_correction_eligibility(doc):
             "Attendance Correction",
             filters={
                 "employee": doc.employee,
-                "creation": ["between", [fiscal_start, fiscal_end]],
+                "attendance_date": ["between", [fiscal_start, fiscal_end]],
                 "docstatus": 1,
             },
         )
@@ -58,13 +66,24 @@ def check_attendance_correction_eligibility(doc):
 
     except Exception:
         frappe.log_error(
-            frappe.get_traceback(), "Attendance Correction Eligibility Error"
+            frappe.get_traceback(),
+            "Attendance Correction Eligibility Error",
         )
         return False
 
 
+import frappe
+from frappe.utils import getdate, get_datetime
+
+
+import frappe
+from frappe.utils import getdate, get_datetime
+
+
 def correct_attendance(doc):
     attendance_date = getdate(doc.attendance_date)
+
+    approved_by = frappe.session.user
 
     # 1. Fetch existing attendance
     existing_attendance_name = frappe.db.get_value(
@@ -82,9 +101,15 @@ def correct_attendance(doc):
 
     # 2. Cancel existing attendance (if any)
     if existing_attendance_name:
-        existing_attendance = frappe.get_doc("Attendance", existing_attendance_name)
+        existing_attendance = frappe.get_doc(
+            "Attendance",
+            existing_attendance_name,
+        )
+
         old_in_time = existing_attendance.in_time
         old_out_time = existing_attendance.out_time
+
+        existing_attendance.flags.ignore_permissions = True
         existing_attendance.cancel()
 
     # 3. Determine corrected times
@@ -96,6 +121,7 @@ def correct_attendance(doc):
 
         if doc.log_type.upper() == "IN":
             final_in_time = time_value
+
         elif doc.log_type.upper() == "OUT":
             final_out_time = time_value
 
@@ -112,8 +138,15 @@ def correct_attendance(doc):
         }
     )
 
+    new_attendance.flags.ignore_permissions = True
+
     new_attendance.insert(ignore_permissions=True)
     new_attendance.submit()
+
+    # 5. Add approval comment
+    new_attendance.add_comment(
+        "Comment", text=f"{approved_by} has approved this attendance correction."
+    )
 
     return new_attendance.name
 
