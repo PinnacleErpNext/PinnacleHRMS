@@ -8,9 +8,9 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# fixtures = [
-#     {"dt": "Workspace", "filters": [["name", "=", "Employee Dashboard"]]}
-# ]
+fixtures = [
+    {"dt": "Attendance Correction", "filters": [["name", "=", "Attendance Correction Approval Work Flow"]]},
+]
 import pinnaclehrms.pinnacle_payroll.overrides.custom_salary_slip
 
 # required_apps = []
