@@ -103,8 +103,7 @@ def convert_app_attendance_to_records(app_attendance):
                     "employee_id": emp_id,
                     "attendance_date": rec.get("attendance_date"),
                     "shift": rec.get("shift") or "Regular",
-                    "in_time": rec.get("in_time"),
-                    "out_time": rec.get("out_time"),
+                    "time": rec.get("time").strftime("%H:%M:%S"),
                 }
             )
     return converted_records
@@ -636,6 +635,7 @@ def process_other(file):
 
 # --- Core Final Generator ---
 @frappe.whitelist()
+@frappe.whitelist()
 def generate_final_sheet(attendance_data=None):
     """
     Generate final punch-style attendance from mixed raw attendance inputs.
@@ -643,6 +643,8 @@ def generate_final_sheet(attendance_data=None):
     Supports:
     - Raw punch logs (time)
     - IN/OUT based logs (in_time, out_time)
+    - App attendance
+    - Biometric attendance
 
     Output:
         Employee | Name | Date | Shift | Log Type | Time | Punch From
@@ -650,64 +652,101 @@ def generate_final_sheet(attendance_data=None):
 
     attendance_data = attendance_data or []
 
-    # employee -> date -> punches
+    # -------------------------------------------------
+    # employee_id -> date -> punches
+    # -------------------------------------------------
     punch_map = defaultdict(lambda: defaultdict(list))
 
     for row in attendance_data:
         try:
-            # -------------------------------
-            # Normalize employee & device
-            # -------------------------------
-            emp_name = row.get("name") or row.get("employee_name")
-            device = row.get("device_name") or row.get("device") or "N/A"
-            device_id = row.get("device_id")
+
+            # -------------------------------------------------
+            # Normalize values
+            # -------------------------------------------------
+            emp_name = str(row.get("name") or row.get("employee_name") or "").strip()
+
+            device = str(row.get("device_name") or row.get("device") or "N/A").strip()
+
+            device_id = str(row.get("device_id") or "").strip()
+
+            # -------------------------------------------------
+            # Resolve employee
+            # -------------------------------------------------
+            employee = row.get("employee") or row.get("employee_id")
+
+            # Fallback to device mapping
+            if not employee:
+                employee = _get_emp_id(device, device_id)
+
+            # -------------------------------------------------
+            # Skip if employee unresolved
+            # -------------------------------------------------
+            if not employee:
+                continue
+
+            if not emp_name:
+                emp_name = frappe.get_value("Employee", employee, "employee_name")
 
             if not emp_name:
                 continue
 
-            # -------------------------------
-            # Normalize date
-            # -------------------------------
+            # -------------------------------------------------
+            # Normalize attendance date
+            # -------------------------------------------------
             try:
                 punch_date = getdate(row.get("attendance_date"))
             except Exception:
                 continue
 
-            # --------------------------------
-            # CASE 1: Raw punch-style data
-            # --------------------------------
+            # -------------------------------------------------
+            # CASE 1 : Raw Punch Style
+            # -------------------------------------------------
             if row.get("time"):
+
                 punch_time = parse_time_safe(row.get("time"))
+
                 if not punch_time:
                     continue
 
-                punch_map[emp_name][punch_date].append(
+                punch_map[employee][punch_date].append(
                     {
+                        "employee": employee,
+                        "employee_name": emp_name,
                         "time": punch_time,
                         "device": device,
                         "device_id": device_id,
                     }
                 )
 
-            # --------------------------------
-            # CASE 2: IN / OUT based data
-            # --------------------------------
+            # -------------------------------------------------
+            # CASE 2 : IN / OUT Style
+            # -------------------------------------------------
             else:
+
                 in_time = parse_time_safe(row.get("in_time"))
+
                 out_time = parse_time_safe(row.get("out_time"))
 
+                # ---------------- IN ----------------
                 if in_time:
-                    punch_map[emp_name][punch_date].append(
+
+                    punch_map[employee][punch_date].append(
                         {
+                            "employee": employee,
+                            "employee_name": emp_name,
                             "time": in_time,
                             "device": device,
                             "device_id": device_id,
                         }
                     )
 
+                # ---------------- OUT ----------------
                 if out_time:
-                    punch_map[emp_name][punch_date].append(
+
+                    punch_map[employee][punch_date].append(
                         {
+                            "employee": employee,
+                            "employee_name": emp_name,
                             "time": out_time,
                             "device": device,
                             "device_id": device_id,
@@ -717,66 +756,82 @@ def generate_final_sheet(attendance_data=None):
         except Exception:
             frappe.log_error(frappe.get_traceback(), f"Punch parsing error: {row}")
 
-    # ----------------------------------
-    # BUILD FINAL RESULT
-    # ----------------------------------
+    # -------------------------------------------------
+    # BUILD FINAL ROWS
+    # -------------------------------------------------
     final_rows = []
 
-    for emp_name, dates in punch_map.items():
+    for employee, dates in punch_map.items():
+
         for date_key, punches in dates.items():
 
             if not punches:
                 continue
 
-            # Sort punches by time
+            # -------------------------------------------------
+            # Sort by time
+            # -------------------------------------------------
             punches.sort(key=lambda x: x["time"])
 
             first_punch = punches[0]
             last_punch = punches[-1]
-            # -------- IN --------
+
+            employee_name = first_punch.get("employee_name") or frappe.get_value(
+                "Employee", employee, "employee_name"
+            )
+
+            shift = (
+                frappe.get_value(
+                    "Employee",
+                    employee,
+                    "default_shift",
+                )
+                or "Regular"
+            )
+
+            # -------------------------------------------------
+            # IN ROW
+            # -------------------------------------------------
             final_rows.append(
                 {
-                    "employee": _get_emp_id(
-                        first_punch["device"], first_punch.get("device_id")
-                    ),
-                    "employee_name": emp_name,
+                    "employee": employee,
+                    "employee_name": employee_name,
                     "attendance_date": date_key,
-                    "shift": frappe.get_value(
-                        "Employee",
-                        _get_emp_id(
-                            first_punch["device"], first_punch.get("device_id")
-                        ),
-                        "default_shift",
-                    )
-                    or "Regular",
+                    "shift": shift,
                     "log_type": "IN",
                     "time": first_punch["time"].strftime("%H:%M:%S"),
                     "punch_from": first_punch["device"],
                 }
             )
 
-            # -------- OUT (only if different) --------
+            # -------------------------------------------------
+            # OUT ROW
+            # -------------------------------------------------
             if first_punch["time"] != last_punch["time"]:
+
                 final_rows.append(
                     {
-                        "employee": _get_emp_id(
-                            last_punch["device"], last_punch.get("device_id")
-                        ),
-                        "employee_name": emp_name,
+                        "employee": employee,
+                        "employee_name": employee_name,
                         "attendance_date": date_key,
-                        "shift": frappe.get_value(
-                            "Employee",
-                            _get_emp_id(
-                                first_punch["device"], first_punch.get("device_id")
-                            ),
-                            "default_shift",
-                        )
-                        or "Regular",
+                        "shift": shift,
                         "log_type": "OUT",
                         "time": last_punch["time"].strftime("%H:%M:%S"),
                         "punch_from": last_punch["device"],
                     }
                 )
+
+    # -------------------------------------------------
+    # Final sorting
+    # -------------------------------------------------
+    final_rows = sorted(
+        final_rows,
+        key=lambda x: (
+            x.get("employee"),
+            x.get("attendance_date"),
+            x.get("time"),
+        ),
+    )
 
     return {
         "message": "✅ Final attendance generated",
