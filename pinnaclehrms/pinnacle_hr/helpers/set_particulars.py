@@ -9,6 +9,7 @@ def before_save_set_particulars(doc, method=None):
         doc.particulars = "Absent"
         return
     att_dt = get_datetime(doc.attendance_date)
+    doc.working_hours = (get_datetime(doc.out_time) - get_datetime(doc.in_time)).total_seconds() / 3600
     if doc.working_hours<3:
         doc.particulars = "Absent"
         return
