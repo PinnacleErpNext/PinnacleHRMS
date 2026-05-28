@@ -1,16 +1,23 @@
 {
  "content": null,
- "creation": "2026-01-28 13:32:37.672595",
+ "creation": "2025-08-06 11:49:27.828265",
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2026-01-28 13:32:37.672595",
+ "modified": "2026-05-28 15:15:19.410183",
  "modified_by": "Administrator",
  "module": "Pinnacle Payroll",
  "name": "recurring-salary-com",
  "owner": "Administrator",
  "page_name": "recurring-salary-com",
- "roles": [],
+ "roles": [
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "HR Manager"
+  }
+ ],
  "script": null,
  "standard": "Yes",
  "style": null,
