@@ -390,7 +390,7 @@ frappe.pages["recurring-salary-com"].on_page_load = function (wrapper) {
 
 					if (created.length) {
 						created.forEach((name) => {
-							const link = `<a href="/app/recurring-salary-component/${name}" target="_blank">${name}</a>`;
+							const link = `<a href="/app/additional-salary/${name}" target="_blank">${name}</a>`;
 							frappe.show_alert(
 								{
 									message: `Recurring Salary Component Created: ${link}`,

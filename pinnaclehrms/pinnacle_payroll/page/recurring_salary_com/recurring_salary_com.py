@@ -82,7 +82,7 @@ def create_additional_salary_components(data):
                 )
                 doc.insert(ignore_permissions=True)
                 created_docs.append(doc.name)
-        print(created_docs)
+        
         return {
             "status": "success",
             "created": created_docs,
