@@ -46,8 +46,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "TRANSACTIONS",
-   "link_count": 3,
+   "label": "REPORTS",
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -55,30 +55,50 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Shift Variation",
+   "label": "Salary Register",
    "link_count": 0,
-   "link_to": "Shift Variation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Add Leave Encashment",
-   "link_count": 0,
-   "link_to": "Pinnacle Leave Encashment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Add Recurring Salary",
-   "link_count": 0,
-   "link_to": "recurring-salary-com",
+   "link_to": "salary-slip-records",
    "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Old Salary Register",
+   "link_count": 0,
+   "link_to": "pay-slip-report",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Salary Slips",
+   "link_count": 0,
+   "link_to": "Salary Slip",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Old Pay Slips",
+   "link_count": 0,
+   "link_to": "Pay Slips",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Biometric Attendance Approval Report",
+   "link_count": 0,
+   "link_to": "Attendance Approval",
+   "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   },
@@ -94,7 +114,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Create Pay Slips",
+   "label": "Old Payroll Entry",
    "link_count": 0,
    "link_to": "Create Pay Slips",
    "link_type": "DocType",
@@ -144,7 +164,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "REPORTS",
+   "label": "TRANSACTIONS",
    "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
@@ -153,35 +173,35 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Salary Register",
+   "label": "Shift Variation",
    "link_count": 0,
-   "link_to": "pay-slip-report",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Pay Slips",
-   "link_count": 0,
-   "link_to": "Pay Slips",
+   "link_to": "Shift Variation",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   },
   {
    "hidden": 0,
-   "is_query_report": 1,
-   "label": "Biometric Attendance Approval Report",
+   "is_query_report": 0,
+   "label": "Add Leave Encashment",
    "link_count": 0,
-   "link_to": "Attendance Approval",
-   "link_type": "Report",
+   "link_to": "Pinnacle Leave Encashment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add Recurring Salary",
+   "link_count": 0,
+   "link_to": "recurring-salary-com",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-04-09 18:08:46.774757",
+ "modified": "2026-05-30 18:49:24.595422",
  "modified_by": "Administrator",
  "module": "Pinnaclehrms",
  "name": "PinnacleHRMS",
