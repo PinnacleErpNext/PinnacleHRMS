@@ -51,8 +51,6 @@ frappe.pages["salary-slip-records"].on_page_load = function (wrapper) {
             <li><a id="email_pay_slips" class="dropdown-item">Email Pay Slips</a></li>
             <li><a id="print_pay_slips" class="dropdown-item">Print Pay Slips</a></li>
             <li><a id="download_report" class="dropdown-item">Download Report</a></li>
-            <li><a id="download_sft_report" class="dropdown-item">Download ICICI Bank SFTP Excel</a></li>
-            <li><a id="download_bank_upld_bulk_report" class="dropdown-item">Download ICICI Bank Bulk Payment Format</a></li>
             <li><a id="download_idfc_blkpay" class="dropdown-item">Download IDFC Bank Bulk Payment Format</a></li>
           </ul>
         </div>
@@ -196,7 +194,7 @@ frappe.pages["salary-slip-records"].on_page_load = function (wrapper) {
             <td><input type="checkbox"
                        class="row_checkbox"
                        value="${rec.pay_slip_name}"></td>
-            <td><a href="/app/pay-slips/${rec.pay_slip_name}"
+            <td><a href="/app/salary-slip/${rec.pay_slip_name}"
                    target="_blank">
                  ${rec.pay_slip_name}
                </a>
