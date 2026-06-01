@@ -775,7 +775,9 @@ def download_bank_upld_bulk_report(year=None, month=None, encodedCompany=None):
         if 1 <= m <= 12:
             conditions.append("tps.month_num = %(month)s AND tps.year = %(year)s")
             params.update({"month": m, "year": int(year)})
-            report_name = f"{company.replace(' ', '_')}_ICICI_SFTP_{calendar.month_name[m]}{year}"
+            report_name = (
+                f"{company.replace(' ', '_')}_ICICI_SFTP_{calendar.month_name[m]}{year}"
+            )
         else:
             frappe.throw("Month must be between 1 and 12")
     except ValueError:
@@ -883,9 +885,7 @@ def download_sft_report(year=None, month=None, encodedCompany=None):
         FROM `tabEmployee` AS te
         JOIN `tabPay Slips` AS tps ON tps.employee = te.name
         WHERE {where_conditions}
-    """.format(
-        where_conditions=where_sql
-    )
+    """.format(where_conditions=where_sql)
 
     data = frappe.db.sql(query, params, as_dict=True)
 
@@ -1061,7 +1061,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     user_roles = frappe.get_roles(curr_user)
 
     if (
-        any(role in user_roles for role in allowed_roles)
+        not any(role in user_roles for role in allowed_roles)
         and curr_user != "Administrator"
     ):
         frappe.local.response["type"] = "redirect"
