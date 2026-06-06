@@ -297,7 +297,7 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
         INNER JOIN `tabEmployee` emp
             ON emp.name = ss.employee
         WHERE
-            MONTH(ss.end_date) = %(month)s
+            yMONTH(ss.end_date) = %(month)s
             AND YEAR(ss.end_date) = %(year)s
             AND ss.company = %(company)s
             AND IFNULL(ss.net_pay, 0) > 0
