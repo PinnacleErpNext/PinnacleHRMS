@@ -26,7 +26,6 @@ def getSalarySlipRecords(company, year, month, employee=None):
 
     filters = {
         "company": company,
-        "docstatus": 1,
         "start_date": [">=", start_date],
         "end_date": ["<=", end_date],
     }
@@ -76,6 +75,7 @@ def getSalarySlipRecords(company, year, month, employee=None):
 
         pay_slip_dict = {
             "pay_slip_name": pay_slip.name,
+            "status": pay_slip.status,
             "year": year,
             "month": month,
             "employee": pay_slip.employee,
@@ -297,8 +297,7 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
         INNER JOIN `tabEmployee` emp
             ON emp.name = ss.employee
         WHERE
-            ss.docstatus = 1
-            AND MONTH(ss.end_date) = %(month)s
+            yMONTH(ss.end_date) = %(month)s
             AND YEAR(ss.end_date) = %(year)s
             AND ss.company = %(company)s
             AND IFNULL(ss.net_pay, 0) > 0
