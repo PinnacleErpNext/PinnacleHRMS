@@ -130,7 +130,8 @@ frappe.pages["salary-slip-records"].on_page_load = function (wrapper) {
         // 2. Build full header list
         const staticHeaders = [
           '<input type="checkbox" id="select_all_rows"> Select All',
-          "Pay Slip",
+          "Salary Slip",
+          "Status",
           "Employee Name",
           "Email",
           "Joining Date",
@@ -198,6 +199,20 @@ frappe.pages["salary-slip-records"].on_page_load = function (wrapper) {
                    target="_blank">
                  ${rec.pay_slip_name}
                </a>
+            </td>
+           <td style="
+              color: ${
+                rec.status === "Draft"
+                  ? "#ff9800"
+                  : rec.status === "Submitted"
+                    ? "#4caf50"
+                    : rec.status === "Cancelled"
+                      ? "#f44336"
+                      : "#000"
+              };
+              font-weight: 600;
+            ">
+              ${rec.status}
             </td>
             <td>${rec.employee_name}</td>
             <td>${emailLink}</td>
@@ -293,7 +308,8 @@ frappe.pages["salary-slip-records"].on_page_load = function (wrapper) {
       // Yes → send
       function () {
         frappe.call({
-          method: "pinnaclehrms.pinnacle_payroll.page.salary_slip_records.salary_slip_records.email_pay_slips",
+          method:
+            "pinnaclehrms.pinnacle_payroll.page.salary_slip_records.salary_slip_records.email_pay_slips",
           args: { pay_slips: selected },
           callback: function (res) {
             if (res.message?.message === "success") {
