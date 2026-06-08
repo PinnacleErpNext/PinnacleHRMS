@@ -116,7 +116,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     allowed_roles = ["System Manager"]
     user_roles = frappe.get_roles(curr_user)
 
-    if (
+    if not (
         any(role in user_roles for role in allowed_roles)
         and curr_user != "Administrator"
     ):
@@ -297,7 +297,7 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
         INNER JOIN `tabEmployee` emp
             ON emp.name = ss.employee
         WHERE
-            yMONTH(ss.end_date) = %(month)s
+            MONTH(ss.end_date) = %(month)s
             AND YEAR(ss.end_date) = %(year)s
             AND ss.company = %(company)s
             AND IFNULL(ss.net_pay, 0) > 0
