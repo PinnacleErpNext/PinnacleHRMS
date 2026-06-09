@@ -1,0 +1,29 @@
+{
+ "content": null,
+ "creation": "2026-06-08 19:05:55.761848",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2026-06-08 19:05:55.761848",
+ "modified_by": "Administrator",
+ "module": "Pinnacle HR",
+ "name": "employee-attendance-summary",
+ "owner": "Administrator",
+ "page_name": "employee-attendance-summary",
+ "roles": [
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "HR User"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Employee Attendance Summary"
+}
