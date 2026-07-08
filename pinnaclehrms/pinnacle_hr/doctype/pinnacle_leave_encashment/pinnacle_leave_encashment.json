@@ -119,7 +119,6 @@
    "default": "Unpaid",
    "fieldname": "status",
    "fieldtype": "Select",
-   "hidden": 1,
    "label": "Status",
    "options": "Unpaid\nPaid"
   },
@@ -150,7 +149,7 @@
    "link_fieldname": "ref_docname"
   }
  ],
- "modified": "2026-07-08 14:52:09.280967",
+ "modified": "2026-07-08 15:30:26.812491",
  "modified_by": "Administrator",
  "module": "Pinnacle HR",
  "name": "Pinnacle Leave Encashment",
