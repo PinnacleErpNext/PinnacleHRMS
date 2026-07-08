@@ -1188,7 +1188,7 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
 # API to send attendance notification
 def attendance_notification(doc, method):
     try:
-        hr_email = "hr@mygstcafe.in"
+        hr_email = ["hr@mygstcafe.co.in", "arpitagarwalfca@gmail.com"]
 
         subject = (
             f"Attendance Notification – {doc.employee}:{doc.employee_name} - {doc.time}"
@@ -1207,7 +1207,11 @@ def attendance_notification(doc, method):
         PinnacleHRMS
         """
 
-        frappe.sendmail(recipients=[hr_email], subject=subject, message=message)
+        emp_company = frappe.db.get_value("Employee", doc.employee, "company")
+        if emp_company == "Gupta & Agarwal":
+            frappe.sendmail(recipients=[hr_email[1]], subject=subject, message=message)
+
+        frappe.sendmail(recipients=[hr_email[0]], subject=subject, message=message)
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Attendance Notification Error")

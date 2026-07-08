@@ -154,6 +154,9 @@ doc_events = {
         "before_submit": "pinnaclehrms.pinnacle_hr.helpers.set_particulars.before_save_set_particulars"
     },
     "Employee Checkin": {"after_insert": "pinnaclehrms.api.attendance_notification"},
+    "Salary Slip":{
+        "on_submit": "pinnaclehrms.pinnacle_payroll.doctype.salary_slip.salary_slip.update_leave_encashment_status"
+    }
 }
 
 # Scheduled Tasks
