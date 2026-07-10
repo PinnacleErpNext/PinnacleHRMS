@@ -27,27 +27,42 @@ def get_custom_attendance_context(employee, start_date, end_date):
         ],
     )
 
-    print(len(attendance))
+    # print(len(attendance))
 
-    for d in attendance:
-        print(
-            f"attendance={d.attendance_date}, particulars={d.particulars}, in_time={d.in_time}, out_time={d.out_time}, shift={d.shift}"
-        )
+    # for d in attendance:
+    #     print(
+    #         f"attendance={d.attendance_date}, particulars={d.particulars}, in_time={d.in_time}, out_time={d.out_time}, shift={d.shift}"
+    #     )
 
-    holiday_list = frappe.get_value("Employee", employee, "holiday_list")
-
-    holidays = frappe.db.sql(
-        """
-        SELECT COUNT(holiday_date) as total_holidays
-        FROM `tabHoliday`
-        WHERE holiday_date BETWEEN %s AND %s
-        AND parent = %s
-    """,
-        (start_date, end_date, holiday_list),
+    employee_data = frappe.db.get_value(
+        "Employee",
+        employee,
+        ["holiday_list", "relieving_date"],
         as_dict=True,
     )
 
-    holiday_count = holidays[0].total_holidays if holidays else 0
+    holiday_count = 0
+
+    if employee_data and employee_data.holiday_list:
+        holidays = frappe.get_all(
+            "Holiday",
+            filters={
+                "parent": employee_data.holiday_list,
+                "holiday_date": ["between", [start_date, end_date]],
+            },
+            fields=["holiday_date"],
+            order_by="holiday_date",
+        )
+
+        # Ignore holidays after relieving date
+        if employee_data.relieving_date:
+            holidays = [
+                holiday
+                for holiday in holidays
+                if holiday.holiday_date <= employee_data.relieving_date
+            ]
+
+    holiday_count = len(holidays)
 
     # -------------------------------------------------------
     # 🔥 Attendance Counts
