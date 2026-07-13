@@ -212,7 +212,7 @@ def _process_encashment(data):
             ).format(emp, end_date.strftime("%Y-%m-%d"))
         )
     paid_leaves = latest_ssa.paid_leaves or 0
-    print(f"Paid Leaves for Employee {emp}: {paid_leaves}")
+    # print(f"Paid Leaves for Employee {emp}: {paid_leaves}")
     paid_leaves = paid_leaves / (24 * 60 * 60)  # Convert to days
 
     last_encashment_date = frappe.db.get_list(
@@ -240,7 +240,7 @@ def _process_encashment(data):
     average_salary, salary_structure = _calAvgSalary(emp, from_date, end_date)
     total_days = (end_date - from_date).days + 1
     eligible_days = round(((total_days / 365) * paid_leaves), 2)
-    print(average_salary, salary_structure, total_days, eligible_days)
+    # print(average_salary, salary_structure, total_days, eligible_days)
     if data.get("next_encashment_date"):
         next_encashment_date = datetime.strptime(
             data["next_encashment_date"], "%Y-%m-%d"
