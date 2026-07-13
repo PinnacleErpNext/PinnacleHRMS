@@ -1,5 +1,6 @@
 import frappe
 from datetime import datetime
+from frappe.utils import getdate
 from functools import wraps
 from frappe.utils import flt
 
@@ -37,32 +38,30 @@ def get_custom_attendance_context(employee, start_date, end_date):
     employee_data = frappe.db.get_value(
         "Employee",
         employee,
-        ["holiday_list", "relieving_date"],
+        ["holiday_list", "date_of_joining", "relieving_date"],
         as_dict=True,
     )
 
-    holiday_count = 0
+    effective_start = max(
+        getdate(start_date),
+        getdate(employee_data.date_of_joining) if employee_data.date_of_joining else getdate(start_date),
+    )
 
-    if employee_data and employee_data.holiday_list:
-        holidays = frappe.get_all(
+    effective_end = min(
+        getdate(end_date),
+        getdate(employee_data.relieving_date) if employee_data.relieving_date else getdate(end_date),
+    )
+
+    if effective_start <= effective_end:
+        holiday_count = frappe.db.count(
             "Holiday",
             filters={
                 "parent": employee_data.holiday_list,
-                "holiday_date": ["between", [start_date, end_date]],
+                "holiday_date": ["between", [effective_start, effective_end]],
             },
-            fields=["holiday_date"],
-            order_by="holiday_date",
         )
-
-        # Ignore holidays after relieving date
-        if employee_data.relieving_date:
-            holidays = [
-                holiday
-                for holiday in holidays
-                if holiday.holiday_date <= employee_data.relieving_date
-            ]
-
-    holiday_count = len(holidays)
+    else:
+        holiday_count = 0
 
     # -------------------------------------------------------
     # 🔥 Attendance Counts
