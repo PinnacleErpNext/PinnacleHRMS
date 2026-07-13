@@ -1186,7 +1186,15 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
 
 
 # API to send attendance notification
+import frappe
+from frappe.utils import format_datetime
+
+
 def attendance_notification(doc, method):
+    # Don't send emails during Data Import
+    if getattr(frappe.flags, "in_import", False):
+        return
+
     try:
         hr_email = ["hr@mygstcafe.co.in", "arpitagarwalfca@gmail.com"]
 

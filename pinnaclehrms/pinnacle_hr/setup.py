@@ -239,7 +239,59 @@ def add_hr_settings_fields():
 
     frappe.clear_cache()
 
+def add_paid_leaves_field():
+    """
+    Adds:
+    1. Max Allowed Attendance Correction per Fiscal Year
+    2. Allowed Lates
+    """
 
+    # 1️⃣ Max Allowed Attendance Correction
+    if frappe.db.exists(
+        "Custom Field",
+        {
+            "dt": "Salary Structure Assignment",
+            "fieldname": "paid_leaves",
+        },
+    ):
+        field = frappe.get_doc(
+            "Custom Field",
+            {
+                "dt": "Salary Structure Assignment",
+                "fieldname": "paid_leaves",
+            },
+        )
+
+        field.label = "Paid Leaves"
+        field.fieldtype = "Duration"
+        field.insert_after = "base"
+        field.default = ""
+        field.allow_on_submit = 1
+        field.description = (
+            "Number of paid leaves allocated to the employee per year"
+        )
+
+        # IMPORTANT FIX
+        field.flags.ignore_version = True
+
+        field.save(ignore_permissions=True)
+
+    else:
+        frappe.get_doc(
+            {
+                "doctype": "Custom Field",
+                "dt": "Salary Structure Assignment",
+                "label": "Paid Leaves",
+                "fieldname": "paid_leaves",
+                "fieldtype": "Duration",
+                "insert_after": "base",
+                "default": "",
+                "allow_on_submit": 1,
+                "description": "Number of paid leaves allocated to the employee per year",
+            }
+        ).insert(ignore_permissions=True)
+
+    frappe.clear_cache()
 # ---------------------------------------------------------
 # PART 4: RUN PATCHES
 # ---------------------------------------------------------
@@ -250,5 +302,6 @@ def setup_salary_breakup_feature():
     add_custom_attendance_statuses()
     add_salary_breakup_field_to_salary_slip()
     add_hr_settings_fields()
+    add_paid_leaves_field()
 
     frappe.logger().info("✅ Salary Breakup + HR Settings fields added successfully.")

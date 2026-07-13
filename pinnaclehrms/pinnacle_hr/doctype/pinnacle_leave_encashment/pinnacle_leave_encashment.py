@@ -31,6 +31,9 @@ class PinnacleLeaveEncashment(Document):
                 "employee": self.employee,
             }
 
+            if self.next_encashment_date:
+                data["next_encashment_date"] = self.next_encashment_date
+
             encashment = _process_encashment(data)
 
             self.days_in_above = encashment.get("total_days")
@@ -183,9 +186,33 @@ def _process_encashment(data):
             indicator="orange",
         )
 
-    paid_leaves = (
-        frappe.db.get_value("Assign Salary", {"employee_id": emp}, "paid_leaves") or 0
+    # Determine end_date first
+    if data.get("to_date"):
+        end_date = datetime.strptime(data.get("to_date"), "%Y-%m-%d")
+    else:
+        frappe.throw(_("To Date is required"))
+
+    # Fetch the applicable Salary Structure Assignment
+    latest_ssa = frappe.db.get_value(
+        "Salary Structure Assignment",
+        {
+            "employee": emp,
+            "docstatus": 1,
+            "from_date": ("<=", end_date.date()),
+        },
+        ["name", "from_date", "paid_leaves"],
+        as_dict=True,
+        order_by="from_date asc",
     )
+
+    if not latest_ssa:
+        frappe.throw(
+            _(
+                "No submitted Salary Structure Assignment found for Employee {0} before {1}"
+            ).format(emp, end_date.strftime("%Y-%m-%d"))
+        )
+    paid_leaves = latest_ssa.paid_leaves or 0
+    print(f"Paid Leaves for Employee {emp}: {paid_leaves}")
     paid_leaves = paid_leaves / (24 * 60 * 60)  # Convert to days
 
     last_encashment_date = frappe.db.get_list(
@@ -213,7 +240,7 @@ def _process_encashment(data):
     average_salary, salary_structure = _calAvgSalary(emp, from_date, end_date)
     total_days = (end_date - from_date).days + 1
     eligible_days = round(((total_days / 365) * paid_leaves), 2)
-
+    print(average_salary, salary_structure, total_days, eligible_days)
     if data.get("next_encashment_date"):
         next_encashment_date = datetime.strptime(
             data["next_encashment_date"], "%Y-%m-%d"
