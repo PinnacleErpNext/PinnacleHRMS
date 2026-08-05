@@ -12,6 +12,7 @@ fixtures = [
     {"dt": "Attendance Correction", "filters": [["name", "=", "Attendance Correction Approval Work Flow"]]},
 ]
 import pinnaclehrms.pinnacle_payroll.overrides.custom_salary_slip
+import pinnaclehrms.pinnacle_payroll.overrides.custom_salary_structure_assignment
 
 # required_apps = []
 
