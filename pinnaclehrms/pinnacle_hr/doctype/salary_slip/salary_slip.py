@@ -242,7 +242,7 @@ def get_late_early_attendance_data(
     count = len(matching_attendance)
 
     return {
-        "count": 20,
+        "count": count,
         "from_date": attendance_start,
         "to_date": attendance_end,
         "records": matching_attendance,

@@ -714,37 +714,6 @@ function show_attendance_acknowledgement_warning(frm, data) {
                 </div>
 
 
-                <div
-                    style="
-                        margin-top: 16px;
-                    "
-                >
-
-                    <strong>
-                        Attendance Period:
-                    </strong>
-
-                    ${from_date}
-                    to
-                    ${to_date}
-
-                </div>
-
-
-                <div
-                    style="
-                        margin-top: 12px;
-                    "
-                >
-
-                    <strong>
-                        Late Attendance Occurrences:
-                    </strong>
-
-                    ${data.count}
-
-                </div>
-
 
                 <div
                     style="

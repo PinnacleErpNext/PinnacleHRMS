@@ -298,14 +298,12 @@ def add_late_acknowledgment_field():
     Adds/updates:
 
     1. Late Acknowledgment field to Salary Slip
-    2. Late Acknowledgment Deduction field to Salary Slip
-    3. Enable Late Acknowledgment field to Employee
-    4. Enable Extra Late Deduction field to Employee
+    2. Enable Late Acknowledgment field to Employee
 
     Notes:
     - late_acknowledgment is controlled by the backend.
-    - Salary Slip acknowledgement fields are read-only.
-    - Employee settings are editable by authorized users.
+    - Salary Slip field is read-only.
+    - enable_late_acknowledgment is editable on Employee.
     """
 
     # ==========================================================
@@ -361,59 +359,7 @@ def add_late_acknowledgment_field():
         ).insert(ignore_permissions=True)
 
     # ==========================================================
-    # 2. Late Acknowledgment Deduction - Salary Slip
-    # ==========================================================
-
-    deduction_ack_field = {
-        "dt": "Salary Slip",
-        "fieldname": "late_acknowledgment_deduction",
-    }
-
-    if frappe.db.exists(
-        "Custom Field",
-        deduction_ack_field,
-    ):
-        field = frappe.get_doc(
-            "Custom Field",
-            deduction_ack_field,
-        )
-
-        field.label = "Late Acknowledgment Deduction"
-        field.fieldtype = "Check"
-        field.insert_after = "late_acknowledgment"
-        field.default = 0
-        field.allow_on_submit = 1
-        field.read_only = 1
-        field.description = (
-            "Indicates whether the additional salary deduction "
-            "for excessive Late/Early attendance has been applied."
-        )
-
-        field.flags.ignore_version = True
-
-        field.save(ignore_permissions=True)
-
-    else:
-        frappe.get_doc(
-            {
-                "doctype": "Custom Field",
-                "dt": "Salary Slip",
-                "label": "Late Acknowledgment Deduction",
-                "fieldname": "late_acknowledgment_deduction",
-                "fieldtype": "Check",
-                "insert_after": "late_acknowledgment",
-                "default": 0,
-                "allow_on_submit": 1,
-                "read_only": 1,
-                "description": (
-                    "Indicates whether the additional salary deduction "
-                    "for excessive Late/Early attendance has been applied."
-                ),
-            }
-        ).insert(ignore_permissions=True)
-
-    # ==========================================================
-    # 3. Enable Late Acknowledgment - Employee
+    # 2. Enable Late Acknowledgment - Employee
     # ==========================================================
 
     employee_ack_field = {
@@ -456,53 +402,6 @@ def add_late_acknowledgment_field():
                 "description": (
                     "Enable Late/Early attendance acknowledgement "
                     "checking for this employee."
-                ),
-            }
-        ).insert(ignore_permissions=True)
-
-    # ==========================================================
-    # 4. Enable Extra Late Deduction - Employee
-    # ==========================================================
-
-    employee_deduction_field = {
-        "dt": "Employee",
-        "fieldname": "enable_extra_late_deduction",
-    }
-
-    if frappe.db.exists(
-        "Custom Field",
-        employee_deduction_field,
-    ):
-        field = frappe.get_doc(
-            "Custom Field",
-            employee_deduction_field,
-        )
-
-        field.label = "Enable Extra Late Deduction"
-        field.fieldtype = "Check"
-        field.insert_after = "enable_late_acknowledgment"
-        field.default = 0
-        field.description = (
-            "Enable additional salary deduction for excessive " "Late/Early attendance."
-        )
-
-        field.flags.ignore_version = True
-
-        field.save(ignore_permissions=True)
-
-    else:
-        frappe.get_doc(
-            {
-                "doctype": "Custom Field",
-                "dt": "Employee",
-                "label": "Enable Extra Late Deduction",
-                "fieldname": "enable_extra_late_deduction",
-                "fieldtype": "Check",
-                "insert_after": "enable_late_acknowledgment",
-                "default": 0,
-                "description": (
-                    "Enable additional salary deduction for excessive "
-                    "Late/Early attendance."
                 ),
             }
         ).insert(ignore_permissions=True)
