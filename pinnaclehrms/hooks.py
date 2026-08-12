@@ -49,7 +49,9 @@ import pinnaclehrms.pinnacle_payroll.overrides.custom_salary_structure_assignmen
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {
+    "Salary Slip": "pinnacle_hr/doctype/salary_slip/salary_slip.js"
+}
 doctype_list_js = {"Attendance": "public/js/custom_attendance_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -155,9 +157,9 @@ doc_events = {
         "before_submit": "pinnaclehrms.pinnacle_hr.helpers.set_particulars.before_save_set_particulars"
     },
     "Employee Checkin": {"after_insert": "pinnaclehrms.api.attendance_notification"},
-    "Salary Slip":{
+    "Salary Slip": {
         "on_submit": "pinnaclehrms.pinnacle_payroll.doctype.salary_slip.salary_slip.update_leave_encashment_status"
-    }
+    },
 }
 
 # Scheduled Tasks
