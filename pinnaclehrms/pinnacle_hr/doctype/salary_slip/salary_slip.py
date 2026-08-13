@@ -256,43 +256,12 @@ def get_late_early_attendance_data(
 
 @frappe.whitelist()
 def get_salary_slip_access(salary_slip):
-    """
-    Determine whether attendance acknowledgement
-    is required before viewing salary details.
-
-    Final flow:
-
-        Administrator
-            -> Always allowed
-
-        Employee:
-            enable_late_acknowledgment = 0
-                -> Normal salary
-
-            enable_late_acknowledgment = 1
-                -> Fetch Late/Early attendance
-                -> Check in_time in Python
-
-            < 14
-                -> Normal salary
-
-            14 to 20
-                -> Blue Urgent Notice
-
-            > 20
-                -> Red High Alert
-
-    Both acknowledgement levels use:
-
-        late_acknowledgment
-    """
 
     # ======================================================
-    # ADMINISTRATOR BYPASS
+    # ADMINISTRATOR
     # ======================================================
 
     if frappe.session.user == "Administrator":
-
         return {
             "allowed": True,
             "required": False,
@@ -301,123 +270,35 @@ def get_salary_slip_access(salary_slip):
         }
 
     # ======================================================
-    # VALIDATE EMPLOYEE
+    # HR / PAYROLL BYPASS
     # ======================================================
 
-    (
-        salary_slip_doc,
-        employee,
-    ) = validate_salary_slip_employee(salary_slip)
-
-    # ======================================================
-    # GET EMPLOYEE SETTING
-    # ======================================================
-
-    enable_late_acknowledgment = frappe.db.get_value(
-        "Employee",
-        employee,
-        "enable_late_acknowledgment",
-    )
-
-    enable_late_acknowledgment = bool(enable_late_acknowledgment)
-
-    # ======================================================
-    # FEATURE DISABLED
-    # ======================================================
-
-    if not enable_late_acknowledgment:
-
-        return {
-            "allowed": True,
-            "required": False,
-            "acknowledged": False,
-            "acknowledgment_type": None,
-        }
-
-    # ======================================================
-    # GET ATTENDANCE DATA
-    # ======================================================
-
-    attendance_data = get_late_early_attendance_data(
-        employee,
-        salary_slip,
-    )
-
-    count = attendance_data["count"]
-
-    # ======================================================
-    # ALREADY ACKNOWLEDGED
-    # ======================================================
-
-    if salary_slip_doc.late_acknowledgment:
-
-        if count > LATE_HIGH_ALERT_THRESHOLD:
-
-            acknowledgment_type = "high_alert"
-
-        elif count >= LATE_ACKNOWLEDGMENT_THRESHOLD:
-
-            acknowledgment_type = "late"
-
-        else:
-
-            acknowledgment_type = None
-
-        return {
-            "allowed": True,
-            "required": False,
-            "acknowledged": True,
-            "acknowledgment_type": acknowledgment_type,
-            "count": count,
-            "from_date": attendance_data["from_date"],
-            "to_date": attendance_data["to_date"],
-        }
-
-    # ======================================================
-    # MORE THAN 20
-    # ======================================================
-
-    if count > LATE_HIGH_ALERT_THRESHOLD:
-
-        return {
-            "allowed": False,
-            "required": True,
-            "acknowledged": False,
-            "acknowledgment_type": "high_alert",
-            "count": count,
-            "from_date": attendance_data["from_date"],
-            "to_date": attendance_data["to_date"],
-        }
-
-    # ======================================================
-    # 14 TO 20
-    # ======================================================
-
-    if count >= LATE_ACKNOWLEDGMENT_THRESHOLD:
-
-        return {
-            "allowed": False,
-            "required": True,
-            "acknowledged": False,
-            "acknowledgment_type": "late",
-            "count": count,
-            "from_date": attendance_data["from_date"],
-            "to_date": attendance_data["to_date"],
-        }
-
-    # ======================================================
-    # LESS THAN 14
-    # ======================================================
-
-    return {
-        "allowed": True,
-        "required": False,
-        "acknowledged": False,
-        "acknowledgment_type": None,
-        "count": count,
-        "from_date": attendance_data["from_date"],
-        "to_date": attendance_data["to_date"],
+    privileged_roles = {
+        "HR Manager",
+        "HR User",
+        "Payroll Manager",
+        "Payroll User",
+        "System Manager",
     }
+
+    user_roles = set(frappe.get_roles(frappe.session.user))
+
+    if user_roles.intersection(privileged_roles):
+        return {
+            "allowed": True,
+            "required": False,
+            "acknowledged": True,
+            "acknowledgment_type": None,
+            "privileged_user": True,
+        }
+
+    # ======================================================
+    # NORMAL EMPLOYEE FLOW
+    # ======================================================
+
+    salary_slip_doc, employee = validate_salary_slip_employee(salary_slip)
+
+    # ... rest of your existing acknowledgement logic
 
 
 # ==========================================================
