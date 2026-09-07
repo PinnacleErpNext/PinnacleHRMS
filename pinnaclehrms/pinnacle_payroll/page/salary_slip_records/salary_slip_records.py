@@ -62,6 +62,22 @@ def getSalarySlipRecords(company, year, month, employee=None):
                     {"component": e.salary_component, "amount": e.amount}
                 )
 
+        # Deductions
+        deductions_total = 0
+        deductions_info = []
+
+        for d in pay_slip.deductions:
+            amount = flt(d.amount)
+
+            deductions_total += amount
+
+            deductions_info.append(
+                {
+                    "component": d.salary_component,
+                    "amount": amount,
+                }
+            )
+
         # Employee info
         emp = (
             frappe.db.get_value(
@@ -100,6 +116,9 @@ def getSalarySlipRecords(company, year, month, employee=None):
             "salary_info": salary_info,
             "other_earnings": other_earnings_info,
             "other_earnings_total": other_earnings_total,
+            "deductions": deductions_info,
+            "deductions_total": deductions_total,
+            "total_deduction": pay_slip.total_deduction,
         }
 
         print(pay_slip_dict)
@@ -151,6 +170,9 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
         "Absent",
         "Total",
         "Net Payable Amount",
+        "Deductions",
+        "Deductions Total",
+        "Total Deduction",
     ]
 
     salary_info_keys = set()
@@ -235,7 +257,6 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     frappe.response.type = "binary"
 
 
-@frappe.whitelist()
 @frappe.whitelist()
 def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
     import base64

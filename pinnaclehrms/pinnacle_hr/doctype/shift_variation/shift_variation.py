@@ -45,12 +45,6 @@ class ShiftVariation(Document):
     # SUBMIT LOGIC
     # -------------------------------------------------------------------------
     def on_submit(self):
-        if self.has_failure:
-            frappe.throw(
-                _(
-                    "This Shift Variation has previously failed. Please review the Failure Details and clear the failure status before resubmitting."
-                )
-            )
         try:
             self.clear_failures()
 
