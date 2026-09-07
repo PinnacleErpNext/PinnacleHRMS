@@ -3,6 +3,7 @@ from datetime import datetime
 from frappe.utils import getdate
 from functools import wraps
 from frappe.utils import flt
+from hrms.utils.holiday_list import get_holiday_list_for_employee
 
 
 # -------------------------------------------------------
@@ -35,21 +36,27 @@ def get_custom_attendance_context(employee, start_date, end_date):
     #         f"attendance={d.attendance_date}, particulars={d.particulars}, in_time={d.in_time}, out_time={d.out_time}, shift={d.shift}"
     #     )
 
-    employee_data = frappe.db.get_value(
-        "Employee",
+    employee_data = get_employee_payroll_context(
         employee,
-        ["holiday_list", "date_of_joining", "relieving_date"],
-        as_dict=True,
+        as_on=getdate(start_date),
     )
 
     effective_start = max(
         getdate(start_date),
-        getdate(employee_data.date_of_joining) if employee_data.date_of_joining else getdate(start_date),
+        (
+            getdate(employee_data.date_of_joining)
+            if employee_data.date_of_joining
+            else getdate(start_date)
+        ),
     )
 
     effective_end = min(
         getdate(end_date),
-        getdate(employee_data.relieving_date) if employee_data.relieving_date else getdate(end_date),
+        (
+            getdate(employee_data.relieving_date)
+            if employee_data.relieving_date
+            else getdate(end_date)
+        ),
     )
 
     if effective_start <= effective_end:
@@ -247,7 +254,7 @@ def apply_custom_attendance_to_context(self, data, default_data):
 def populate_salary_breakup_table(self, ctx):
     """Populate Salary Slip 'salary_breakup' child table."""
 
-    print("Populating salary breakup table with attendance context...")
+    # print("Populating salary breakup table with attendance context...")
 
     # Clear table
     self.set("salary_breakup", [])
@@ -277,7 +284,7 @@ def populate_salary_breakup_table(self, ctx):
                 salary_structure_assignment_name,
             )
 
-            print(f"Salary Structure Assignment: {salary_structure_assignment.name}")
+            # print(f"Salary Structure Assignment: {salary_structure_assignment.name}")
 
             base = flt(salary_structure_assignment.base)
 
@@ -287,8 +294,8 @@ def populate_salary_breakup_table(self, ctx):
             "Failed to fetch Salary Structure Assignment Base",
         )
 
-    print(f"Base Salary: {base}")
-    print(f"Total Working Days: {self.total_working_days}")
+    # print(f"Base Salary: {base}")
+    # print(f"Total Working Days: {self.total_working_days}")
 
     # ---------------------------------------------------
     # PER DAY RATE
@@ -306,7 +313,7 @@ def populate_salary_breakup_table(self, ctx):
             "Failed to calculate per day rate",
         )
 
-    print(f"Per Day Rate: {rate}")
+    # print(f"Per Day Rate: {rate}")
 
     # ---------------------------------------------------
     # BREAKUP ROWS
@@ -379,6 +386,47 @@ def custom_get_data_for_eval(original):
         return data, default_data
 
     return wrapper
+
+
+def get_employee_payroll_context(employee, as_on=None):
+    """
+    Return employee payroll information along with
+    the applicable Holiday List.
+
+    Priority:
+    1. Employee Holiday List Assignment
+    2. Employee Master -> Company
+    3. Company Holiday List Assignment
+    4. Error if no Holiday List is found
+    """
+
+    as_on = getdate(as_on) if as_on else getdate()
+
+    employee_data = frappe.db.get_value(
+        "Employee",
+        employee,
+        [
+            "name",
+            "employee_name",
+            "company",
+            "date_of_joining",
+            "relieving_date",
+        ],
+        as_dict=True,
+    )
+
+    if not employee_data:
+        frappe.throw(f"Employee {employee} does not exist.")
+
+    holiday_list = get_holiday_list_for_employee(
+        employee,
+        raise_exception=True,
+        as_on=as_on,
+    )
+
+    employee_data.holiday_list = holiday_list
+
+    return employee_data
 
 
 # -------------------------------------------------------

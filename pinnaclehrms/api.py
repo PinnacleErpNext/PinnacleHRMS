@@ -1216,12 +1216,21 @@ def attendance_notification(doc, method):
         """
 
         emp_company = frappe.db.get_value("Employee", doc.employee, "company")
+
         if emp_company == "Gupta & Agarwal":
-            frappe.sendmail(recipients=[hr_email[1]], subject=subject, message=message)
+            frappe.sendmail(
+                recipients=[hr_email[1]],
+                subject=subject,
+                message=message,
+            )
 
-        frappe.sendmail(recipients=[hr_email[0]], subject=subject, message=message)
+        frappe.sendmail(
+            recipients=[hr_email[0]],
+            subject=subject,
+            message=message,
+        )
 
-    except Exception as e:
+    except Exception:
         frappe.log_error(frappe.get_traceback(), "Attendance Notification Error")
 
 

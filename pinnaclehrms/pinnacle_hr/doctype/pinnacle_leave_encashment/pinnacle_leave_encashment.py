@@ -4,7 +4,6 @@
 import frappe, json, calendar
 from frappe import _
 from frappe.model.document import Document
-from datetime import datetime
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 
@@ -15,13 +14,17 @@ class PinnacleLeaveEncashment(Document):
         relieving_date = frappe.db.get_value(
             "Employee", self.employee, "relieving_date"
         )
+
         if relieving_date:
             self.next_encashment_date = ""
-            to_date = datetime.strptime(self.to_date, "%Y-%m-%d").date()
-            if to_date > relieving_date:
-                frappe.throw(
-                    _("To Date cannot be after the employee's relieving date.")
-                )
+
+            if self.to_date:
+                to_date = datetime.strptime(self.to_date, "%Y-%m-%d").date()
+
+                if to_date > relieving_date:
+                    frappe.throw(
+                        _("To Date cannot be after the employee's relieving date.")
+                    )
 
     def before_save(self):
         if self.employee:
@@ -42,6 +45,9 @@ class PinnacleLeaveEncashment(Document):
             self.amount = encashment.get("amount")
             self.next_encashment_date = encashment.get("next_encashment_date")
             self.salary_structure = encashment.get("salary_structure")
+
+            # Set encashment date
+            self.encashment_date = encashment.get("encashment_date")
 
     def on_submit(self):
 
@@ -68,28 +74,22 @@ class PinnacleLeaveEncashment(Document):
 @frappe.whitelist()
 def generate_leave_encashment(data):
     """
-    Generates leave encashment records for a list of selected employees for a given year and month.
+    Generates leave encashment records for a list of selected employees
+    for a given year and month.
 
     Args:
-        data (str or dict): JSON string or dictionary containing the following keys:
-            - "selected_emp" (list): List of employee dictionaries, each containing:
-                - "employee" (str): Employee ID.
-                - "eligible" (str): Eligibility status ("Yes" or "No").
-                - "from_date" (str): Start date for encashment period.
+        data (str or dict): JSON string or dictionary containing the
+        following keys:
+            - "selected_emp" (list): List of employee dictionaries
             - "year" (int or str): The year for leave encashment.
-            - "month" (str): The month for leave encashment (to be converted to month code).
+            - "month" (str): The month for leave encashment.
 
     Returns:
-        list: List of created "Pinnacle Leave Encashment" document objects.
+        list: List of created "Pinnacle Leave Encashment" documents.
 
     Raises:
-        frappe.ValidationError: If input data is invalid or required fields are missing.
-        frappe.ValidationError: If an error occurs during document creation (with error logged).
-
-    Side Effects:
-        - Inserts new "Pinnacle Leave Encashment" documents into the database.
-        - Displays a message for employees not eligible for leave encashment.
-        - Logs errors and throws a user-friendly error message if an exception occurs.
+        frappe.ValidationError: If input data is invalid or required
+        fields are missing.
     """
 
     try:
@@ -101,7 +101,10 @@ def generate_leave_encashment(data):
 
         if not emp_list or not year or not month:
             frappe.throw(
-                _("Invalid input data. Please provide employee list, year, and month.")
+                _(
+                    "Invalid input data. Please provide employee list, "
+                    "year, and month."
+                )
             )
 
         encashment_records = []
@@ -109,19 +112,25 @@ def generate_leave_encashment(data):
         for emp in emp_list:
 
             emp_id = emp.get("employee")
+
             if emp.get("eligible") != "Yes":
                 frappe.msgprint(
                     _("{0} is not eligible for leave encashment.").format(emp_id)
                 )
                 continue
+
+            # Last date of selected month
+            last_day_of_month = calendar.monthrange(year, month)[1]
+
             doc = frappe.get_doc(
                 {
                     "doctype": "Pinnacle Leave Encashment",
                     "employee": emp_id,
                     "from_date": emp.get("from_date"),
-                    "to_date": f"{year}-{month}-{calendar.monthrange(year, month)[1]}",
+                    "to_date": f"{year}-{month}-{last_day_of_month}",
                 }
             )
+
             doc.insert()
             encashment_records.append(doc)
 
@@ -131,45 +140,39 @@ def generate_leave_encashment(data):
         frappe.log_error(
             frappe.get_traceback(), _("Error in generate_leave_encashment")
         )
+
         frappe.throw(
             _(
-                "An error occurred while generating leave encashment. Please check the logs."
+                "An error occurred while generating leave encashment. "
+                "Please check the logs."
             )
         )
 
 
 def _process_encashment(data):
     """
-    Processes leave encashment for an employee based on the provided data.
+    Processes leave encashment for an employee.
 
-    This function checks if a leave encashment record already exists for the given employee and date range.
-    If it exists, it returns a message with a link to the existing record. Otherwise, it calculates the eligible
-    leave encashment amount based on the employee's paid leaves, average salary, and the period between the
-    specified from and to dates. It also determines the next eligible encashment date and prepares a summary
-    of the calculation.
+    Encashment Date Logic:
 
-    Args:
-        data (dict): A dictionary containing the following keys:
-            - "employee" (str): The employee ID.
-            - "from_date" (str, optional): The start date for encashment calculation (format: "YYYY-MM-DD").
-            - "to_date" (str): The end date for encashment calculation (format: "YYYY-MM-DD").
-            - "next_encashment_date" (str, optional): The next eligible encashment date (format: "YYYY-MM-DD").
+    1. If the employee has a relieving date and the relieving date
+       falls within the encashment period, the relieving date is used.
 
-    Returns:
-        dict: A dictionary containing the calculated encashment details, including:
-            - "employee": Employee ID.
-            - "from": Encashment period start date.
-            - "upto": Encashment period end date.
-            - "encashment_date": Date of encashment.
-            - "amount": Calculated encashment amount.
-            - "next_encashment_date": Next eligible encashment date.
-            - "encashment_calculation": A summary string of the calculation.
+    2. Otherwise, the last date of the month of `to_date` is used.
 
-    Raises:
-        frappe.ValidationError: If the employee's joining date is not found.
+    Example:
+
+        Relieving Date = 2026-08-15
+        To Date        = 2026-08-31
+        Encashment Date = 2026-08-15
+
+        No Relieving Date
+        To Date        = 2026-08-31
+        Encashment Date = 2026-08-31
     """
 
     emp = data.get("employee")
+
     encash_doc = frappe.db.exists(
         "Pinnacle Leave Encashment",
         {
@@ -178,21 +181,33 @@ def _process_encashment(data):
             "upto": data.get("to_date"),
         },
     )
+
     if encash_doc is not None:
-        # encash_doc will be the name (ID) of the document
-        link = f'<a href="/app/pinnacle-leave-encashment/{encash_doc}" target="_blank">{_("View Existing Leave Encashment")}</a>'
+        link = (
+            f'<a href="/app/pinnacle-leave-encashment/'
+            f'{encash_doc}" target="_blank">'
+            f'{_("View Existing Leave Encashment")}'
+            f"</a>"
+        )
+
         return frappe.msgprint(
             _("Leave Encashment is already created! {0}").format(link),
             indicator="orange",
         )
 
-    # Determine end_date first
+    # -------------------------------------------------------
+    # 1. Determine end date
+    # -------------------------------------------------------
+
     if data.get("to_date"):
         end_date = datetime.strptime(data.get("to_date"), "%Y-%m-%d")
     else:
         frappe.throw(_("To Date is required"))
 
-    # Fetch the applicable Salary Structure Assignment
+    # -------------------------------------------------------
+    # 2. Fetch the applicable Salary Structure Assignment
+    # -------------------------------------------------------
+
     latest_ssa = frappe.db.get_value(
         "Salary Structure Assignment",
         {
@@ -202,18 +217,31 @@ def _process_encashment(data):
         },
         ["name", "from_date", "paid_leaves"],
         as_dict=True,
-        order_by="from_date asc",
+        order_by="from_date desc",
     )
+
+    # -------------------------------------------------------
+    # 3. Get employee relieving date
+    # -------------------------------------------------------
+
+    relieving_date = frappe.db.get_value("Employee", emp, "relieving_date")
 
     if not latest_ssa:
         frappe.throw(
             _(
-                "No submitted Salary Structure Assignment found for Employee {0} before {1}"
+                "No submitted Salary Structure Assignment found "
+                "for Employee {0} before {1}"
             ).format(emp, end_date.strftime("%Y-%m-%d"))
         )
+
     paid_leaves = latest_ssa.paid_leaves or 0
-    # print(f"Paid Leaves for Employee {emp}: {paid_leaves}")
-    paid_leaves = paid_leaves / (24 * 60 * 60)  # Convert to days
+
+    # Convert seconds to days
+    paid_leaves = paid_leaves / (24 * 60 * 60)
+
+    # -------------------------------------------------------
+    # 4. Get last encashment date
+    # -------------------------------------------------------
 
     last_encashment_date = frappe.db.get_list(
         "Pinnacle Leave Encashment",
@@ -223,42 +251,106 @@ def _process_encashment(data):
         limit=1,
     )
 
+    # -------------------------------------------------------
+    # 5. Determine From Date
+    # -------------------------------------------------------
+
     if data.get("from_date"):
         from_date = datetime.strptime(data.get("from_date"), "%Y-%m-%d")
+
     elif last_encashment_date:
         from_date = last_encashment_date[0].get("encashment_date")
+
     else:
         from_date = frappe.db.get_value("Employee", {"name": emp}, "date_of_joining")
+
         if not from_date:
             frappe.throw(_("Joining date not found for Employee {0}").format(emp))
+
+        # Convert date to datetime
+        if isinstance(from_date, date) and not isinstance(from_date, datetime):
+            from_date = datetime.combine(from_date, datetime.min.time())
+
+    # -------------------------------------------------------
+    # 6. Re-confirm To Date
+    # -------------------------------------------------------
 
     if data.get("to_date"):
         end_date = datetime.strptime(data.get("to_date"), "%Y-%m-%d")
 
-    # leave_encashment_months = difference.years * 12 + difference.months + 1
+    # -------------------------------------------------------
+    # 7. Calculate Average Salary
+    # -------------------------------------------------------
 
     average_salary, salary_structure = _calAvgSalary(emp, from_date, end_date)
+
+    # -------------------------------------------------------
+    # 8. Calculate Total Days
+    # -------------------------------------------------------
+
     total_days = (end_date - from_date).days + 1
-    eligible_days = round(((total_days / 365) * paid_leaves), 2)
-    # print(average_salary, salary_structure, total_days, eligible_days)
+
+    eligible_days = round((total_days / 365) * paid_leaves, 2)
+
+    # -------------------------------------------------------
+    # 9. Determine Next Encashment Date
+    # -------------------------------------------------------
+
     if data.get("next_encashment_date"):
+
         next_encashment_date = datetime.strptime(
             data["next_encashment_date"], "%Y-%m-%d"
         )
+
     else:
+
         today = end_date
+
         if today.month >= 4:
             next_encashment_date = datetime(today.year + 1, 3, 31)
+
         else:
             next_encashment_date = datetime(today.year, 3, 31)
 
+    # -------------------------------------------------------
+    # 10. Calculate Encashment Amount
+    # -------------------------------------------------------
+
     leave_encashment_amount = eligible_days * average_salary
+
+    # -------------------------------------------------------
+    # 11. Determine Encashment Date
+    #
+    # Requirement:
+    #
+    # If relieving date falls within the encashment period:
+    #     Encashment Date = relieving date
+    #
+    # Otherwise:
+    #     Encashment Date = last date of the month of To Date
+    # -------------------------------------------------------
+
+    last_day_of_month = date(
+        end_date.year,
+        end_date.month,
+        calendar.monthrange(end_date.year, end_date.month)[1],
+    )
+    frappe.throw(str(last_day_of_month))
+    if relieving_date and from_date.date() <= relieving_date <= end_date.date():
+        encashment_date = relieving_date
+    else:
+        encashment_date = last_day_of_month
+
+    # -------------------------------------------------------
+    # 12. Prepare Result
+    # -------------------------------------------------------
 
     encashment = {
         "employee": emp,
         "from": from_date.strftime("%Y-%m-%d"),
         "upto": end_date.strftime("%Y-%m-%d"),
-        "encashment_date": end_date.strftime("%Y-%m-%d"),
+        # Final Encashment Date
+        "encashment_date": encashment_date,
         "amount": round(leave_encashment_amount, 2),
         "next_encashment_date": next_encashment_date,
         "total_days": total_days,
@@ -272,8 +364,7 @@ def _process_encashment(data):
 
 def _calAvgSalary(empID, from_date, end_date):
     """
-    Calculate average daily salary using Salary Structure Assignment
-    (ERPNext HRMS standard).
+    Calculate average daily salary using Salary Structure Assignment.
     """
 
     startDate = from_date.date()
@@ -282,6 +373,7 @@ def _calAvgSalary(empID, from_date, end_date):
     # -------------------------------------------------------
     # 1. Get salary revisions from Salary Structure Assignment
     # -------------------------------------------------------
+
     salary_data = frappe.db.sql(
         """
         SELECT
@@ -299,32 +391,42 @@ def _calAvgSalary(empID, from_date, end_date):
     )
 
     if not salary_data:
-        return 0, "No Salary Structure Assignment found"
+        return (0, "No Salary Structure Assignment found")
 
     # -------------------------------------------------------
     # 2. Build salary structure timeline
     # -------------------------------------------------------
+
     salaryStructure = {}
 
     for row in salary_data:
+
         salaryStructure[row.from_date] = row.base or 0
 
     # Ensure start date has salary
+
     applicable_salary = None
-    for date in sorted(salaryStructure.keys()):
-        if date <= startDate:
-            applicable_salary = salaryStructure[date]
+
+    for salary_date in sorted(salaryStructure.keys()):
+
+        if salary_date <= startDate:
+
+            applicable_salary = salaryStructure[salary_date]
+
         else:
             break
 
     salaryStructure[startDate] = applicable_salary or 0
+
     salaryStructure = dict(sorted(salaryStructure.items()))
 
     # -------------------------------------------------------
     # 3. Calculate daily salary across period
     # -------------------------------------------------------
+
     total_salary = 0
     day_count = 0
+
     current_salary = salaryStructure[startDate]
 
     current_date = startDate
@@ -332,9 +434,11 @@ def _calAvgSalary(empID, from_date, end_date):
     while current_date <= endDate:
 
         if current_date in salaryStructure:
+
             current_salary = salaryStructure[current_date]
 
         if current_salary:
+
             days_in_month = calendar.monthrange(current_date.year, current_date.month)[
                 1
             ]
@@ -349,26 +453,33 @@ def _calAvgSalary(empID, from_date, end_date):
     average_salary = round(total_salary / day_count, 2) if day_count > 0 else 0
 
     # -------------------------------------------------------
-    # 4. Salary detail text (for debug/log)
+    # 4. Salary detail text
     # -------------------------------------------------------
+
     salary_details_text = "Salary Details:\n"
-    salary_details_text += f"{'From Date':<15}{'Salary (₹)':>12}\n"
+
+    salary_details_text += f"{'From Date':<15}" f"{'Salary (₹)':>12}\n"
+
     salary_details_text += "-" * 27 + "\n"
 
-    for date, salary in salaryStructure.items():
-        salary_details_text += f"{date.strftime('%Y-%m-%d'):<15}" f"₹{salary:>10,.2f}\n"
+    for salary_date, salary in salaryStructure.items():
 
-    return average_salary, salary_details_text
+        salary_details_text += (
+            f"{salary_date.strftime('%Y-%m-%d'):<15}" f"₹{salary:>10,.2f}\n"
+        )
+
+    return (average_salary, salary_details_text)
 
 
 def _get_month_code(month_name):
     """
     Return the numeric code for a given month name.
+
     Args:
-        month_name (str): The full name of the month (e.g., "January", "February").
+        month_name (str): Full month name.
+
     Returns:
-        int: The numeric code of the month (1 for January, 2 for February, ..., 12 for December).
-             Returns 0 if the month name is not recognized.
+        int: Numeric month code.
     """
 
     month_map = {
@@ -385,4 +496,5 @@ def _get_month_code(month_name):
         "November": 11,
         "December": 12,
     }
+
     return month_map.get(month_name, 0)
