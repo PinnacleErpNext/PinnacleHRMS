@@ -1,9 +1,13 @@
 import frappe
+
 from frappe.utils import date_diff, getdate
 
 from hrms.payroll.utils import get_component_eval_context
 from hrms.payroll.doctype.salary_structure_assignment.salary_structure_assignment import (
     SalaryStructureAssignment,
+)
+from hrms.payroll.doctype.payroll_entry.payroll_entry import (
+    get_start_end_dates,
 )
 
 from pinnaclehrms.pinnacle_payroll.overrides.custom_salary_slip import (
@@ -15,29 +19,31 @@ def _custom_get_component_eval_context(self):
     """
     Build Salary Structure Assignment evaluation context.
 
-    IMPORTANT:
-    Attendance/payroll calculations must use the CURRENT
-    Salary Slip / Payroll Entry period.
+    Two situations are supported:
 
-    Do NOT use self.from_date here because self.from_date
-    represents the Salary Structure Assignment effective date,
-    not the current payroll period.
+    1. Salary Structure Assignment is being saved:
+       Use the Salary Structure payroll frequency and
+       Salary Structure Assignment.from_date.
+
+    2. Salary Slip is calculating salary:
+       Use the current payroll period supplied through
+       frappe.flags.custom_payroll_period.
     """
 
     # ---------------------------------------------------------
-    # Get standard salary component evaluation context
+    # Standard HRMS evaluation context
     # ---------------------------------------------------------
+
     data = get_component_eval_context(
         self.employee,
         self.as_dict(),
     )
 
     # ---------------------------------------------------------
-    # Get CURRENT payroll period
-    #
-    # This is populated by the Salary Slip override before
-    # Salary Structure Assignment components are evaluated.
+    # Check whether Salary Slip supplied the CURRENT
+    # payroll period.
     # ---------------------------------------------------------
+
     payroll_period = getattr(
         frappe.flags,
         "custom_payroll_period",
@@ -45,23 +51,48 @@ def _custom_get_component_eval_context(self):
     )
 
     # ---------------------------------------------------------
-    # Safety fallback
+    # CASE 1:
+    # Salary Slip / Payroll Entry is evaluating components.
     #
-    # If this method is called outside Salary Slip calculation,
-    # don't attempt custom attendance calculation using
-    # Salary Structure Assignment.from_date.
+    # Use the actual CURRENT payroll period.
     # ---------------------------------------------------------
-    if not payroll_period:
-        return data
 
-    start_date, end_date = payroll_period
+    if payroll_period:
+        start_date, end_date = payroll_period
 
-    start_date = getdate(start_date)
-    end_date = getdate(end_date)
+        start_date = getdate(start_date)
+        end_date = getdate(end_date)
 
     # ---------------------------------------------------------
-    # Number of days in CURRENT payroll period
+    # CASE 2:
+    # Salary Structure Assignment itself is being saved.
+    #
+    # There is no Salary Slip period available.
+    #
+    # Therefore use the standard HRMS mechanism to determine
+    # the salary period.
     # ---------------------------------------------------------
+
+    else:
+        frequency = frappe.get_cached_value(
+            "Salary Structure",
+            self.salary_structure,
+            "payroll_frequency",
+        )
+
+        dates = get_start_end_dates(
+            frequency,
+            self.from_date,
+            self.company,
+        )
+
+        start_date = getdate(dates.start_date)
+        end_date = getdate(dates.end_date)
+
+    # ---------------------------------------------------------
+    # Number of days in evaluation period
+    # ---------------------------------------------------------
+
     period_days = (
         date_diff(
             end_date,
@@ -71,11 +102,10 @@ def _custom_get_component_eval_context(self):
     )
 
     # ---------------------------------------------------------
-    # Add payroll-period variables to evaluation context
-    #
-    # Use dictionary keys explicitly because these values are
-    # consumed by salary structure formulas.
+    # Always provide variables required by Salary Structure
+    # formulas.
     # ---------------------------------------------------------
+
     data.update(
         {
             "start_date": start_date,
@@ -89,12 +119,12 @@ def _custom_get_component_eval_context(self):
     )
 
     # ---------------------------------------------------------
-    # Get custom attendance context
+    # Custom attendance context
     #
-    # IMPORTANT:
-    # Use CURRENT payroll period, NOT Salary Structure
-    # Assignment.from_date.
+    # This is useful both when evaluating the SSA and when
+    # evaluating components during Salary Slip calculation.
     # ---------------------------------------------------------
+
     ctx = get_custom_attendance_context(
         employee=self.employee,
         start_date=start_date,
@@ -102,8 +132,9 @@ def _custom_get_component_eval_context(self):
     )
 
     # ---------------------------------------------------------
-    # Merge custom attendance variables
+    # Merge custom variables
     # ---------------------------------------------------------
+
     data.update(ctx)
 
     return data
