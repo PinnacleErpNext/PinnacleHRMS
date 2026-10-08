@@ -161,7 +161,8 @@ doc_events = {
     },
     "Employee Checkin": {"after_insert": "pinnaclehrms.api.attendance_notification"},
     "Salary Slip": {
-        "on_submit": "pinnaclehrms.pinnacle_payroll.doctype.salary_slip.salary_slip.update_leave_encashment_status"
+        "on_submit": "pinnaclehrms.pinnacle_payroll.doctype.salary_slip.salary_slip.update_leave_encashment_status",
+        "before_save": "pinnaclehrms.pinnacle_payroll.doctype.salary_slip.salary_slip.before_save",
     },
 }
 
