@@ -335,7 +335,7 @@ def _process_encashment(data):
         end_date.month,
         calendar.monthrange(end_date.year, end_date.month)[1],
     )
-    frappe.throw(str(last_day_of_month))
+    # frappe.throw(str(last_day_of_month))
     if relieving_date and from_date.date() <= relieving_date <= end_date.date():
         encashment_date = relieving_date
     else:

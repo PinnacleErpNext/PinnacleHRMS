@@ -413,6 +413,43 @@ def add_late_acknowledgment_field():
     frappe.clear_cache()
 
 
+def add_base_salary_field():
+    """
+    Adds Base Salary field to Salary Slip.
+    """
+
+    field_data = {
+        "dt": "Salary Slip",
+        "fieldname": "base_salary",
+    }
+
+    if frappe.db.exists("Custom Field", field_data):
+        field = frappe.get_doc("Custom Field", field_data)
+
+        field.label = "Base Salary"
+        field.fieldtype = "Currency"
+        field.insert_after = "total_in_words"
+        field.read_only = 1
+
+        field.flags.ignore_version = True
+        field.save(ignore_permissions=True)
+
+    else:
+        frappe.get_doc(
+            {
+                "doctype": "Custom Field",
+                "dt": "Salary Slip",
+                "label": "Base Salary",
+                "fieldname": "base_salary",
+                "fieldtype": "Currency",
+                "insert_after": "total_in_words",
+                "read_only": 1
+            }
+        ).insert(ignore_permissions=True)
+
+    frappe.clear_cache()
+
+
 # ---------------------------------------------------------
 # PART 4: RUN PATCHES
 # ---------------------------------------------------------
@@ -425,5 +462,6 @@ def setup_salary_breakup_feature():
     add_salary_breakup_field_to_salary_slip()
     add_hr_settings_fields()
     add_paid_leaves_field()
+    add_base_salary_field()
 
     frappe.logger().info("✅ Salary Breakup + HR Settings fields added successfully.")
