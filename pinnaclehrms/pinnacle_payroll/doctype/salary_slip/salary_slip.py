@@ -1,4 +1,5 @@
 import frappe
+from frappe.utils import flt
 
 
 def update_leave_encashment_status(doc, method=None):
@@ -37,32 +38,66 @@ def update_leave_encashment_status(doc, method=None):
             processed_docs.add(additional_salary.ref_docname)
 
 
-def before_save(doc, method=None):
+def before_save(salary_slip, method=None):
     """
-    Fetch Base Salary from Salary Structure Assignment
-    and set it in Salary Slip's base_salary field.
+    Before saving the Salary Slip:
+    1. Fetch the Salary Structure Assignment base into base_salary.
+    2. Set loyalty_bonus from the Salary Slip earnings.
+    3. If the loyalty component is not present in earnings yet,
+       fetch its amount from the applicable Salary Structure.
     """
 
-    if not doc.employee:
-        return
+    # ---------------------------------------------------------
+    # 1. Fetch Salary Structure Assignment
+    # ---------------------------------------------------------
 
-    # Get the Salary Structure Assignment applicable to the Salary Slip
-    assignment = frappe.get_all(
-        "Salary Structure Assignment",
-        filters={
-            "employee": doc.employee,
-            "company": doc.company,
-            "from_date": ["<=", doc.start_date],
-            "docstatus": 1,
-        },
-        fields=["name", "base"],
-        order_by="from_date desc",
-        limit=1,
-    )
+    salary_structure_assignment = None
 
-    if not assignment:
-        doc.base_salary = 0
-        return
+    if salary_slip.employee and salary_slip.salary_structure:
+        salary_structure_assignment = frappe.db.get_value(
+            "Salary Structure Assignment",
+            {
+                "employee": salary_slip.employee,
+                "salary_structure": salary_slip.salary_structure,
+                "docstatus": 1,
+                "from_date": ["<=", salary_slip.start_date],
+            },
+            ["name", "base"],
+            order_by="from_date desc",
+            as_dict=True,
+        )
 
-    # Set Base Salary from Salary Structure Assignment
-    doc.base_salary = assignment[0].base
+    if salary_structure_assignment:
+        salary_slip.base_salary = flt(salary_structure_assignment.base)
+
+    # ---------------------------------------------------------
+    # 2. Get Loyalty Bonus from Salary Slip Earnings
+    # ---------------------------------------------------------
+
+    loyalty_bonus = 0
+    loyalty_component_found = False
+    
+    for earning in salary_slip.get("earnings") or []:
+
+        if earning.salary_component == "Loyalty Incentive and Contribution":
+            loyalty_bonus += flt(earning.amount)
+            loyalty_component_found = True
+
+    # ---------------------------------------------------------
+    # 3. Fallback: Fetch from Salary Structure Assignment's
+    #    Salary Structure when the component is missing
+    # ---------------------------------------------------------
+
+    if not loyalty_component_found and salary_structure_assignment:
+        salary_structure = frappe.get_doc(
+            "Salary Structure",
+            salary_slip.salary_structure,
+        )
+
+        for earning in salary_structure.get("earnings") or []:
+            if earning.salary_component == "Loyalty Incentive and Contribution":
+                loyalty_bonus += flt(earning.amount)
+
+    salary_slip.loyalty_bonus = loyalty_bonus
+    
+    salary_slip.total = flt(salary_slip.base_salary) + flt(loyalty_bonus)
