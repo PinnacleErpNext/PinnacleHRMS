@@ -530,7 +530,7 @@ def add_total_field():
 
     field_data = {
         "dt": "Salary Slip",
-        "fieldname": "basic_salary_section",
+        "fieldname": "total_salary",
     }
 
     if frappe.db.exists("Custom Field", field_data):
@@ -556,7 +556,7 @@ def add_total_field():
                 "doctype": "Custom Field",
                 "dt": "Salary Slip",
                 "label": "Total",
-                "fieldname": "total",
+                "fieldname": "total_salary",
                 "fieldtype": "Currency",
                 "insert_after": "loyalty_bonus",
                 "read_only": 1,
