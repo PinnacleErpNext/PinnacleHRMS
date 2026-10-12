@@ -100,4 +100,4 @@ def before_save(salary_slip, method=None):
 
     salary_slip.loyalty_bonus = loyalty_bonus
     
-    salary_slip.total = flt(salary_slip.base_salary) + flt(loyalty_bonus)
+    salary_slip.total_salary = flt(salary_slip.base_salary) + flt(loyalty_bonus)
