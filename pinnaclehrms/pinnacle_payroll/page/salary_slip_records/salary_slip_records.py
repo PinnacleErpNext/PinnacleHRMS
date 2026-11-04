@@ -144,8 +144,16 @@ def getSalarySlipRecords(company, year, month, employee=None):
 
 @frappe.whitelist()
 def download_pay_slip_report(year=None, month=None, encodedCompany=None):
+
     company = base64.b64decode(encodedCompany).decode("utf-8")
 
+    curr_user = frappe.session.user
+
+    allowed_roles = ["System Manager"]
+
+    user_roles = frappe.get_roles(curr_user)
+
+    # --- User access check ---
     if not is_user_allowed_for_report(
         source_name="Salary Register", source_type="Report"
     ):
@@ -161,100 +169,138 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     if not records:
         frappe.throw(_("No data found for the given filters."))
 
-    static_columns = [
-        "Pay Slip Name",
-        "Year",
-        "Month",
-        "Employee ID",
-        "Employee Name",
-        "Company",
-        "Designation",
-        "Department",
-        "Personal Email",
-        "Standard Working Days",
-        "PAN Number",
-        "Date of Joining",
-        "Basic Salary",
-        "Per Day Salary",
-        "Actual Working Days",
+    # Attendance columns in the required order
+    attendance_keys = [
+        "Full Day",
+        "Sundays",
+        "Half Day",
+        "3/4 Day",
+        "Quarter Day",
+        "Lates",
         "Absent",
-        "Total",
-        "Net Payable Amount",
-        "Deductions",
-        "Deductions Total",
-        "Total Deduction",
     ]
 
     salary_info_keys = set()
+    earnings_keys = set()
     other_earning_keys = set()
+    deduction_keys = set()
 
     for r in records:
+
         for key in r.get("salary_info", {}).keys():
             if key:
                 salary_info_keys.add(key)
+
+        for earning in r.get("earnings", []):
+            if earning.get("component"):
+                earnings_keys.add(earning.get("component"))
 
         for earning in r.get("other_earnings", []):
             if earning.get("component"):
                 other_earning_keys.add(earning.get("component"))
 
-    salary_info_keys = sorted(salary_info_keys)
+        for deduction in r.get("deductions", []):
+            if deduction.get("component"):
+                deduction_keys.add(deduction.get("component"))
+
+    # Keep attendance columns in the specified order
+    attendance_columns = [key for key in attendance_keys if key in salary_info_keys]
+
+    # Include any additional attendance particulars
+    attendance_columns += sorted(salary_info_keys - set(attendance_columns))
+
+    earnings_keys = sorted(earnings_keys)
     other_earning_keys = sorted(other_earning_keys)
+    deduction_keys = sorted(deduction_keys)
+
+    static_columns = [
+        "Salary Slip",
+        "Status",
+        "Employee Name",
+        "Email",
+        "Joining Date",
+        "Basic Salary",
+        "Standard Days",
+        "Actual Days",
+    ]
 
     header_row_1 = (
         static_columns
-        + ["Salary Info"] * (len(salary_info_keys) * 2)
+        + attendance_columns
+        + ["Total"]
+        + ["Earnings"] * len(earnings_keys)
         + ["Other Earnings"] * len(other_earning_keys)
+        + ["Deductions"] * len(deduction_keys)
+        + ["Total Deduction", "Deductions Total", "Net Pay"]
     )
 
-    header_row_2 = [""] * len(static_columns)
-
-    for key in salary_info_keys:
-        header_row_2 += [f"{key} - Days", f"{key} - Amount"]
-
-    for key in other_earning_keys:
-        header_row_2.append(f"{key} - Amount")
+    header_row_2 = (
+        [""] * (len(static_columns) + len(attendance_columns) + 1)
+        + earnings_keys
+        + other_earning_keys
+        + deduction_keys
+        + ["", "", ""]
+    )
 
     data_rows = []
 
     for r in records:
+
         row = [
             r.get("pay_slip_name"),
-            r.get("year"),
-            r.get("month"),
-            r.get("employee"),
+            r.get("status"),
             r.get("employee_name"),
-            r.get("company"),
-            r.get("designation"),
-            r.get("department"),
             r.get("email"),
-            r.get("standard_working_days"),
-            r.get("pan_number"),
             r.get("date_of_joining"),
             r.get("basic_salary"),
-            r.get("per_day_salary"),
+            r.get("standard_working_days"),
             r.get("actual_working_days"),
-            r.get("absent"),
-            r.get("total"),
-            r.get("net_payable_amount"),
-            r.get("deductions"),
-            r.get("deductions_total"),
-            r.get("total_deduction"),
         ]
 
+        # Attendance days
         salary_info = r.get("salary_info", {})
-        for key in salary_info_keys:
+
+        for key in attendance_columns:
             info = salary_info.get(key, {})
             row.append(info.get("days", 0))
-            row.append(info.get("amount", 0))
 
+        # Total
+        row.append(r.get("total"))
+
+        # Earnings
         earnings_map = {
+            e.get("component"): e.get("amount")
+            for e in r.get("earnings", [])
+            if e.get("component")
+        }
+
+        for key in earnings_keys:
+            row.append(earnings_map.get(key, 0))
+
+        # Other Earnings
+        other_earnings_map = {
             e.get("component"): e.get("amount")
             for e in r.get("other_earnings", [])
             if e.get("component")
         }
 
         for key in other_earning_keys:
-            row.append(earnings_map.get(key, 0))
+            row.append(other_earnings_map.get(key, 0))
+
+        # Deductions
+        deductions_map = {
+            d.get("component"): d.get("amount")
+            for d in r.get("deductions", [])
+            if d.get("component")
+        }
+
+        for key in deduction_keys:
+            row.append(deductions_map.get(key, 0))
+
+        # Deduction totals and Net Pay
+        row.append(r.get("total_deduction"))
+        row.append(r.get("deductions_total"))
+        row.append(r.get("net_payable_amount"))
 
         data_rows.append(row)
 
@@ -266,7 +312,9 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     filename = f"{company.replace(' ', '_')}_Pay_Slip_Report_{calendar.month_name[int(month)]}_{year}.xlsx"
 
     frappe.response.filename = filename
+
     frappe.response.filecontent = xlsx_data.getvalue()
+
     frappe.response.type = "binary"
 
 
