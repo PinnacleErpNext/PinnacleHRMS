@@ -1112,10 +1112,22 @@ frappe.pages["salary-slip-records"].on_page_load = function (wrapper) {
           },
 
           callback: function (res) {
-            if (res.message?.message === "success") {
-              frappe.msgprint("Pay slips emailed successfully!");
+            const result = res.message;
+
+            if (result?.message === "success") {
+              frappe.msgprint(
+                `Successfully emailed ${result.sent_count} Salary Slip(s).`,
+              );
+
+              if (result.failed_emails?.length) {
+                frappe.msgprint(
+                  `Email not found for: ${result.failed_emails.join(", ")}`,
+                );
+              }
             } else {
-              frappe.msgprint("Failed to send email. Please try again.");
+              frappe.msgprint(
+                "Failed to send emails. Please check employee email addresses.",
+              );
             }
           },
         });
@@ -1138,8 +1150,12 @@ frappe.pages["salary-slip-records"].on_page_load = function (wrapper) {
   $form.on("click", "#print_pay_slips", function () {
     const paySlips = get_selected();
 
-    const y = parseInt($form.find("#year").val(), 10);
+    if (!paySlips.length) {
+      frappe.msgprint("Please select at least one Salary Slip.");
+      return;
+    }
 
+    const y = parseInt($form.find("#year").val(), 10);
     const m = parseInt($form.find("#month").val(), 10);
 
     window.location.href = `/api/method/pinnaclehrms.pinnacle_payroll.page.salary_slip_records.salary_slip_records.print_pay_slip?year=${y}&month=${m}&pay_slips=${encodeURIComponent(

@@ -1,0 +1,484 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 13px;
+        color: #333;
+        margin: 0;
+        padding: 0;
+      }
+
+      .salary-slip {
+        width: 100%;
+        margin: 0 auto;
+      }
+
+      h2,
+      h3,
+      h4 {
+        margin: 0;
+        color: #333;
+      }
+
+      .company-name {
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .salary-title {
+        text-align: center;
+        font-size: 16px;
+        margin-bottom: 20px;
+      }
+
+      /* ==============================
+   EMPLOYEE DETAILS
+   ============================== */
+
+      .employee-details {
+        width: 100% !important;
+        margin: 0 0 22px 0 !important;
+        border: none !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
+      }
+
+      .employee-details tr {
+        border: none !important;
+      }
+
+      .employee-details td {
+        border: none !important;
+        padding: 5px 6px !important;
+        margin: 0 !important;
+        vertical-align: middle !important;
+        line-height: 1.5 !important;
+      }
+
+      /* All labels */
+      .employee-details .label {
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        text-align: left !important;
+        white-space: nowrap !important;
+        padding-left: 0 !important;
+        padding-right: 5px !important;
+      }
+
+      /* All values */
+      .employee-details .value {
+        font-size: 13px !important;
+        font-weight: 400 !important;
+        text-align: left !important;
+        white-space: nowrap !important;
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+      }
+
+      /* Right-side labels */
+      .employee-details td:nth-child(3) {
+        padding-left: 10px !important;
+        padding-right: 5px !important;
+      }
+
+      /* Right-side values */
+      .employee-details td:nth-child(4) {
+        padding-left: 5px !important;
+      }
+
+      /* ==============================
+       GENERAL TABLE
+       ============================== */
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      /* ==============================
+       SECTION TITLE
+       ============================== */
+
+      .section-title {
+        font-size: 15px;
+        font-weight: bold;
+        margin-top: 20px;
+        margin-bottom: 8px;
+      }
+
+      /* ==============================
+       SALARY TABLE
+       ============================== */
+
+      .salary-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .salary-table th,
+      .salary-table td {
+        border: 1px solid #ccc !important;
+        padding: 8px;
+      }
+
+      .salary-table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+        text-align: left;
+      }
+
+      .salary-table td {
+        text-align: left;
+      }
+
+      .amount {
+        text-align: right !important;
+      }
+
+      .center {
+        text-align: center !important;
+      }
+
+      .total-row th,
+      .total-row td {
+        font-weight: bold;
+        background-color: #f7f7f7;
+      }
+
+      /* ==============================
+       NET PAY
+       ============================== */
+
+      .net-pay {
+        margin-top: 20px;
+        padding: 12px;
+        font-size: 17px;
+        font-weight: bold;
+        text-align: right;
+      }
+
+      /* ==============================
+       BANK DETAILS
+       ============================== */
+
+      .bank-details {
+        width: 100%;
+        margin-top: 20px;
+        border: none !important;
+        border-collapse: collapse;
+      }
+
+      .bank-details td {
+        padding: 7px 10px;
+        border: none !important;
+        vertical-align: top;
+      }
+
+      .bank-details .label {
+        font-weight: bold;
+        width: 18%;
+        border: none !important;
+      }
+
+      .bank-details .value {
+        width: 32%;
+        border: none !important;
+      }
+
+      /* ==============================
+       FOOTER
+       ============================== */
+
+      .footer {
+        margin-top: 30px;
+        text-align: center;
+        font-size: 11px;
+        color: #777;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="salary-slip">
+      <!-- COMPANY -->
+      <div class="company-name">{{ doc.company }}</div>
+
+      <div class="salary-title">
+        Salary Slip for {{ frappe.utils.formatdate(doc.start_date, "MMMM yyyy")
+        }}
+      </div>
+
+      <!-- ==============================
+     EMPLOYEE DETAILS
+     ============================== -->
+
+      {% set employee_date_of_joining = frappe.db.get_value( "Employee",
+      doc.employee, "date_of_joining" ) %}
+
+      <table class="employee-details">
+        <colgroup>
+          <col style="width: 22%" />
+          <col style="width: 28%" />
+          <col style="width: 22%" />
+          <col style="width: 28%" />
+        </colgroup>
+
+        <tr>
+          <td class="label">Employee Name</td>
+          <td class="value">{{ doc.employee_name }}</td>
+
+          <td class="label">Employee ID</td>
+          <td class="value">{{ doc.employee }}</td>
+        </tr>
+
+        <tr>
+          <td class="label">Designation</td>
+          <td class="value">{{ doc.designation or "" }}</td>
+
+          <td class="label">Department</td>
+          <td class="value">{{ doc.department or "" }}</td>
+        </tr>
+
+        <tr>
+          <td class="label">Date of Joining</td>
+          <td class="value">
+            {% if employee_date_of_joining %} {{
+            frappe.utils.formatdate(employee_date_of_joining) }} {% endif %}
+          </td>
+
+          <td class="label">Payroll Frequency</td>
+          <td class="value">{{ doc.payroll_frequency or "" }}</td>
+        </tr>
+
+        <tr>
+          <td class="label">Salary Period</td>
+          <td class="value">
+            {{ frappe.utils.formatdate(doc.start_date) }} - {{
+            frappe.utils.formatdate(doc.end_date) }}
+          </td>
+
+          <td class="label">Payment Days</td>
+          <td class="value">{{ doc.payment_days }}</td>
+        </tr>
+
+        <tr>
+          <td class="label">Total Working Days</td>
+          <td class="value">{{ doc.total_working_days }}</td>
+
+          <!--<td class="label">Leave Without Pay</td>-->
+          <!--<td class="value">{{ doc.leave_without_pay }}</td>-->
+        </tr>
+      </table>
+
+      <!-- ==============================
+       SALARY CALCULATION
+       ============================== -->
+
+      <div class="section-title">Salary Calculation</div>
+
+      <table class="salary-table">
+        <thead>
+          <tr>
+            <th>Particulars</th>
+            <th class="center">Days</th>
+            <th class="amount">Rate</th>
+            <th class="center">Effective %</th>
+            <th class="amount">Amount</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% if doc.salary_breakup %} {% for item in doc.salary_breakup %}
+
+          <tr>
+            <td>{{ item.particulars }}</td>
+
+            <td class="center">{{ item.days }}</td>
+
+            <td class="amount">
+              {{ frappe.utils.fmt_money(item.rate, currency=doc.currency) }}
+            </td>
+
+            <td class="center">{{ item.effective_percentage }}%</td>
+
+            <td class="amount">
+              {{ frappe.utils.fmt_money(item.amount, currency=doc.currency) }}
+            </td>
+          </tr>
+
+          {% endfor %} {% endif %}
+
+          <tr class="total-row">
+            <th colspan="4">Gross Salary</th>
+
+            <td class="amount">
+              {{ frappe.utils.fmt_money(doc.gross_pay, currency=doc.currency) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ==============================
+     OTHER EARNINGS
+     Show all earnings except Basic
+     ============================== -->
+
+      {% set other_earnings = [] %} {% for item in doc.earnings %} {% if
+      item.salary_component != "Basic" %} {% set _ = other_earnings.append(item)
+      %} {% endif %} {% endfor %} {% if other_earnings %}
+
+      <div class="section-title">Other Earnings</div>
+
+      <table class="salary-table">
+        <thead>
+          <tr>
+            <th>Salary Component</th>
+            <th class="center">Abbr.</th>
+            <th class="amount">Amount</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for item in other_earnings %}
+
+          <tr>
+            <td>{{ item.salary_component }}</td>
+
+            <td class="center">{{ item.abbr }}</td>
+
+            <td class="amount">
+              {{ frappe.utils.fmt_money(item.amount, currency=doc.currency) }}
+            </td>
+          </tr>
+
+          {% endfor %}
+
+          <tr class="total-row">
+            <th colspan="2">Total Other Earnings</th>
+
+            <td class="amount">
+              {{ frappe.utils.fmt_money( other_earnings |
+              sum(attribute="amount"), currency=doc.currency ) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {% endif %}
+
+      <!-- ==============================
+       ADJUSTMENT
+       Show all deductions
+       ============================== -->
+
+      {% if doc.deductions %}
+
+      <div class="section-title">Adjustment</div>
+
+      <table class="salary-table">
+        <thead>
+          <tr>
+            <th>Adjustment</th>
+            <th class="center">Abbr.</th>
+            <th class="amount">Amount</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for item in doc.deductions %}
+
+          <tr>
+            <td>{{ item.salary_component }}</td>
+
+            <td class="center">{{ item.abbr }}</td>
+
+            <td class="amount">
+              {{ frappe.utils.fmt_money(item.amount, currency=doc.currency) }}
+            </td>
+          </tr>
+
+          {% endfor %}
+
+          <tr class="total-row">
+            <th colspan="2">Total Adjustment</th>
+
+            <td class="amount">
+              {{ frappe.utils.fmt_money(doc.total_deduction,
+              currency=doc.currency) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {% endif %}
+
+      <!-- ==============================
+       NET PAY
+       ============================== -->
+
+      <div class="net-pay">
+        Net Amount Payable: {{ frappe.utils.fmt_money(doc.net_pay,
+        currency=doc.currency) }}
+      </div>
+
+      <!-- ==============================
+       AMOUNT IN WORDS
+       ============================== -->
+
+      <div style="margin-top: 10px">
+        <strong>Amount in Words:</strong>
+        {{ doc.total_in_words }}
+      </div>
+
+      <!-- ==============================
+       BANK DETAILS
+       ============================== -->
+
+      <!--{% if doc.bank_name or doc.bank_account_no %}-->
+
+      <!--<table class="bank-details">-->
+
+      <!--  <tr>-->
+      <!--    <td class="label">Mode of Payment</td>-->
+      <!--    <td class="value">-->
+      <!--      {{ doc.mode_of_payment or "" }}-->
+      <!--    </td>-->
+
+      <!--    <td class="label">Bank</td>-->
+      <!--    <td class="value">-->
+      <!--      {{ doc.bank_name or "" }}-->
+      <!--    </td>-->
+      <!--  </tr>-->
+
+      <!--  <tr>-->
+      <!--    <td class="label">Bank Account No.</td>-->
+      <!--    <td class="value">-->
+      <!--      {{ doc.bank_account_no or "" }}-->
+      <!--    </td>-->
+
+      <!--    <td class="label">Currency</td>-->
+      <!--    <td class="value">-->
+      <!--      {{ doc.currency }}-->
+      <!--    </td>-->
+      <!--  </tr>-->
+
+      <!--</table>-->
+
+      <!--{% endif %}-->
+
+      <!-- ==============================
+       FOOTER
+       ============================== -->
+
+      <div class="footer">
+        Generated on {{ frappe.utils.format_datetime(doc.creation) }}
+      </div>
+    </div>
+  </body>
+</html>
