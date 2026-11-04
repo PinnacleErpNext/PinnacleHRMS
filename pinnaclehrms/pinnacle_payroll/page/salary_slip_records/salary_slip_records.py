@@ -13,10 +13,25 @@ from frappe.utils.xlsxutils import make_xlsx
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 from frappe.utils import flt
+from pinnaclehrms.utility.permission import is_user_allowed_for_report
+
+
+import io
+import zipfile
+
+
+from frappe.utils.pdf import get_pdf
 
 
 @frappe.whitelist()
 def getSalarySlipRecords(company, year, month, employee=None):
+    # --- User access check ---
+    if not is_user_allowed_for_report(
+        source_name="Salary Register", source_type="Report"
+    ):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = "/app/home"
+        return
     year = int(year)
     month = int(month)
 
@@ -121,7 +136,7 @@ def getSalarySlipRecords(company, year, month, employee=None):
             "total_deduction": pay_slip.total_deduction,
         }
 
-        print(pay_slip_dict)
+        # print(pay_slip_dict)
         result.append(pay_slip_dict)
 
     return result
@@ -131,13 +146,8 @@ def getSalarySlipRecords(company, year, month, employee=None):
 def download_pay_slip_report(year=None, month=None, encodedCompany=None):
     company = base64.b64decode(encodedCompany).decode("utf-8")
 
-    curr_user = frappe.session.user
-    allowed_roles = ["System Manager"]
-    user_roles = frappe.get_roles(curr_user)
-
-    if not (
-        any(role in user_roles for role in allowed_roles)
-        and curr_user != "Administrator"
+    if not is_user_allowed_for_report(
+        source_name="Salary Register", source_type="Report"
     ):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
@@ -226,6 +236,9 @@ def download_pay_slip_report(year=None, month=None, encodedCompany=None):
             r.get("absent"),
             r.get("total"),
             r.get("net_payable_amount"),
+            r.get("deductions"),
+            r.get("deductions_total"),
+            r.get("total_deduction"),
         ]
 
         salary_info = r.get("salary_info", {})
@@ -273,13 +286,8 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
     company_abbr = frappe.db.get_value("Company", company, "abbr")
 
     # --- User access check ---
-    curr_user = frappe.session.user
-    allowed_roles = ["All", "HR User", "HR Manager", "System Manager"]
-    user_roles = frappe.get_roles(curr_user)
-
-    if not (
-        any(role in user_roles for role in allowed_roles)
-        or curr_user == "Administrator"
+    if not is_user_allowed_for_report(
+        source_name="Salary Register", source_type="Report"
     ):
         frappe.local.response["type"] = "redirect"
         frappe.local.response["location"] = "/app/home"
@@ -434,3 +442,154 @@ def download_idfc_blkpay(year=None, month=None, encodedCompany=None):
 
     frappe.response.filecontent = output.getvalue()
     frappe.response.type = "binary"
+
+
+@frappe.whitelist()
+def email_pay_slips(pay_slips=None):
+
+    # --- User access check ---
+    if not is_user_allowed_for_report(
+        source_name="Salary Register", source_type="Report"
+    ):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = "/app/home"
+        return
+
+    if not pay_slips:
+        frappe.throw(_("Please select at least one Salary Slip."))
+
+    # Handle JSON string or Python list
+    if isinstance(pay_slips, str):
+        try:
+            pay_slips = json.loads(pay_slips)
+        except json.JSONDecodeError:
+            frappe.throw(_("Invalid Salary Slip data."))
+
+    if not isinstance(pay_slips, list):
+        frappe.throw(_("Invalid Salary Slip selection."))
+
+    sent_count = 0
+    failed_emails = []
+
+    for salary_slip_name in pay_slips:
+
+        if salary_slip_name == "on":
+            continue
+
+        # Fetch standard ERPNext Salary Slip
+        doc = frappe.get_doc("Salary Slip", salary_slip_name)
+
+        employee_name = doc.employee_name
+        employee = doc.employee
+
+        # Fetch Employee Email
+        email = frappe.db.get_value("Employee", employee, "company_email")
+
+        if not email:
+            failed_emails.append(employee_name)
+            continue
+
+        # Salary Slip Period
+        start_date = doc.start_date
+        end_date = doc.end_date
+
+        subject = f"Salary Slip for {employee_name} ({start_date} to {end_date})"
+
+        # Render Email Template
+        context = {"doc": doc}
+
+        message = frappe.render_template("templates/salary_slip.html", context)
+
+        # Generate Salary Slip PDF using the same custom template as print_pay_slip
+        html = frappe.render_template("templates/salary_slip.html", {"doc": doc})
+        pdf_bytes = get_pdf(html)
+
+        pdf_data = {
+            "fname": f"Salary_Slip_{salary_slip_name}.pdf",
+            "fcontent": pdf_bytes,
+        }
+
+        # Send Email
+        frappe.sendmail(
+            recipients=[email],
+            cc=["records@mygstcafe.in"],
+            subject=subject,
+            message=message,
+            attachments=[pdf_data],
+        )
+
+        sent_count += 1
+
+    return {
+        "message": "success" if sent_count else "failed",
+        "sent_count": sent_count,
+        "failed_emails": failed_emails,
+    }
+
+
+@frappe.whitelist()
+def print_pay_slip(pay_slips, year=None, month=None):
+
+    # --- User access check ---
+    if not is_user_allowed_for_report(
+        source_name="Salary Register", source_type="Report"
+    ):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = "/app/home"
+        return
+
+    # Parse JSON list of Salary Slip names
+    if isinstance(pay_slips, str):
+        try:
+            pay_slips = json.loads(pay_slips)
+        except json.JSONDecodeError:
+            frappe.throw(_("Invalid Salary Slip selection."))
+
+    if not isinstance(pay_slips, list) or not pay_slips:
+        frappe.throw(_("Please select at least one Salary Slip."))
+
+    # In-memory ZIP stream
+    zip_stream = io.BytesIO()
+
+    # Track generated filenames to avoid duplicates
+    generated_pay_slips = []
+
+    with zipfile.ZipFile(
+        zip_stream, mode="w", compression=zipfile.ZIP_DEFLATED
+    ) as zipf:
+
+        for pay_slip in pay_slips:
+
+            # Fetch standard ERPNext Salary Slip
+            doc = frappe.get_doc("Salary Slip", pay_slip)
+
+            context = {"doc": doc}
+
+            # Render HTML using the same template used for emailing
+            html = frappe.render_template("templates/salary_slip.html", context)
+
+            # Generate PDF
+            pdf_bytes = get_pdf(html)
+
+            # Generate filename
+            filename = f"{doc.employee_name}_{doc.start_date}_{doc.end_date}.pdf"
+
+            # Avoid duplicate filenames
+            if filename in generated_pay_slips:
+                filename = f"{doc.name}.pdf"
+
+            generated_pay_slips.append(filename)
+
+            # Add PDF to ZIP
+            zipf.writestr(filename, pdf_bytes)
+
+    # Reset stream position
+    zip_stream.seek(0)
+
+    # Set ZIP response
+    month_name = calendar.month_name[int(month)] if month else "Salary_Slips"
+
+    frappe.response.filename = f"{month_name}_{year or ''}_pay_slips.zip"
+    frappe.response.filecontent = zip_stream.read()
+    frappe.response.type = "download"
+    frappe.response.content_type = "application/zip"
