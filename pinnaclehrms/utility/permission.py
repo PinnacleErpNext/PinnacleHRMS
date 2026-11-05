@@ -37,4 +37,4 @@ def is_user_allowed_for_report(source_name, source_type, user=None):
     doc = frappe.get_cached_doc(source_type, source_name)
 
     # Check configured role permissions
-    return bool(doc.is_permitted(user))
+    return bool(doc.is_permitted())
