@@ -175,18 +175,34 @@ def get_attendance(emp, att_date):
     }
 
 
-def get_permission_query_conditions(user):
-    if not user or user == "Administrator":
-        return ""
+def get_permission_query_conditions(user=None):
 
-    # Get employee linked to user
-    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    if not user:
+        user = frappe.session.user
+
+    if user == "Administrator":
+        return ""
 
     conditions = []
 
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+
     if employee:
-        conditions.append(f"`tabAttendance Correction`.employee = '{employee}'")
 
-    conditions.append(f"`tabAttendance Correction`.leave_approver = '{user}'")
+        employee_permission = frappe.db.exists(
+            "User Permission",
+            {"user": user, "allow": "Employee", "for_value": employee},
+        )
 
-    return " OR ".join(conditions)
+        if not employee_permission:
+            return ""
+
+        conditions.append(
+            f"`tabAttendance Correction`.employee = {frappe.db.escape(employee)}"
+        )
+
+    conditions.append(
+        f"`tabAttendance Correction`.leave_approver = {frappe.db.escape(user)}"
+    )
+
+    return " OR ".join(f"({condition})" for condition in conditions)
