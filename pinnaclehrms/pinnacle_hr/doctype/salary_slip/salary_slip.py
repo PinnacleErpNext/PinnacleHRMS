@@ -71,6 +71,40 @@ def validate_salary_slip_employee(salary_slip):
     return salary_slip_doc, employee
 
 
+def validate_salary_slip_access(salary_slip):
+    """
+    Validate Salary Slip access using Frappe's document permissions.
+
+    Employees are subject to attendance acknowledgement for their own
+    Salary Slips. Users with permission to read another employee's Salary
+    Slip can access it without the acknowledgement requirement.
+    """
+
+    salary_slip_doc = frappe.get_doc("Salary Slip", salary_slip)
+
+    # Administrator bypass
+    if frappe.session.user == "Administrator":
+        return salary_slip_doc, None, True
+
+    # Check actual Frappe document permission
+    if not frappe.has_permission("Salary Slip", "read", doc=salary_slip_doc):
+        frappe.throw("You are not authorized to access this Salary Slip.")
+
+    # Get logged-in user's Employee
+    employee = get_employee_for_current_user()
+
+    # Determine ownership
+    is_own_salary_slip = employee and salary_slip_doc.employee == employee
+
+    # Access to another employee's Salary Slip
+    # is controlled by Frappe permissions.
+    if not is_own_salary_slip:
+        return salary_slip_doc, employee, True
+
+    # Own Salary Slip: acknowledgement rules apply
+    return salary_slip_doc, employee, False
+
+
 # ==========================================================
 # PREVIOUS ATTENDANCE PERIOD
 # ==========================================================
@@ -270,20 +304,14 @@ def get_salary_slip_access(salary_slip):
         }
 
     # ======================================================
-    # HR / PAYROLL BYPASS
+    # VALIDATE SALARY SLIP ACCESS
     # ======================================================
 
-    privileged_roles = {
-        "HR Manager",
-        "HR User",
-        "Payroll Manager",
-        "Payroll User",
-        "System Manager",
-    }
+    salary_slip_doc, employee, bypass_acknowledgement = validate_salary_slip_access(
+        salary_slip
+    )
 
-    user_roles = set(frappe.get_roles(frappe.session.user))
-
-    if user_roles.intersection(privileged_roles):
+    if bypass_acknowledgement:
         return {
             "allowed": True,
             "required": False,
@@ -295,8 +323,6 @@ def get_salary_slip_access(salary_slip):
     # ======================================================
     # NORMAL EMPLOYEE FLOW
     # ======================================================
-
-    salary_slip_doc, employee = validate_salary_slip_employee(salary_slip)
 
     # ... rest of your existing acknowledgement logic
 
@@ -522,5 +548,3 @@ Acknowledged on:
         "acknowledgment_type": acknowledgment_type,
         "count": count,
     }
-
-
